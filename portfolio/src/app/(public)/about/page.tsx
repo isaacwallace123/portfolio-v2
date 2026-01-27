@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Code2, Cpu, Rocket, Server, Wrench, Briefcase, GraduationCap, MapPin, Calendar } from "lucide-react";
+import { ArrowRight, Code2, Cpu, Rocket, Server, Wrench, Briefcase, GraduationCap, MapPin, Calendar, Award, Heart, ExternalLink } from "lucide-react";
 
 const highlights = [
   {
@@ -22,73 +22,110 @@ const highlights = [
   },
 ];
 
-// Timeline entries with Unix timestamps (milliseconds since epoch)
-const timelineEntries = [
+// Work Experience
+const workExperience = [
   {
-    type: "experience" as const,
-    startDate: 1698796800000, // Nov 1, 2024 -> Changed to Oct 1, 2024
-    endDate: null, // null means present
+    startDate: Date.UTC(2024, 10, 1, 12),
+    endDate: null,
     role: "Founder",
     company: "Kleff",
     jobType: "Self-employed",
     location: "Montreal, Quebec, Canada · Hybrid",
-    description: "Leading the vision, architecture, and development of Kleff, a developer-first cloud infrastructure platform. I design and build the core systems while guiding product direction, technical strategy, and business operations.",
-    skills: ["Business Ownership", "Software Infrastructure", "Product Strategy", "System Architecture", "Go", "Next.js", "Docker", "Kubernetes"],
+    description:
+      "Leading the vision, architecture, and development of Kleff, a developer-first cloud infrastructure platform. I design and build the core systems while guiding product direction, technical strategy, and business operations.",
+    skills: [
+      "Business Ownership",
+      "Software Infrastructure",
+      "Product Strategy",
+      "System Architecture",
+      "Go",
+      "Next.js",
+      "Docker",
+      "Kubernetes",
+    ],
     logo: "K",
   },
   {
-    type: "experience" as const,
-    startDate: 1727740800000, // Oct 1, 2024
+    startDate: Date.UTC(2024, 10, 1, 12),
     endDate: null,
     role: "Sales Associate",
     company: "Canada Computers & Electronics",
     jobType: "Permanent Part-time",
     location: "Brossard, Quebec, Canada · On-site",
-    description: "I communicated with clients to understand their needs and guide them towards a product that matched their requirements.",
+    description:
+      "I communicated with clients to understand their needs and guide them towards a product that matched their requirements.",
     skills: ["Sales", "Communication", "Customer Service", "Product Knowledge"],
     logo: "CC",
   },
   {
-    type: "experience" as const,
-    startDate: 1685577600000, // Jun 1, 2023
-    endDate: 1722470400000, // Aug 1, 2024
+    startDate: Date.UTC(2023, 4, 1, 12),
+    endDate: Date.UTC(2024, 7, 1, 12),
     role: "Stocker",
     company: "Costco Wholesale",
     jobType: "Permanent Part-time",
     location: "Candiac, Quebec, Canada · On-site",
-    description: "I was a merchandise placer responsible for placing stock and maintaining prices and quality in the freezer department.",
+    description:
+      "I was a merchandise placer responsible for placing stock and maintaining prices and quality in the freezer department.",
     skills: ["Organization Skills", "Time Management", "Attention to Detail"],
     logo: "CW",
   },
   {
-    type: "education" as const,
-    startDate: 1661990400000, // Sep 1, 2022
-    endDate: null, // Still ongoing
-    degree: "DEC in Computer Science",
-    school: "Champlain College",
-    location: "Saint-Lambert, Quebec",
-    description: "Focused on software development, algorithms, data structures, and system design.",
-    logo: "CH",
-  },
-  {
-    type: "experience" as const,
-    startDate: 1569888000000, // Oct 1, 2019
-    endDate: 1630454400000, // Sep 1, 2021
+    startDate: Date.UTC(2019, 10, 1, 12),
+    endDate: Date.UTC(2021, 8, 1, 12),
     role: "Team Leader",
     company: "McDonald's",
     jobType: "Permanent Part-time",
     location: "Laprairie, Quebec, Canada · On-site",
-    description: "I worked as the team leader for the McDonalds kitchen team to ensure quality control, fluid workflow, and proper customer satisfaction.",
+    description:
+      "I worked as the team leader for the McDonalds kitchen team to ensure quality control, fluid workflow, and proper customer satisfaction.",
     skills: ["Teamwork", "Communication", "Leadership", "Quality Control"],
     logo: "M",
   },
 ];
 
-// Helper function to format duration
+// Education
+const education = [
+  {
+    startDate: Date.UTC(2022, 7, 1, 12),
+    endDate: null,
+    degree: "DEC in Computer Science",
+    school: "Champlain College",
+    location: "Saint-Lambert, Quebec",
+    description:
+      "Focused on software development, algorithms, data structures, and system design.",
+    logo: "CH",
+  },
+];
+
+// Certifications
+const certifications = [
+  {
+    title: "TestOut PC Pro Certification",
+    issuer: "TestOut Corporation",
+    issueDate: Date.UTC(2023, 4, 1, 12),
+    credentialId: "6-1C6-V4QAX8",
+    url: "https://certification.testout.com/verifycert/6-1C6-V4QAX8",
+    skills: ["Computer Hardware", "Technical Support"],
+  },
+];
+
+// Volunteer Experience
+const volunteerExperience = [
+  {
+    role: "Fundraiser",
+    organization: "Vidéotron",
+    startDate: Date.UTC(2013, 3, 1, 12),
+    endDate: Date.UTC(2013, 4, 1, 12),
+    cause: "Children",
+    description:
+      "Participated in a fundraising initiative for Enfants du Soleil with Vidéotron, working outdoors alongside other volunteers to collect donations in support of children's healthcare.",
+  },
+];
+
 const calculateDuration = (startTimestamp: number, endTimestamp: number | null): string => {
   const end = endTimestamp || Date.now();
   const diffMs = end - startTimestamp;
-  const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30.44)); // Average days per month
+  const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30.44));
   
   const years = Math.floor(diffMonths / 12);
   const months = diffMonths % 12;
@@ -97,12 +134,13 @@ const calculateDuration = (startTimestamp: number, endTimestamp: number | null):
     return `${years} yr${years > 1 ? 's' : ''} ${months} mo${months > 1 ? 's' : ''}`;
   } else if (years > 0) {
     return `${years} yr${years > 1 ? 's' : ''}`;
-  } else {
+  } else if (months > 0) {
     return `${months} mo${months > 1 ? 's' : ''}`;
+  } else {
+    return '1 mo';
   }
 };
 
-// Helper function to format date range
 const formatDateRange = (startTimestamp: number, endTimestamp: number | null): string => {
   const start = new Date(startTimestamp);
   const startMonth = start.toLocaleString('en-US', { month: 'short' });
@@ -119,10 +157,15 @@ const formatDateRange = (startTimestamp: number, endTimestamp: number | null): s
   return `${startMonth} ${startYear} - ${endMonth} ${endYear}`;
 };
 
-// Sort by START date (most recent first)
-const sortedTimeline = [...timelineEntries].sort((a, b) => {
-  return b.startDate - a.startDate;
-});
+const formatDate = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const month = date.toLocaleString('en-US', { month: 'short' });
+  const year = date.getFullYear();
+  return `${month} ${year}`;
+};
+
+const sortedWork = [...workExperience].sort((a, b) => b.startDate - a.startDate);
+const sortedEducation = [...education].sort((a, b) => b.startDate - a.startDate);
 
 const skills = [
   "Next.js",
@@ -196,63 +239,49 @@ export default function AboutPage() {
               ))}
             </div>
 
-            {/* Timeline Section */}
+            {/* Work Experience Section */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                <h2 className="text-2xl font-bold tracking-tight">Experience & Education</h2>
+                <Briefcase className="h-5 w-5 text-primary" />
+                <h2 className="text-2xl font-bold tracking-tight">Work Experience</h2>
               </div>
 
-              {/* Timeline Container */}
               <div className="relative">
-                {/* Vertical line */}
                 <div className="absolute left-2.5 top-0 bottom-0 w-0.5 bg-border" />
 
                 <div className="space-y-8">
-                  {sortedTimeline.map((item, index) => {
-                    // Calculate period and duration
-                    const period = formatDateRange(item.startDate, item.endDate);
-                    const duration = calculateDuration(item.startDate, item.endDate);
+                  {sortedWork.map((job, index) => {
+                    const period = formatDateRange(job.startDate, job.endDate);
+                    const duration = calculateDuration(job.startDate, job.endDate);
                     
                     return (
-                    <div key={index} className="relative pl-8">
-                      {/* Timeline dot without date */}
-                      <div className="absolute left-0 top-6">
-                        <div className="flex h-5 w-5 items-center justify-center rounded-full border-4 border-background bg-primary" />
-                      </div>
+                      <div key={index} className="relative pl-8">
+                        <div className="absolute left-0 top-6">
+                          <div className="flex h-5 w-5 items-center justify-center rounded-full border-4 border-background bg-primary" />
+                        </div>
 
-                      {item.type === "experience" ? (
-                        // Experience Card
-                        <Card className={`bg-background/80 backdrop-blur dark:bg-background/60 ${!item.endDate ? 'border-primary/50 shadow-primary/10 shadow-lg' : ''}`}>
+                        <Card className={`bg-background/80 backdrop-blur dark:bg-background/60 ${!job.endDate ? 'border-primary/50 shadow-primary/10 shadow-lg' : ''}`}>
                           <CardHeader>
                             <div className="flex gap-4">
-                              {/* Company Logo/Initial */}
                               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border bg-muted/40 text-lg font-bold">
-                                {item.logo}
+                                {job.logo}
                               </div>
 
-                              {/* Job Details */}
                               <div className="flex-1 space-y-1">
                                 <div className="flex items-start justify-between gap-2">
                                   <div>
-                                    <CardTitle className="text-lg">{item.role}</CardTitle>
+                                    <CardTitle className="text-lg">{job.role}</CardTitle>
                                     <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                                      <span className="font-medium">{item.company}</span>
+                                      <span className="font-medium">{job.company}</span>
                                       <span>·</span>
-                                      <span>{item.jobType}</span>
+                                      <span>{job.jobType}</span>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    {!item.endDate && (
-                                      <Badge variant="default" className="shrink-0 bg-emerald-500 hover:bg-emerald-600">
-                                        Active
-                                      </Badge>
-                                    )}
-                                    <Badge variant="secondary" className="shrink-0">
-                                      <Briefcase className="mr-1 h-3 w-3" />
-                                      Work
+                                  {!job.endDate && (
+                                    <Badge variant="default" className="shrink-0 bg-emerald-500 hover:bg-emerald-600">
+                                      Active
                                     </Badge>
-                                  </div>
+                                  )}
                                 </div>
                                 <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                                   <div className="flex items-center gap-1">
@@ -263,7 +292,7 @@ export default function AboutPage() {
                                   </div>
                                   <div className="flex items-center gap-1">
                                     <MapPin className="h-3 w-3" />
-                                    <span>{item.location}</span>
+                                    <span>{job.location}</span>
                                   </div>
                                 </div>
                               </div>
@@ -272,13 +301,12 @@ export default function AboutPage() {
 
                           <CardContent className="space-y-4">
                             <p className="text-sm leading-relaxed text-muted-foreground">
-                              {item.description}
+                              {job.description}
                             </p>
 
-                            {/* Skills */}
-                            {item.skills && (
+                            {job.skills && (
                               <div className="flex flex-wrap gap-2">
-                                {item.skills.map((skill) => (
+                                {job.skills.map((skill) => (
                                   <Badge
                                     key={skill}
                                     variant="secondary"
@@ -291,68 +319,182 @@ export default function AboutPage() {
                             )}
                           </CardContent>
                         </Card>
-                      ) : (
-                        // Education Card
-                        <Card className={`bg-background/80 backdrop-blur dark:bg-background/60 border-primary/30 ${!item.endDate ? 'shadow-primary/10 shadow-lg' : ''}`}>
-                          <CardHeader>
-                            <div className="flex gap-4">
-                              {/* School Logo/Initial */}
-                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border bg-primary/10 text-lg font-bold text-primary">
-                                {item.logo}
-                              </div>
-
-                              {/* Education Details */}
-                              <div className="flex-1 space-y-1">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div>
-                                    <CardTitle className="text-lg">{item.degree}</CardTitle>
-                                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                                      <span className="font-medium">{item.school}</span>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    {!item.endDate && (
-                                      <Badge variant="default" className="shrink-0 bg-emerald-500 hover:bg-emerald-600">
-                                        Active
-                                      </Badge>
-                                    )}
-                                    <Badge variant="default" className="shrink-0">
-                                      <GraduationCap className="mr-1 h-3 w-3" />
-                                      Education
-                                    </Badge>
-                                  </div>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                                  <div className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    <span>{period}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <MapPin className="h-3 w-3" />
-                                    <span>{item.location}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </CardHeader>
-
-                          <CardContent>
-                            <p className="text-sm leading-relaxed text-muted-foreground">
-                              {item.description}
-                            </p>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </div>
+                      </div>
                     );
                   })}
                 </div>
               </div>
             </div>
 
+            {/* Education Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="h-5 w-5 text-primary" />
+                <h2 className="text-2xl font-bold tracking-tight">Education</h2>
+              </div>
+
+              <div className="space-y-4">
+                {sortedEducation.map((edu, index) => {
+                  const period = formatDateRange(edu.startDate, edu.endDate);
+                  
+                  return (
+                    <Card key={index} className={`bg-background/80 backdrop-blur dark:bg-background/60 border-primary/30 ${!edu.endDate ? 'shadow-primary/10 shadow-lg' : ''}`}>
+                      <CardHeader>
+                        <div className="flex gap-4">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border bg-primary/10 text-lg font-bold text-primary">
+                            {edu.logo}
+                          </div>
+
+                          <div className="flex-1 space-y-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <CardTitle className="text-lg">{edu.degree}</CardTitle>
+                                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                                  <span className="font-medium">{edu.school}</span>
+                                </div>
+                              </div>
+                              {!edu.endDate && (
+                                <Badge variant="default" className="shrink-0 bg-emerald-500 hover:bg-emerald-600">
+                                  Active
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                <span>{period}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                <span>{edu.location}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent>
+                        <p className="text-sm leading-relaxed text-muted-foreground">
+                          {edu.description}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Certifications Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Award className="h-5 w-5 text-primary" />
+                <h2 className="text-2xl font-bold tracking-tight">Certifications</h2>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {certifications.map((cert, index) => (
+                  <Card key={index} className="bg-background/80 backdrop-blur dark:bg-background/60">
+                    <CardHeader>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <CardTitle className="text-base">{cert.title}</CardTitle>
+                          <CardDescription>{cert.issuer}</CardDescription>
+                        </div>
+                        <Award className="h-5 w-5 text-primary shrink-0" />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>Issued {formatDate(cert.issueDate)}</span>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="text-xs text-muted-foreground">
+                        Credential ID: <span className="font-mono">{cert.credentialId}</span>
+                      </div>
+                      
+                      {cert.skills && (
+                        <div className="flex flex-wrap gap-2">
+                          {cert.skills.map((skill) => (
+                            <Badge
+                              key={skill}
+                              variant="secondary"
+                              className="rounded-full text-xs"
+                            >
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
+                      <Button asChild variant="outline" size="sm" className="w-full rounded-2xl">
+                        <a href={cert.url} target="_blank" rel="noopener noreferrer">
+                          Verify Credential <ExternalLink className="ml-2 h-3 w-3" />
+                        </a>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Volunteer Experience Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Heart className="h-5 w-5 text-primary" />
+                <h2 className="text-2xl font-bold tracking-tight">Volunteer Experience</h2>
+              </div>
+
+              <div className="space-y-4">
+                {volunteerExperience.map((vol, index) => {
+                  const period = formatDateRange(vol.startDate, vol.endDate);
+                  const duration = calculateDuration(vol.startDate, vol.endDate);
+                  
+                  return (
+                    <Card key={index} className="bg-background/80 backdrop-blur dark:bg-background/60 border-primary/20">
+                      <CardHeader>
+                        <div className="flex gap-4">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border bg-primary/10">
+                            <Heart className="h-6 w-6 text-primary" />
+                          </div>
+
+                          <div className="flex-1 space-y-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <CardTitle className="text-lg">{vol.role}</CardTitle>
+                                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                                  <span className="font-medium">{vol.organization}</span>
+                                  <span>·</span>
+                                  <Badge variant="outline" className="text-xs">{vol.cause}</Badge>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                <span>{period}</span>
+                                <span>·</span>
+                                <span>{duration}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent>
+                        <p className="text-sm leading-relaxed text-muted-foreground">
+                          {vol.description}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Skills & Tech Stack */}
             <div className="grid gap-6 md:grid-cols-2">
-              {/* Technical Skills */}
               <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
                 <CardHeader>
                   <CardTitle>Technical Skills</CardTitle>
@@ -372,7 +514,6 @@ export default function AboutPage() {
                 </CardContent>
               </Card>
 
-              {/* Focus Areas */}
               <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
                 <CardHeader>
                   <CardTitle>Focus Areas</CardTitle>

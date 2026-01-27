@@ -1,1 +1,2 @@
-export { Header } from './Header';
+export { Header } from './HeaderServer';
+export { HeaderClient } from './HeaderClient';

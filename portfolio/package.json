@@ -55,5 +55,8 @@
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "volta": {
+    "node": "22.22.0"
   }
 }

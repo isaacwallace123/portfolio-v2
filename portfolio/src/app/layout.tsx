@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ThemeProvider } from "@/shared/providers/ThemeProvider";
 import { PageTransition } from "@/shared/ui/PageTransition";
 import { Header } from "@/widgets/Header";
+import { InteractiveGridBackground } from "@/shared/ui/InteractiveGridBackground";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,8 +30,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="antialiased">
         <ThemeProvider>
+          <InteractiveGridBackground />
           <Header />
-
           <PageTransition>{children}</PageTransition>
         </ThemeProvider>
       </body>

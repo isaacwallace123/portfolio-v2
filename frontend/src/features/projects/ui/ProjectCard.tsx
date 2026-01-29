@@ -1,0 +1,94 @@
+import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ArrowRight, Github, ExternalLink, Calendar, Star } from 'lucide-react';
+import type { Project } from '../lib/types';
+
+interface ProjectCardProps {
+  project: Project;
+  featured?: boolean;
+}
+
+export function ProjectCard({ project, featured }: ProjectCardProps) {
+  return (
+    <Card className="group relative overflow-hidden bg-background/80 dark:bg-background/60 backdrop-blur transition-all hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      {/* Thumbnail */}
+      {project.thumbnail && (
+        <div className="aspect-video w-full overflow-hidden bg-muted">
+          <img
+            src={project.thumbnail}
+            alt={project.title}
+            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+          />
+        </div>
+      )}
+
+      <CardHeader>
+        <div className="flex items-start justify-between gap-2">
+          <CardTitle className="line-clamp-1">{project.title}</CardTitle>
+          {featured && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0" />}
+        </div>
+        {project.excerpt && (
+          <CardDescription className="line-clamp-2">{project.excerpt}</CardDescription>
+        )}
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {/* Technologies */}
+        {project.technologies && project.technologies.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {project.technologies.slice(0, 4).map((tech) => (
+              <Badge key={tech} variant="outline" className="text-xs">
+                {tech}
+              </Badge>
+            ))}
+            {project.technologies.length > 4 && (
+              <Badge variant="outline" className="text-xs">
+                +{project.technologies.length - 4}
+              </Badge>
+            )}
+          </div>
+        )}
+
+        {/* Timeline */}
+        {project.startDate && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Calendar className="h-3 w-3" />
+            <span>
+              {new Date(project.startDate).getFullYear()}
+              {project.endDate && ` - ${new Date(project.endDate).getFullYear()}`}
+            </span>
+          </div>
+        )}
+
+        {/* Links */}
+        <div className="flex gap-2">
+          <Button asChild variant="default" size="sm" className="flex-1 rounded-2xl">
+            <Link href={`/projects/${project.slug}`}>
+              View Details
+              <ArrowRight className="ml-2 h-3 w-3" />
+            </Link>
+          </Button>
+          
+          <div className="flex gap-1">
+            {project.githubUrl && (
+              <Button asChild variant="outline" size="sm" className="rounded-2xl h-8 w-8 p-0">
+                <a href={project.githubUrl} target="_blank" rel="noopener noreferrer" title="GitHub">
+                  <Github className="h-3 w-3" />
+                </a>
+              </Button>
+            )}
+            {project.liveUrl && (
+              <Button asChild variant="outline" size="sm" className="rounded-2xl h-8 w-8 p-0">
+                <a href={project.liveUrl} target="_blank" rel="noopener noreferrer" title="Live Demo">
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

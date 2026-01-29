@@ -1,4 +1,6 @@
 import { requireAdmin } from "@/features/auth/model/session";
+import { prisma } from "@/lib/prisma";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,32 +14,16 @@ import {
   CheckCircle2
 } from "lucide-react";
 
+async function getProjectStats() {
+  const total = await prisma.project.count();
+  const published = await prisma.project.count({ where: { published: true } });
+  
+  return { total, published };
+}
+
 export default async function AdminDashboard() {
   const user = await requireAdmin();
-
-  const quickActions = [
-    {
-      title: "Projects",
-      description: "Manage your portfolio projects",
-      icon: FolderOpen,
-      href: "/admin/projects",
-      badge: "Coming Soon",
-    },
-    {
-      title: "Content",
-      description: "Edit pages and sections",
-      icon: FileText,
-      href: "/admin/content",
-      badge: "Coming Soon",
-    },
-    {
-      title: "Settings",
-      description: "Configure your portfolio",
-      icon: Settings,
-      href: "/admin/settings",
-      badge: "Coming Soon",
-    },
-  ];
+  const { total, published } = await getProjectStats();
 
   const recentActivity = [
     { action: "Logged in", time: "Just now", status: "success" },
@@ -46,7 +32,7 @@ export default async function AdminDashboard() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto w-full max-w-7xl px-6 py-8 space-y-8">
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
@@ -76,15 +62,19 @@ export default async function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Projects</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground mt-2">Published projects</p>
-          </CardContent>
-        </Card>
+        <Link href="/admin/projects">
+          <Card className="bg-background/80 backdrop-blur dark:bg-background/60 cursor-pointer hover:border-primary/30 transition-colors">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Projects</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{published}</div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {published} published of {total} total
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
         <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
           <CardHeader className="pb-3">
@@ -104,41 +94,77 @@ export default async function AdminDashboard() {
         </div>
         
         <div className="grid gap-4 md:grid-cols-3">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <Card 
-                key={action.title}
-                className="group relative overflow-hidden bg-background/80 backdrop-blur dark:bg-background/60 transition-all hover:-translate-y-1 hover:shadow-lg hover:border-primary/30"
-              >
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="rounded-lg bg-primary/10 p-2">
-                      <Icon className="h-5 w-5 text-primary" />
-                    </div>
-                    {action.badge && (
-                      <Badge variant="secondary" className="text-xs">
-                        {action.badge}
-                      </Badge>
-                    )}
+          <Link href="/admin/projects">
+            <Card className="group relative overflow-hidden bg-background/80 backdrop-blur dark:bg-background/60 transition-all hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <FolderOpen className="h-5 w-5 text-primary" />
                   </div>
-                  <CardTitle className="text-lg">{action.title}</CardTitle>
-                  <CardDescription>{action.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="w-full justify-between group-hover:text-primary"
-                    disabled={action.badge === "Coming Soon"}
-                  >
-                    {action.badge === "Coming Soon" ? "Coming Soon" : "Open"}
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
+                </div>
+                <CardTitle className="text-lg">Projects</CardTitle>
+                <CardDescription>Manage your portfolio projects</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-between group-hover:text-primary"
+                >
+                  Open
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Card className="group relative overflow-hidden bg-background/80 backdrop-blur dark:bg-background/60 opacity-60">
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="rounded-lg bg-primary/10 p-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                </div>
+                <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
+              </div>
+              <CardTitle className="text-lg">Content</CardTitle>
+              <CardDescription>Edit pages and sections</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full justify-between"
+                disabled
+              >
+                Coming Soon
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="group relative overflow-hidden bg-background/80 backdrop-blur dark:bg-background/60 opacity-60">
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="rounded-lg bg-primary/10 p-2">
+                  <Settings className="h-5 w-5 text-primary" />
+                </div>
+                <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
+              </div>
+              <CardTitle className="text-lg">Settings</CardTitle>
+              <CardDescription>Configure your portfolio</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full justify-between"
+                disabled
+              >
+                Coming Soon
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -172,37 +198,6 @@ export default async function AdminDashboard() {
                 </Badge>
               </div>
             ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Getting Started */}
-      <Card className="bg-linear-to-br from-primary/5 to-primary/10 border-primary/20">
-        <CardHeader>
-          <CardTitle>Todo list for portfolio lol</CardTitle>
-          <CardDescription>Set up your portfolio in a few steps</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5" />
-            <div>
-              <p className="font-medium text-sm">Authentication configured</p>
-              <p className="text-xs text-muted-foreground">Your admin panel is now secure with AES-256 encryption</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3 opacity-50">
-            <div className="h-5 w-5 rounded-full border-2 border-muted-foreground mt-0.5" />
-            <div>
-              <p className="font-medium text-sm">Add your first project</p>
-              <p className="text-xs text-muted-foreground">Showcase your work (coming soon)</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3 opacity-50">
-            <div className="h-5 w-5 rounded-full border-2 border-muted-foreground mt-0.5" />
-            <div>
-              <p className="font-medium text-sm">Customize your content</p>
-              <p className="text-xs text-muted-foreground">Edit pages and sections (coming soon)</p>
-            </div>
           </div>
         </CardContent>
       </Card>

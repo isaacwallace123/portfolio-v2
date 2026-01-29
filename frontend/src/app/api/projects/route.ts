@@ -42,6 +42,9 @@ export async function GET(request: NextRequest) {
               role: true,
             },
           },
+          pages: {
+            orderBy: { order: 'asc' },
+          },
         },
       });
 

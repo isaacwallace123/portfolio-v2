@@ -1,51 +1,37 @@
-'use client';
-
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { projectsApi } from '../api/projectsApi';
 import type { CreateProjectDto, UpdateProjectDto, Project } from '../lib/types';
 import { toast } from 'sonner';
 
-export function useProjectForm(initialData?: Project) {
-  const router = useRouter();
+export function useProjectForm() {
   const [saving, setSaving] = useState(false);
 
-  const createProject = async (data: CreateProjectDto) => {
+  const createProject = async (data: CreateProjectDto): Promise<Project | null> => {
     try {
       setSaving(true);
       const project = await projectsApi.create(data);
-      toast.success('Project created successfully');
-      router.push('/admin/projects');
       return project;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create project';
-      toast.error(message);
-      throw error;
+      console.error('Failed to create project:', error);
+      toast.error('Failed to create project');
+      return null;
     } finally {
       setSaving(false);
     }
   };
 
-  const updateProject = async (data: UpdateProjectDto) => {
+  const updateProject = async (id: string, data: UpdateProjectDto): Promise<Project | null> => {
     try {
       setSaving(true);
-      const project = await projectsApi.update(data);
-      toast.success('Project updated successfully');
+      const project = await projectsApi.update(id, data);
+      toast.success('Project updated successfully!');
       return project;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to update project';
-      toast.error(message);
-      throw error;
+      console.error('Failed to update project:', error);
+      toast.error('Failed to update project');
+      return null;
     } finally {
       setSaving(false);
-    }
-  };
-
-  const saveProject = async (data: CreateProjectDto | UpdateProjectDto) => {
-    if ('id' in data && data.id) {
-      return updateProject(data);
-    } else {
-      return createProject(data as CreateProjectDto);
     }
   };
 
@@ -53,6 +39,5 @@ export function useProjectForm(initialData?: Project) {
     saving,
     createProject,
     updateProject,
-    saveProject,
   };
 }

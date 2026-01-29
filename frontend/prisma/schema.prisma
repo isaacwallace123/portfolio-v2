@@ -45,6 +45,8 @@ model Project {
   authorId    String
   author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   
+  pages       ProjectPage[]
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -53,4 +55,46 @@ model Project {
   @@index([published])
   @@index([featured])
   @@index([authorId])
+}
+
+model ProjectPage {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  slug        String
+  title       String
+  content     String   @db.Text
+  order       Int      @default(0)
+  isStartPage Boolean  @default(false)
+  
+  position    Json?
+  
+  outgoingConnections PageConnection[] @relation("SourcePage")
+  incomingConnections PageConnection[] @relation("TargetPage")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, slug])
+  @@index([projectId])
+  @@index([isStartPage])
+  @@map("project_pages")
+}
+
+model PageConnection {
+  id           String      @id @default(cuid())
+  sourcePageId String
+  sourcePage   ProjectPage @relation("SourcePage", fields: [sourcePageId], references: [id], onDelete: Cascade)
+  
+  targetPageId String
+  targetPage   ProjectPage @relation("TargetPage", fields: [targetPageId], references: [id], onDelete: Cascade)
+  
+  label        String?
+  
+  createdAt    DateTime @default(now())
+
+  @@index([sourcePageId])
+  @@index([targetPageId])
+  @@map("page_connections")
 }

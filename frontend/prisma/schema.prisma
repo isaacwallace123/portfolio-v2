@@ -8,73 +8,64 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
+  id        String    @id @default(cuid())
+  email     String    @unique
   password  String
-  role      String   @default("admin")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  role      String    @default("admin")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   projects  Project[]
 
   @@map("users")
 }
 
 model Project {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
   title       String
-  slug        String   @unique
+  slug        String        @unique
   description String?
-  content     String   @db.Text
+  content     String
   excerpt     String?
-  featured    Boolean  @default(false)
-  published   Boolean  @default(false)
-  
-  thumbnail   String?
+  featured    Boolean       @default(false)
+  published   Boolean       @default(false)
+  thumbnail   String?       // Image shown on overview/detail pages
+  icon        String?       // Image shown on project list/cards
   tags        String[]
   technologies String[]
   liveUrl     String?
   githubUrl   String?
-  
   startDate   DateTime?
   endDate     DateTime?
   publishedAt DateTime?
-  
-  order       Int      @default(0)
-  
+  order       Int           @default(0)
   authorId    String
-  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  
+  author      User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
   pages       ProjectPage[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
-  @@map("projects")
   @@index([slug])
   @@index([published])
   @@index([featured])
   @@index([authorId])
+  @@map("projects")
 }
 
 model ProjectPage {
   id          String   @id @default(cuid())
   projectId   String
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
   slug        String
   title       String
-  content     String   @db.Text
+  content     String
   order       Int      @default(0)
   isStartPage Boolean  @default(false)
-  
   position    Json?
-  
-  outgoingConnections PageConnection[] @relation("SourcePage")
-  incomingConnections PageConnection[] @relation("TargetPage")
-  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  outgoingConnections PageConnection[] @relation("SourcePage")
+  incomingConnections PageConnection[] @relation("TargetPage")
 
   @@unique([projectId, slug])
   @@index([projectId])
@@ -86,13 +77,10 @@ model PageConnection {
   id           String      @id @default(cuid())
   sourcePageId String
   sourcePage   ProjectPage @relation("SourcePage", fields: [sourcePageId], references: [id], onDelete: Cascade)
-  
   targetPageId String
   targetPage   ProjectPage @relation("TargetPage", fields: [targetPageId], references: [id], onDelete: Cascade)
-  
   label        String?
-  
-  createdAt    DateTime @default(now())
+  createdAt    DateTime    @default(now())
 
   @@index([sourcePageId])
   @@index([targetPageId])

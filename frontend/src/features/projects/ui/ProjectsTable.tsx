@@ -32,28 +32,30 @@ import {
   StarOff
 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { ProjectCreateDialog } from './ProjectCreateDialog';
 import type { Project } from '../lib/types';
 
 interface ProjectsTableProps {
   projects: Project[];
   loading?: boolean;
   onEdit: (id: string) => void;
-  onCreate: () => void;
   onDelete: (id: string) => void;
   onTogglePublish: (id: string, published: boolean) => void;
   onToggleFeatured: (id: string, featured: boolean) => void;
+  onRefresh?: () => void;
 }
 
 export function ProjectsTable({
   projects,
   loading = false,
   onEdit,
-  onCreate,
   onDelete,
   onTogglePublish,
   onToggleFeatured,
+  onRefresh,
 }: ProjectsTableProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; title: string } | null>(null);
 
   const handleDeleteClick = (id: string, title: string) => {
@@ -68,22 +70,28 @@ export function ProjectsTable({
     }
   };
 
+  const handleCreateDialogClose = (open: boolean) => {
+    setCreateDialogOpen(open);
+    if (!open && onRefresh) {
+      // Refresh the projects list when dialog closes after successful creation
+      onRefresh();
+    }
+  };
+
   return (
     <>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
             <p className="text-muted-foreground">Manage your portfolio projects</p>
           </div>
-          <Button onClick={onCreate} className="rounded-2xl">
+          <Button onClick={() => setCreateDialogOpen(true)} className="rounded-2xl">
             <Plus className="mr-2 h-4 w-4" />
             New Project
           </Button>
         </div>
 
-        {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
           <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
             <CardHeader className="pb-3">
@@ -125,7 +133,6 @@ export function ProjectsTable({
           </Card>
         </div>
 
-        {/* Projects Table */}
         <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
           <CardHeader>
             <CardTitle>All Projects</CardTitle>
@@ -137,7 +144,7 @@ export function ProjectsTable({
             ) : projects.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground mb-4">No projects yet</p>
-                <Button onClick={onCreate} className="rounded-2xl">
+                <Button onClick={() => setCreateDialogOpen(true)} className="rounded-2xl">
                   <Plus className="mr-2 h-4 w-4" />
                   Create your first project
                 </Button>
@@ -199,54 +206,87 @@ export function ProjectsTable({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => onEdit(project.id)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
+                              
+                              <DropdownMenuItem asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full justify-start font-normal"
+                                  onClick={() => onEdit(project.id)}
+                                >
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit
+                                </Button>
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => window.open(`/projects/${project.slug}`, '_blank')}
-                              >
-                                <ExternalLink className="mr-2 h-4 w-4" />
-                                View
+                              
+                              <DropdownMenuItem asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full justify-start font-normal"
+                                  onClick={() => window.open(`/projects/${project.slug}`, '_blank')}
+                                >
+                                  <ExternalLink className="mr-2 h-4 w-4" />
+                                  View
+                                </Button>
                               </DropdownMenuItem>
+                              
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => onTogglePublish(project.id, !project.published)}
-                              >
-                                {project.published ? (
-                                  <>
-                                    <EyeOff className="mr-2 h-4 w-4" />
-                                    Unpublish
-                                  </>
-                                ) : (
-                                  <>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    Publish
-                                  </>
-                                )}
+                              
+                              <DropdownMenuItem asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full justify-start font-normal"
+                                  onClick={() => onTogglePublish(project.id, !project.published)}
+                                >
+                                  {project.published ? (
+                                    <>
+                                      <EyeOff className="mr-2 h-4 w-4" />
+                                      Unpublish
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Eye className="mr-2 h-4 w-4" />
+                                      Publish
+                                    </>
+                                  )}
+                                </Button>
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => onToggleFeatured(project.id, !project.featured)}
-                              >
-                                {project.featured ? (
-                                  <>
-                                    <StarOff className="mr-2 h-4 w-4" />
-                                    Unfeature
-                                  </>
-                                ) : (
-                                  <>
-                                    <Star className="mr-2 h-4 w-4" />
-                                    Feature
-                                  </>
-                                )}
+                              
+                              <DropdownMenuItem asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full justify-start font-normal"
+                                  onClick={() => onToggleFeatured(project.id, !project.featured)}
+                                >
+                                  {project.featured ? (
+                                    <>
+                                      <StarOff className="mr-2 h-4 w-4" />
+                                      Unfeature
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Star className="mr-2 h-4 w-4" />
+                                      Feature
+                                    </>
+                                  )}
+                                </Button>
                               </DropdownMenuItem>
+                              
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteClick(project.id, project.title)}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
+                              
+                              <DropdownMenuItem asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full justify-start font-normal text-destructive hover:text-destructive"
+                                  onClick={() => handleDeleteClick(project.id, project.title)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </Button>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -260,6 +300,11 @@ export function ProjectsTable({
           </CardContent>
         </Card>
       </div>
+
+      <ProjectCreateDialog
+        open={createDialogOpen}
+        onOpenChange={handleCreateDialogClose}
+      />
 
       <ConfirmDialog
         open={deleteDialogOpen}

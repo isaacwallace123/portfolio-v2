@@ -24,6 +24,13 @@ interface AdminProjectEditPageProps {
   }>;
 }
 
+const CHAR_LIMITS = {
+  title: 100,
+  slug: 100,
+  description: 500,
+  excerpt: 200,
+};
+
 export default function AdminProjectEditPage({ params }: AdminProjectEditPageProps) {
   const { id } = use(params);
   const { project, loading: projectLoading, refetch } = useProject(id);
@@ -44,17 +51,17 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
   const [editingPage, setEditingPage] = useState<ProjectPage | undefined>();
   const [activeTab, setActiveTab] = useState('pages');
   
-  // Unified change tracking
   const [hasChanges, setHasChanges] = useState(false);
   const [pendingPositions, setPendingPositions] = useState<{ id: string; position: { x: number; y: number } }[] | null>(null);
+  const [pendingConnectionChanges, setPendingConnectionChanges] = useState(false);
 
-  // Form state
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
     description: '',
     excerpt: '',
     thumbnail: '',
+    icon: '',
     liveUrl: '',
     githubUrl: '',
     tags: [] as string[],
@@ -75,6 +82,7 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
         description: project.description || '',
         excerpt: project.excerpt || '',
         thumbnail: project.thumbnail || '',
+        icon: project.icon || '',
         liveUrl: project.liveUrl || '',
         githubUrl: project.githubUrl || '',
         tags: project.tags || [],
@@ -89,11 +97,10 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
     }
   }, [project]);
 
-  // Check if form data has changed
   useEffect(() => {
     const formChanged = JSON.stringify(formData) !== JSON.stringify(originalFormData);
-    setHasChanges(formChanged || pendingPositions !== null);
-  }, [formData, originalFormData, pendingPositions]);
+    setHasChanges(formChanged || pendingPositions !== null || pendingConnectionChanges);
+  }, [formData, originalFormData, pendingPositions, pendingConnectionChanges]);
 
   const handlePageCreate = () => {
     setEditingPage(undefined);
@@ -115,16 +122,13 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
     setPageDialogOpen(false);
   };
 
-  // Unified save handler
   const handleSave = async () => {
     try {
-      // Save positions if they changed
       if (pendingPositions) {
         await savePositions(pendingPositions);
         setPendingPositions(null);
       }
       
-      // Save form data if it changed
       const formChanged = JSON.stringify(formData) !== JSON.stringify(originalFormData);
       if (formChanged) {
         await updateProject(id, {
@@ -133,6 +137,7 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
           description: formData.description,
           excerpt: formData.excerpt,
           thumbnail: formData.thumbnail,
+          icon: formData.icon,
           liveUrl: formData.liveUrl,
           githubUrl: formData.githubUrl,
           tags: formData.tags,
@@ -154,10 +159,33 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
     }
   };
 
-  // Store positions but don't save yet
   const handlePositionChange = useCallback((positions: { id: string; position: { x: number; y: number } }[]) => {
     setPendingPositions(positions);
   }, []);
+
+  const handleTitleChange = (value: string) => {
+    if (value.length <= CHAR_LIMITS.title) {
+      setFormData({ ...formData, title: value });
+    }
+  };
+
+  const handleSlugChange = (value: string) => {
+    if (value.length <= CHAR_LIMITS.slug) {
+      setFormData({ ...formData, slug: value });
+    }
+  };
+
+  const handleDescriptionChange = (value: string) => {
+    if (value.length <= CHAR_LIMITS.description) {
+      setFormData({ ...formData, description: value });
+    }
+  };
+
+  const handleExcerptChange = (value: string) => {
+    if (value.length <= CHAR_LIMITS.excerpt) {
+      setFormData({ ...formData, excerpt: value });
+    }
+  };
 
   if (projectLoading || !project) {
     return (
@@ -168,65 +196,70 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="border-b px-6 py-4 shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button asChild variant="ghost" size="sm" className="rounded-2xl">
-              <Link href="/admin/projects">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">{project.title}</h1>
-              <p className="text-sm text-muted-foreground">Edit Project</p>
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 4rem)' }}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+        <div className="sticky top-16 z-40 border-b bg-background/95 backdrop-blur shrink-0">
+          <div className="flex items-center justify-between px-6 py-3">
+            <div className="flex items-center gap-4">
+              <Button asChild variant="ghost" size="sm" className="rounded-2xl">
+                <Link href="/admin/projects">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back
+                </Link>
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold tracking-tight">{project.title}</h1>
+                <p className="text-xs text-muted-foreground">Edit Project</p>
+              </div>
+            </div>
+
+            <TabsList className="inline-flex h-11 items-center justify-center rounded-xl bg-muted/50 p-1 shadow-sm border border-border/50">
+              <TabsTrigger 
+                value="pages" 
+                className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <Network className="h-4 w-4" />
+                Pages
+              </TabsTrigger>
+              <TabsTrigger 
+                value="basic" 
+                className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <FileText className="h-4 w-4" />
+                Basic Info
+              </TabsTrigger>
+              <TabsTrigger 
+                value="settings" 
+                className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <SettingsIcon className="h-4 w-4" />
+                Settings
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="flex justify-end" style={{ width: '180px' }}>
+              {hasChanges && (
+                <Button
+                  onClick={handleSave}
+                  disabled={saving}
+                  size="sm"
+                  className="rounded-2xl"
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  {saving ? 'Saving...' : 'Save'}
+                </Button>
+              )}
             </div>
           </div>
-          
-          {/* Unified Save button - shows on ALL tabs when there are changes */}
-          {hasChanges && (
-            <Button
-              onClick={handleSave}
-              disabled={saving}
-              size="lg"
-              className="rounded-2xl"
-            >
-              <Save className="mr-2 h-4 w-4" />
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0">
-        <div className="border-b px-6 shrink-0">
-          <TabsList>
-            <TabsTrigger value="pages" className="gap-2">
-              <Network className="h-4 w-4" />
-              Pages
-            </TabsTrigger>
-            <TabsTrigger value="basic" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Basic Info
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-2">
-              <SettingsIcon className="h-4 w-4" />
-              Settings
-            </TabsTrigger>
-          </TabsList>
         </div>
 
-        {/* Pages Tab - TRUE FULLSCREEN NO SCROLL */}
-        <TabsContent value="pages" className="flex-1 m-0 p-0 data-[state=active]:flex overflow-hidden">
+        <TabsContent value="pages" className="flex-1 m-0 p-0 data-[state=active]:flex min-h-0">
           {pagesLoading ? (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               Loading pages...
             </div>
           ) : (
-            <div className="flex-1 w-full h-full overflow-hidden">
+            <div className="flex-1 w-full h-full">
               <ProjectFlowchart
                 projectId={id}
                 pages={pages}
@@ -242,51 +275,102 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
           )}
         </TabsContent>
 
-        {/* Basic Info Tab */}
         <TabsContent value="basic" className="flex-1 overflow-auto m-0 p-8">
           <div className="max-w-4xl mx-auto space-y-8">
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="title" className="text-base">Project Title *</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="title" className="text-base">Project Title *</Label>
+                  <span className="text-xs text-muted-foreground">
+                    {formData.title.length}/{CHAR_LIMITS.title}
+                  </span>
+                </div>
                 <Input
                   id="title"
                   value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onChange={(e) => handleTitleChange(e.target.value)}
                   className="text-base h-11"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="slug" className="text-base">URL Slug *</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="slug" className="text-base">URL Slug *</Label>
+                  <span className="text-xs text-muted-foreground">
+                    {formData.slug.length}/{CHAR_LIMITS.slug}
+                  </span>
+                </div>
                 <Input
                   id="slug"
                   value={formData.slug}
-                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  onChange={(e) => handleSlugChange(e.target.value)}
                   className="text-base h-11"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-base">Description</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="description" className="text-base">Description</Label>
+                <span className="text-xs text-muted-foreground">
+                  {formData.description.length}/{CHAR_LIMITS.description}
+                </span>
+              </div>
               <Textarea
                 id="description"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) => handleDescriptionChange(e.target.value)}
                 rows={5}
                 className="text-base resize-none"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="excerpt" className="text-base">Short Excerpt</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="excerpt" className="text-base">Short Excerpt</Label>
+                <span className="text-xs text-muted-foreground">
+                  {formData.excerpt.length}/{CHAR_LIMITS.excerpt}
+                </span>
+              </div>
               <Textarea
                 id="excerpt"
                 value={formData.excerpt}
-                onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
+                onChange={(e) => handleExcerptChange(e.target.value)}
                 rows={3}
                 className="text-base resize-none"
               />
+            </div>
+
+            <div className="space-y-6 pt-4 border-t">
+              <h3 className="text-lg font-semibold">Images</h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="icon" className="text-base">Icon URL</Label>
+                <Input
+                  id="icon"
+                  type="url"
+                  value={formData.icon}
+                  onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                  className="text-base h-11"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Displayed on project list/cards (recommended: small square image)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="thumbnail" className="text-base">Thumbnail URL</Label>
+                <Input
+                  id="thumbnail"
+                  type="url"
+                  value={formData.thumbnail}
+                  onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
+                  className="text-base h-11"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Displayed on project overview/detail pages (recommended: larger banner image)
+                </p>
+              </div>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
@@ -312,21 +396,9 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
                 />
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="thumbnail" className="text-base">Thumbnail URL</Label>
-              <Input
-                id="thumbnail"
-                type="url"
-                value={formData.thumbnail}
-                onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
-                className="text-base h-11"
-              />
-            </div>
           </div>
         </TabsContent>
 
-        {/* Settings Tab */}
         <TabsContent value="settings" className="flex-1 overflow-auto m-0 p-8">
           <div className="max-w-4xl mx-auto space-y-8">
             <div className="grid gap-6 md:grid-cols-2">

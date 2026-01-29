@@ -64,6 +64,7 @@ export interface Project {
   published: boolean;
   featured: boolean;
   thumbnail: string | null;
+  icon: string | null;
   tags: string[];
   technologies: string[];
   liveUrl: string | null;
@@ -92,6 +93,7 @@ export interface CreateProjectDto {
   featured?: boolean;
   published?: boolean;
   thumbnail?: string;
+  icon?: string;
   tags?: string[];
   technologies?: string[];
   liveUrl?: string;
@@ -110,6 +112,7 @@ export interface UpdateProjectDto {
   featured?: boolean;
   published?: boolean;
   thumbnail?: string;
+  icon?: string;
   tags?: string[];
   technologies?: string[];
   liveUrl?: string;

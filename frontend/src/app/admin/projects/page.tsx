@@ -38,7 +38,6 @@ export default function AdminProjectsPage() {
         projects={projects}
         loading={loading}
         onEdit={(id) => router.push(`/admin/projects/${id}`)}
-        onCreate={() => router.push('/admin/projects/new')}
         onDelete={deleteProject}
         onTogglePublish={togglePublish}
         onToggleFeatured={toggleFeature}

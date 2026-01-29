@@ -7,15 +7,14 @@ import ReactFlow, {
   Connection,
   useNodesState,
   useEdgesState,
-  Controls,
   Background,
-  MiniMap,
-  Panel,
   NodeTypes,
+  useReactFlow,
+  ReactFlowProvider,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import type { ProjectPage, PageConnection } from '../lib/types';
 import { PageNode } from './PageNode';
 
@@ -40,7 +39,7 @@ const nodeTypes: NodeTypes = {
   pageNode: PageNode,
 };
 
-export function ProjectFlowchart({
+function FlowchartContent({
   pages,
   connections,
   onPageCreate,
@@ -53,22 +52,17 @@ export function ProjectFlowchart({
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesState] = useEdgesState([]);
   const initializedRef = useRef(false);
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
 
-  // Convert pages to nodes - only on initial load or when pages array length changes
   useEffect(() => {
-    // Only reinitialize if:
-    // 1. First time loading (not initialized)
-    // 2. Number of pages changed (page added/deleted)
     const shouldReinitialize = !initializedRef.current || nodes.length !== pages.length;
     
     if (shouldReinitialize) {
       const flowNodes: Node[] = pages.map((page) => {
-        // Check if we already have this node with a position
         const existingNode = nodes.find(n => n.id === page.id);
         
         let position = { x: Math.random() * 400, y: Math.random() * 400 };
         
-        // Priority: 1. Existing node position (user moved it), 2. Saved position, 3. Random
         if (existingNode && existingNode.position) {
           position = existingNode.position;
         } else if (page.position && typeof page.position === 'object' && 'x' in page.position && 'y' in page.position) {
@@ -90,7 +84,6 @@ export function ProjectFlowchart({
       setNodes(flowNodes);
       initializedRef.current = true;
     } else {
-      // Just update the data (page content changed, but not position)
       setNodes((currentNodes) =>
         currentNodes.map((node) => {
           const page = pages.find((p) => p.id === node.id);
@@ -109,9 +102,8 @@ export function ProjectFlowchart({
         })
       );
     }
-  }, [pages.length]); // Only re-run when number of pages changes
+  }, [pages.length]);
 
-  // Convert connections to edges
   useEffect(() => {
     const flowEdges: Edge[] = connections.map((conn) => ({
       id: conn.id,
@@ -134,7 +126,6 @@ export function ProjectFlowchart({
     [onConnectionCreate]
   );
 
-  // When node drag stops, send positions to parent
   const handleNodeDragStop = useCallback(() => {
     const updates = nodes.map((node) => ({
       id: node.id,
@@ -144,7 +135,6 @@ export function ProjectFlowchart({
     onSavePositions(updates);
   }, [nodes, onSavePositions]);
 
-  // Delete connection immediately without confirmation
   const handleEdgeClick = useCallback(
     (_event: React.MouseEvent, edge: Edge) => {
       const connection = connections.find((c) => c.id === edge.id);
@@ -176,32 +166,59 @@ export function ProjectFlowchart({
         maxZoom={1}
       >
         <Background />
-        <Controls />
-        <MiniMap />
         
-        <Panel position="top-right" className="space-x-2">
+        <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
+          <Button
+            onClick={() => zoomIn()}
+            size="icon"
+            variant="outline"
+            className="h-8 w-8 bg-background shadow-md hover:bg-accent"
+            title="Zoom In"
+          >
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          
+          <Button
+            onClick={() => zoomOut()}
+            size="icon"
+            variant="outline"
+            className="h-8 w-8 bg-background shadow-md hover:bg-accent"
+            title="Zoom Out"
+          >
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          
+          <Button
+            onClick={() => fitView()}
+            size="icon"
+            variant="outline"
+            className="h-8 w-8 bg-background shadow-md hover:bg-accent"
+            title="Fit View"
+          >
+            <Maximize className="h-4 w-4" />
+          </Button>
+          
+          <div className="h-px bg-border my-1" />
+          
           <Button
             onClick={onPageCreate}
-            size="sm"
-            className="rounded-2xl"
+            size="icon"
+            variant="outline"
+            className="h-8 w-8 bg-background shadow-md hover:bg-accent"
+            title="Add Page"
           >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Page
+            <Plus className="h-4 w-4" />
           </Button>
-        </Panel>
-
-        <Panel position="bottom-left">
-          <div className="bg-background/95 backdrop-blur border rounded-lg p-3 space-y-2 text-sm">
-            <div className="font-medium">Instructions:</div>
-            <ul className="space-y-1 text-muted-foreground">
-              <li>• Drag nodes to arrange them</li>
-              <li>• Drag from one node to another to create connections</li>
-              <li>• Click a connection to delete it</li>
-              <li>• Click "Edit" on a node to edit the page</li>
-            </ul>
-          </div>
-        </Panel>
+        </div>
       </ReactFlow>
     </div>
+  );
+}
+
+export function ProjectFlowchart(props: ProjectFlowchartProps) {
+  return (
+    <ReactFlowProvider>
+      <FlowchartContent {...props} />
+    </ReactFlowProvider>
   );
 }

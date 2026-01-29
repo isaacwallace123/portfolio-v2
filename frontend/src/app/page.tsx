@@ -1,18 +1,42 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Github, Linkedin, Mail } from "lucide-react";
+import { prisma } from "@/lib/prisma";
+import { ProjectCard } from "@/features/projects/ui/ProjectCard";
 
 const tech = ["Next.js", "React", "TypeScript", "Go", "PostgreSQL", "Docker"];
 
-export default function HomePage() {
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+async function getFeaturedProjects() {
+  try {
+    return await prisma.project.findMany({
+      where: { 
+        published: true,
+        featured: true,
+      },
+      orderBy: [
+        { order: 'asc' },
+        { publishedAt: 'desc' },
+      ],
+      take: 3,
+    });
+  } catch (error) {
+    console.error('Error fetching featured projects:', error);
+    return [];
+  }
+}
+
+export default async function HomePage() {
+  const featuredProjects = await getFeaturedProjects();
+
   return (
     <main className="relative flex-1">
-      {/* Hero */}
       <section className="border-b">
         <div className="mx-auto w-full max-w-6xl px-4 py-20 md:py-28">
           <div className="grid items-center gap-12 md:grid-cols-2">
             <div className="space-y-6">
-              {/* badge */}
               <div className="inline-flex items-center gap-2 rounded-full border bg-background/70 px-4 py-1.5 text-sm shadow-sm backdrop-blur">
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
@@ -74,7 +98,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Right: "card" */}
             <div className="relative md:justify-self-center">
               <div className="absolute -inset-2 rounded-3xl bg-linear-to-b from-primary/20 to-transparent blur-2xl" />
               <div className="relative rounded-3xl border bg-background/80 dark:bg-background/60 p-6 shadow-sm backdrop-blur">
@@ -104,42 +127,33 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured section */}
-      <section className="py-14">
-        <div className="mx-auto w-full max-w-6xl px-4">
-          <div className="grid items-center gap-12 md:grid-cols-2">
-            <div>
-              <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-                Featured
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
-                Projects worth clicking
-              </h2>
-            </div>
-            <Button asChild variant="outline" className="rounded-2xl">
-              <Link href="/projects">See all</Link>
-            </Button>
-          </div>
-
-          <div className="mt-8 grid gap-6 md:grid-cols-3">
-            {["Observability Dashboard", "Kleff Control Plane", "CI/CD Templates"].map((title) => (
-              <div
-                key={title}
-                className="group rounded-3xl border bg-background/80 dark:bg-background/60 p-5 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:border-primary/30"
-              >
-                <div className="text-sm font-medium text-muted-foreground">Case study</div>
-                <div className="mt-2 text-lg font-semibold">{title}</div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Short, punchy one-liner about impact, scale, and what you built.
+      {featuredProjects.length > 0 && (
+        <section className="py-14">
+          <div className="mx-auto w-full max-w-6xl px-4">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                  Featured
                 </p>
-                <div className="mt-4 text-sm text-primary opacity-0 transition group-hover:opacity-100">
-                  View details →
-                </div>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
+                  Projects worth clicking
+                </h2>
               </div>
-            ))}
+              <Button asChild variant="outline" className="rounded-2xl">
+                <Link href="/projects">
+                  See all <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {featuredProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} featured />
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </main>
   );
 }

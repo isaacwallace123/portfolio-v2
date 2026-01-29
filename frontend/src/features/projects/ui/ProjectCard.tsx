@@ -13,28 +13,26 @@ interface ProjectCardProps {
 export function ProjectCard({ project, featured }: ProjectCardProps) {
   return (
     <Card className="group relative overflow-hidden bg-background/80 dark:bg-background/60 backdrop-blur transition-all hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
-      {/* Thumbnail */}
-      {project.thumbnail && (
-        <div className="aspect-video w-full overflow-hidden bg-muted">
+      {project.icon && (
+        <div className="aspect-square w-full overflow-hidden bg-muted">
           <img
-            src={project.thumbnail}
+            src={project.icon}
             alt={project.title}
             className="h-full w-full object-cover transition-transform group-hover:scale-105"
           />
         </div>
       )}
 
-      <CardHeader>
+      <div className="p-6 space-y-4">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="line-clamp-1">{project.title}</CardTitle>
+          <h3 className="text-lg font-semibold line-clamp-1">{project.title}</h3>
           {featured && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0" />}
         </div>
+        
         {project.excerpt && (
-          <CardDescription className="line-clamp-2">{project.excerpt}</CardDescription>
+          <p className="text-sm text-muted-foreground line-clamp-2">{project.excerpt}</p>
         )}
-      </CardHeader>
 
-      <CardContent className="space-y-4">
         {/* Technologies */}
         {project.technologies && project.technologies.length > 0 && (
           <div className="flex flex-wrap gap-1">
@@ -57,7 +55,10 @@ export function ProjectCard({ project, featured }: ProjectCardProps) {
             <Calendar className="h-3 w-3" />
             <span>
               {new Date(project.startDate).getFullYear()}
-              {project.endDate && ` - ${new Date(project.endDate).getFullYear()}`}
+              {project.endDate 
+                ? ` - ${new Date(project.endDate).getFullYear()}`
+                : ' - Present'
+              }
             </span>
           </div>
         )}
@@ -88,7 +89,7 @@ export function ProjectCard({ project, featured }: ProjectCardProps) {
             )}
           </div>
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
 }

@@ -22,7 +22,6 @@ const highlights = [
   },
 ];
 
-// Work Experience
 const workExperience = [
   {
     startDate: Date.UTC(2024, 10, 1, 12),
@@ -83,7 +82,6 @@ const workExperience = [
   },
 ];
 
-// Education
 const education = [
   {
     startDate: Date.UTC(2022, 7, 1, 12),
@@ -97,7 +95,6 @@ const education = [
   },
 ];
 
-// Certifications
 const certifications = [
   {
     title: "TestOut PC Pro Certification",
@@ -109,7 +106,6 @@ const certifications = [
   },
 ];
 
-// Volunteer Experience
 const volunteerExperience = [
   {
     role: "Fundraiser",
@@ -196,7 +192,6 @@ export default function AboutPage() {
       <section className="border-b">
         <div className="mx-auto w-full max-w-6xl px-4 py-16 md:py-24">
           <div className="mx-auto max-w-5xl space-y-12">
-            {/* Header */}
             <div className="space-y-4">
               <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
                 About
@@ -221,7 +216,6 @@ export default function AboutPage() {
               </div>
             </div>
 
-            {/* Highlights */}
             <div className="grid gap-4 md:grid-cols-3">
               {highlights.map(({ title, description, icon: Icon }) => (
                 <Card
@@ -239,7 +233,6 @@ export default function AboutPage() {
               ))}
             </div>
 
-            {/* Work Experience Section */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Briefcase className="h-5 w-5 text-primary" />
@@ -326,7 +319,6 @@ export default function AboutPage() {
               </div>
             </div>
 
-            {/* Education Section */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <GraduationCap className="h-5 w-5 text-primary" />
@@ -384,7 +376,6 @@ export default function AboutPage() {
               </div>
             </div>
 
-            {/* Certifications Section */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Award className="h-5 w-5 text-primary" />
@@ -439,7 +430,6 @@ export default function AboutPage() {
               </div>
             </div>
 
-            {/* Volunteer Experience Section */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Heart className="h-5 w-5 text-primary" />
@@ -493,7 +483,6 @@ export default function AboutPage() {
               </div>
             </div>
 
-            {/* Skills & Tech Stack */}
             <div className="grid gap-6 md:grid-cols-2">
               <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
                 <CardHeader>
@@ -538,7 +527,6 @@ export default function AboutPage() {
               </Card>
             </div>
 
-            {/* Current Focus */}
             <Card className="bg-linear-to-br from-primary/5 to-primary/10 border-primary/20">
               <CardHeader>
                 <div className="flex items-center gap-2">

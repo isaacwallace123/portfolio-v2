@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/widgets/ThemeToggle';
 import Link from 'next/link';
@@ -77,17 +78,17 @@ export function HeaderClient({ user }: HeaderClientProps) {
         {/* Center - Navigation (always show when logged in or on non-admin pages) */}
         <nav className="hidden items-center gap-1 md:flex">
           {navItems.map((item) => (
-            <Link key={item.href} href={item.href}>
-              <Button
-                variant="ghost"
-                className={cn(
-                  'text-sm font-medium transition-colors hover:text-primary',
-                  pathname === item.href ? 'text-foreground' : 'text-muted-foreground'
-                )}
-              >
-                {item.label}
-              </Button>
-            </Link>
+            <Button
+              key={item.href}
+              asChild
+              variant="ghost"
+              className={cn(
+                'text-sm font-medium transition-colors hover:text-primary',
+                pathname === item.href ? 'text-foreground' : 'text-muted-foreground'
+              )}
+            >
+              <Link href={item.href}>{item.label}</Link>
+            </Button>
           ))}
         </nav>
 
@@ -98,13 +99,14 @@ export function HeaderClient({ user }: HeaderClientProps) {
           {user ? (
             <div className="relative" ref={dropdownRef}>
               {/* Avatar Button */}
-              <button
+              <Avatar 
+                className="cursor-pointer bg-primary/10 text-primary hover:bg-primary/20 transition-all hover:scale-105"
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary transition-all hover:bg-primary/20 hover:scale-105"
-                aria-label="User menu"
               >
-                {getInitials(user.email)}
-              </button>
+                <AvatarFallback className="bg-transparent text-sm font-semibold">
+                  {getInitials(user.email)}
+                </AvatarFallback>
+              </Avatar>
 
               {/* Dropdown Menu */}
               {isDropdownOpen && (
@@ -114,26 +116,30 @@ export function HeaderClient({ user }: HeaderClientProps) {
                     <p className="text-xs text-muted-foreground capitalize">Role: {user.role}</p>
                   </div>
                   
-                  <div className="p-2">
+                  <div className="p-2 space-y-1">
                     {!isAdminPage && (
-                      <Link
-                        href="/admin"
-                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted/50"
+                      <Button
+                        asChild
+                        variant="ghost"
+                        className="w-full justify-start"
                         onClick={() => setIsDropdownOpen(false)}
                       >
-                        <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
-                        <span>Admin Dashboard</span>
-                      </Link>
+                        <Link href="/admin" className="flex items-center gap-3">
+                          <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+                          <span>Admin Dashboard</span>
+                        </Link>
+                      </Button>
                     )}
                     
-                    <button
+                    <Button
                       onClick={handleLogout}
                       disabled={isPending}
-                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                      variant="ghost"
+                      className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
                     >
-                      <LogOut className="h-4 w-4" />
+                      <LogOut className="mr-3 h-4 w-4" />
                       <span>{isPending ? 'Logging out...' : 'Logout'}</span>
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}

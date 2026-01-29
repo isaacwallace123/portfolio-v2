@@ -3,7 +3,6 @@ import { requireAdmin } from '@/features/auth/model/session';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
-// Validation schema
 const projectSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   slug: z.string().min(1, 'Slug is required').regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with dashes'),
@@ -13,6 +12,7 @@ const projectSchema = z.object({
   featured: z.boolean().optional(),
   published: z.boolean().optional(),
   thumbnail: z.string().url().optional().or(z.literal('')),
+  icon: z.string().url().optional().or(z.literal('')),
   tags: z.array(z.string()).optional(),
   technologies: z.array(z.string()).optional(),
   liveUrl: z.string().url().optional().or(z.literal('')),
@@ -22,7 +22,6 @@ const projectSchema = z.object({
   order: z.number().optional(),
 });
 
-// GET - List all projects (or get single project)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -30,7 +29,6 @@ export async function GET(request: NextRequest) {
     const slug = searchParams.get('slug');
     const published = searchParams.get('published');
 
-    // Get single project by ID or slug
     if (id || slug) {
       const project = await prisma.project.findUnique({
         where: id ? { id } : { slug: slug! },
@@ -58,7 +56,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(project);
     }
 
-    // List all projects
     const where = published === 'true' ? { published: true } : {};
     
     const projects = await prisma.project.findMany({
@@ -88,16 +85,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create new project
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAdmin();
     const body = await request.json();
     
-    // Validate input
     const validatedData = projectSchema.parse(body);
 
-    // Check if slug already exists
     const existingProject = await prisma.project.findUnique({
       where: { slug: validatedData.slug },
     });
@@ -109,7 +103,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create project
     const project = await prisma.project.create({
       data: {
         ...validatedData,
@@ -118,6 +111,7 @@ export async function POST(request: NextRequest) {
         endDate: validatedData.endDate ? new Date(validatedData.endDate) : null,
         publishedAt: validatedData.published ? new Date() : null,
         thumbnail: validatedData.thumbnail || null,
+        icon: validatedData.icon || null,
         liveUrl: validatedData.liveUrl || null,
         githubUrl: validatedData.githubUrl || null,
       },
@@ -149,7 +143,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT - Update project
 export async function PUT(request: NextRequest) {
   try {
     await requireAdmin();
@@ -163,10 +156,8 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Validate input
     const validatedData = projectSchema.partial().parse(data);
 
-    // Check if project exists
     const existingProject = await prisma.project.findUnique({
       where: { id },
     });
@@ -178,7 +169,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Check if slug is being changed and if it's unique
     if (validatedData.slug && validatedData.slug !== existingProject.slug) {
       const slugExists = await prisma.project.findUnique({
         where: { slug: validatedData.slug },
@@ -192,7 +182,6 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Update project
     const project = await prisma.project.update({
       where: { id },
       data: {
@@ -201,6 +190,7 @@ export async function PUT(request: NextRequest) {
         endDate: validatedData.endDate ? new Date(validatedData.endDate) : undefined,
         publishedAt: validatedData.published && !existingProject.published ? new Date() : undefined,
         thumbnail: validatedData.thumbnail === '' ? null : validatedData.thumbnail,
+        icon: validatedData.icon === '' ? null : validatedData.icon,
         liveUrl: validatedData.liveUrl === '' ? null : validatedData.liveUrl,
         githubUrl: validatedData.githubUrl === '' ? null : validatedData.githubUrl,
       },
@@ -232,7 +222,6 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE - Delete project
 export async function DELETE(request: NextRequest) {
   try {
     await requireAdmin();
@@ -246,7 +235,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Check if project exists
     const existingProject = await prisma.project.findUnique({
       where: { id },
     });
@@ -258,7 +246,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Delete project
     await prisma.project.delete({
       where: { id },
     });

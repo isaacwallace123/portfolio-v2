@@ -1,8 +1,11 @@
+"use client";
+
 import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Code2, Cpu, Rocket, Server, Wrench, Briefcase, GraduationCap, MapPin, Calendar, Award, Heart, ExternalLink } from "lucide-react";
+import { ArrowRight, Code2, Cpu, Rocket, Server, Wrench, Briefcase, GraduationCap, ChevronDown, Award, Heart, ExternalLink } from "lucide-react";
+import { useState } from "react";
 
 const highlights = [
   {
@@ -141,15 +144,15 @@ const formatDateRange = (startTimestamp: number, endTimestamp: number | null): s
   const start = new Date(startTimestamp);
   const startMonth = start.toLocaleString('en-US', { month: 'short' });
   const startYear = start.getFullYear();
-  
+
   if (!endTimestamp) {
     return `${startMonth} ${startYear} - Present`;
   }
-  
+
   const end = new Date(endTimestamp);
   const endMonth = end.toLocaleString('en-US', { month: 'short' });
   const endYear = end.getFullYear();
-  
+
   return `${startMonth} ${startYear} - ${endMonth} ${endYear}`;
 };
 
@@ -187,22 +190,41 @@ const focusAreas = [
 ];
 
 export default function AboutPage() {
+  const [expandedJobs, setExpandedJobs] = useState<Set<number>>(new Set());
+  const [showAllExperience, setShowAllExperience] = useState(false);
+
+  const toggleJob = (index: number) => {
+    setExpandedJobs((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
+  const visibleWork = showAllExperience ? sortedWork : sortedWork.slice(0, 2);
+
   return (
     <main className="relative flex-1">
       <section className="border-b">
         <div className="mx-auto w-full max-w-6xl px-4 py-16 md:py-24">
-          <div className="mx-auto max-w-5xl space-y-12">
-            <div className="space-y-4">
-              <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-                About
-              </p>
-              <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
-                Building robust systems with clean UX.
-              </h1>
-              <p className="text-lg text-muted-foreground md:text-xl">
-                I'm a full-stack developer focused on scalable web apps, strong architecture, and
-                production-ready engineering.
-              </p>
+          <div className="space-y-16">
+            {/* Hero Section */}
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                  About
+                </p>
+                <h1 className="text-4xl font-bold tracking-tight md:text-5xl max-w-3xl">
+                  Building robust systems with clean UX
+                </h1>
+                <p className="text-lg text-muted-foreground md:text-xl max-w-2xl">
+                  Full-stack developer focused on scalable web apps and production-ready engineering
+                </p>
+              </div>
 
               <div className="flex flex-wrap gap-3 pt-2">
                 <Button asChild className="rounded-2xl">
@@ -216,167 +238,200 @@ export default function AboutPage() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              {highlights.map(({ title, description, icon: Icon }) => (
-                <Card
+            {/* Highlights - Horizontal Flow */}
+            <div className="flex flex-wrap gap-8">
+              {highlights.map(({ title, icon: Icon }) => (
+                <div
                   key={title}
-                  className="bg-background/80 backdrop-blur dark:bg-background/60"
+                  className="flex items-center gap-3"
                 >
-                  <CardHeader className="space-y-2">
-                    <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border bg-muted/40">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <CardTitle className="text-base">{title}</CardTitle>
-                    <CardDescription className="text-sm">{description}</CardDescription>
-                  </CardHeader>
-                </Card>
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border bg-muted/40 shrink-0">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-semibold">{title}</h3>
+                </div>
               ))}
             </div>
 
-            <div className="space-y-4">
+            {/* Work Experience - Compact & Expandable */}
+            <div className="space-y-6">
               <div className="flex items-center gap-2">
                 <Briefcase className="h-5 w-5 text-primary" />
-                <h2 className="text-2xl font-bold tracking-tight">Work Experience</h2>
+                <h2 className="text-2xl font-bold tracking-tight">Experience</h2>
               </div>
 
-              <div className="relative">
-                <div className="absolute left-2.5 top-0 bottom-0 w-0.5 bg-border" />
+              <div className="space-y-3">
+                {visibleWork.map((job, index) => {
+                  const period = formatDateRange(job.startDate, job.endDate);
+                  const duration = calculateDuration(job.startDate, job.endDate);
+                  const isExpanded = expandedJobs.has(index);
 
-                <div className="space-y-8">
-                  {sortedWork.map((job, index) => {
-                    const period = formatDateRange(job.startDate, job.endDate);
-                    const duration = calculateDuration(job.startDate, job.endDate);
-                    
-                    return (
-                      <div key={index} className="relative pl-8">
-                        <div className="absolute left-0 top-6">
-                          <div className="flex h-5 w-5 items-center justify-center rounded-full border-4 border-background bg-primary" />
-                        </div>
-
-                        <Card className={`bg-background/80 backdrop-blur dark:bg-background/60 ${!job.endDate ? 'border-primary/50 shadow-primary/10 shadow-lg' : ''}`}>
-                          <CardHeader>
-                            <div className="flex gap-4">
-                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border bg-muted/40 text-lg font-bold">
-                                {job.logo}
-                              </div>
-
-                              <div className="flex-1 space-y-1">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div>
-                                    <CardTitle className="text-lg">{job.role}</CardTitle>
-                                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                                      <span className="font-medium">{job.company}</span>
-                                      <span>·</span>
-                                      <span>{job.jobType}</span>
-                                    </div>
-                                  </div>
-                                  {!job.endDate && (
-                                    <Badge variant="default" className="shrink-0 bg-emerald-500 hover:bg-emerald-600">
-                                      Active
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                                  <div className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    <span>{period}</span>
-                                    <span>·</span>
-                                    <span>{duration}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <MapPin className="h-3 w-3" />
-                                    <span>{job.location}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </CardHeader>
-
-                          <CardContent className="space-y-4">
-                            <p className="text-sm leading-relaxed text-muted-foreground">
-                              {job.description}
-                            </p>
-
-                            {job.skills && (
-                              <div className="flex flex-wrap gap-2">
-                                {job.skills.map((skill) => (
-                                  <Badge
-                                    key={skill}
-                                    variant="secondary"
-                                    className="rounded-full text-xs"
-                                  >
-                                    {skill}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <GraduationCap className="h-5 w-5 text-primary" />
-                <h2 className="text-2xl font-bold tracking-tight">Education</h2>
-              </div>
-
-              <div className="space-y-4">
-                {sortedEducation.map((edu, index) => {
-                  const period = formatDateRange(edu.startDate, edu.endDate);
-                  
                   return (
-                    <Card key={index} className={`bg-background/80 backdrop-blur dark:bg-background/60 border-primary/30 ${!edu.endDate ? 'shadow-primary/10 shadow-lg' : ''}`}>
-                      <CardHeader>
-                        <div className="flex gap-4">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border bg-primary/10 text-lg font-bold text-primary">
-                            {edu.logo}
+                    <Card
+                      key={index}
+                      className={`bg-background/80 backdrop-blur dark:bg-background/60 transition-all ${!job.endDate ? 'border-primary/50' : ''}`}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40 text-sm font-bold">
+                            {job.logo}
                           </div>
 
-                          <div className="flex-1 space-y-1">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <CardTitle className="text-lg">{edu.degree}</CardTitle>
-                                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                                  <span className="font-medium">{edu.school}</span>
+                              <div className="flex-1 min-w-0">
+                                <CardTitle className="text-base">{job.role}</CardTitle>
+                                <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                                  <span className="font-medium">{job.company}</span>
+                                  {!job.endDate && (
+                                    <>
+                                      <span>·</span>
+                                      <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 text-xs px-2 py-0">
+                                        Active
+                                      </Badge>
+                                    </>
+                                  )}
                                 </div>
                               </div>
-                              {!edu.endDate && (
-                                <Badge variant="default" className="shrink-0 bg-emerald-500 hover:bg-emerald-600">
-                                  Active
-                                </Badge>
-                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 shrink-0"
+                                onClick={() => toggleJob(index)}
+                              >
+                                <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                              </Button>
                             </div>
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                <span>{period}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                <span>{edu.location}</span>
-                              </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                              <span>{period}</span>
+                              <span>·</span>
+                              <span>{duration}</span>
                             </div>
                           </div>
                         </div>
                       </CardHeader>
 
-                      <CardContent>
-                        <p className="text-sm leading-relaxed text-muted-foreground">
-                          {edu.description}
-                        </p>
-                      </CardContent>
+                      {isExpanded && (
+                        <CardContent className="pt-0 space-y-3">
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            {job.description}
+                          </p>
+
+                          {job.skills && job.skills.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {job.skills.map((skill) => (
+                                <Badge
+                                  key={skill}
+                                  variant="secondary"
+                                  className="rounded-full text-xs px-2 py-0.5"
+                                >
+                                  {skill}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      )}
                     </Card>
                   );
                 })}
               </div>
+
+              {sortedWork.length > 2 && (
+                <div className="flex justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-2xl"
+                    onClick={() => setShowAllExperience(!showAllExperience)}
+                  >
+                    {showAllExperience ? 'Show Less' : `Show ${sortedWork.length - 2} More`}
+                  </Button>
+                </div>
+              )}
             </div>
 
-            <div className="space-y-4">
+            {/* Two Column Layout - Education & Skills */}
+            <div className="grid md:grid-cols-2 gap-12">
+              {/* Education */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="h-5 w-5 text-primary" />
+                  <h2 className="text-2xl font-bold tracking-tight">Education</h2>
+                </div>
+
+                <div className="space-y-3">
+                  {sortedEducation.map((edu, index) => {
+                    const period = formatDateRange(edu.startDate, edu.endDate);
+
+                    return (
+                      <Card
+                        key={index}
+                        className="bg-background/80 backdrop-blur dark:bg-background/60 border-primary/30"
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <CardTitle className="text-base leading-tight">
+                                {edu.degree}
+                              </CardTitle>
+                              {!edu.endDate && (
+                                <Badge variant="default" className="shrink-0 bg-emerald-500 hover:bg-emerald-600 text-xs px-2 py-0">
+                                  Active
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-sm text-muted-foreground">{edu.school}</div>
+                            <div className="text-xs text-muted-foreground">{period}</div>
+                          </div>
+                        </CardHeader>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Skills */}
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold tracking-tight">Skills</h2>
+                <div className="flex flex-wrap gap-2">
+                  {skills.map((skill) => (
+                    <span
+                      key={skill}
+                      className="rounded-full border bg-muted/30 px-3 py-1.5 text-sm"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Focus Areas - Horizontal Cards */}
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold tracking-tight">Focus Areas</h2>
+              <div className="grid gap-4 md:grid-cols-3">
+                {focusAreas.map(({ label, value, icon: Icon }) => (
+                  <Card
+                    key={label}
+                    className="bg-background/80 backdrop-blur dark:bg-background/60"
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-3">
+                        <Icon className="h-5 w-5 text-primary shrink-0" />
+                        <div>
+                          <div className="font-semibold text-sm">{label}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{value}</div>
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Certifications */}
+            <div className="space-y-6">
               <div className="flex items-center gap-2">
                 <Award className="h-5 w-5 text-primary" />
                 <h2 className="text-2xl font-bold tracking-tight">Certifications</h2>
@@ -385,33 +440,30 @@ export default function AboutPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 {certifications.map((cert, index) => (
                   <Card key={index} className="bg-background/80 backdrop-blur dark:bg-background/60">
-                    <CardHeader>
+                    <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="space-y-1">
                           <CardTitle className="text-base">{cert.title}</CardTitle>
-                          <CardDescription>{cert.issuer}</CardDescription>
+                          <div className="text-sm text-muted-foreground">{cert.issuer}</div>
                         </div>
                         <Award className="h-5 w-5 text-primary shrink-0" />
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>Issued {formatDate(cert.issueDate)}</span>
-                        </div>
+                      <div className="text-xs text-muted-foreground mt-2">
+                        Issued {formatDate(cert.issueDate)}
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-3 pt-0">
                       <div className="text-xs text-muted-foreground">
-                        Credential ID: <span className="font-mono">{cert.credentialId}</span>
+                        ID: <span className="font-mono">{cert.credentialId}</span>
                       </div>
-                      
-                      {cert.skills && (
-                        <div className="flex flex-wrap gap-2">
+
+                      {cert.skills && cert.skills.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
                           {cert.skills.map((skill) => (
                             <Badge
                               key={skill}
                               variant="secondary"
-                              className="rounded-full text-xs"
+                              className="rounded-full text-xs px-2 py-0.5"
                             >
                               {skill}
                             </Badge>
@@ -421,7 +473,7 @@ export default function AboutPage() {
 
                       <Button asChild variant="outline" size="sm" className="w-full rounded-2xl">
                         <a href={cert.url} target="_blank" rel="noopener noreferrer">
-                          Verify Credential <ExternalLink className="ml-2 h-3 w-3" />
+                          Verify <ExternalLink className="ml-2 h-3 w-3" />
                         </a>
                       </Button>
                     </CardContent>
@@ -430,50 +482,48 @@ export default function AboutPage() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            {/* Volunteer Experience */}
+            <div className="space-y-6">
               <div className="flex items-center gap-2">
                 <Heart className="h-5 w-5 text-primary" />
-                <h2 className="text-2xl font-bold tracking-tight">Volunteer Experience</h2>
+                <h2 className="text-2xl font-bold tracking-tight">Volunteer</h2>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {volunteerExperience.map((vol, index) => {
                   const period = formatDateRange(vol.startDate, vol.endDate);
                   const duration = calculateDuration(vol.startDate, vol.endDate);
-                  
+
                   return (
                     <Card key={index} className="bg-background/80 backdrop-blur dark:bg-background/60 border-primary/20">
-                      <CardHeader>
-                        <div className="flex gap-4">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border bg-primary/10">
-                            <Heart className="h-6 w-6 text-primary" />
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-primary/10">
+                            <Heart className="h-5 w-5 text-primary" />
                           </div>
 
-                          <div className="flex-1 space-y-1">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
                               <div>
-                                <CardTitle className="text-lg">{vol.role}</CardTitle>
-                                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                                <CardTitle className="text-base">{vol.role}</CardTitle>
+                                <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
                                   <span className="font-medium">{vol.organization}</span>
                                   <span>·</span>
-                                  <Badge variant="outline" className="text-xs">{vol.cause}</Badge>
+                                  <Badge variant="outline" className="text-xs px-2 py-0">{vol.cause}</Badge>
                                 </div>
                               </div>
                             </div>
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                <span>{period}</span>
-                                <span>·</span>
-                                <span>{duration}</span>
-                              </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                              <span>{period}</span>
+                              <span>·</span>
+                              <span>{duration}</span>
                             </div>
                           </div>
                         </div>
                       </CardHeader>
 
-                      <CardContent>
-                        <p className="text-sm leading-relaxed text-muted-foreground">
+                      <CardContent className="pt-0">
+                        <p className="text-sm text-muted-foreground leading-relaxed">
                           {vol.description}
                         </p>
                       </CardContent>
@@ -483,83 +533,31 @@ export default function AboutPage() {
               </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
-                <CardHeader>
-                  <CardTitle>Technical Skills</CardTitle>
-                  <CardDescription>Technologies I work with regularly</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {skills.map((skill) => (
-                      <span
-                        key={skill}
-                        className="rounded-full border bg-muted/30 px-3 py-1 text-xs text-foreground/80"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
-                <CardHeader>
-                  <CardTitle>Focus Areas</CardTitle>
-                  <CardDescription>What I specialize in</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {focusAreas.map(({ label, value, icon: Icon }) => (
-                      <div
-                        key={label}
-                        className="rounded-2xl border bg-muted/30 p-3"
-                      >
-                        <div className="flex items-center gap-2 text-xs font-medium text-foreground">
-                          <Icon className="h-4 w-4 text-muted-foreground" />
-                          {label}
-                        </div>
-                        <div className="mt-1 text-xs text-muted-foreground">{value}</div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
+            {/* Currently Building - Left Aligned */}
             <Card className="bg-linear-to-br from-primary/5 to-primary/10 border-primary/20">
-              <CardHeader>
-                <div className="flex items-center gap-2">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2 mb-2">
                   <Rocket className="h-5 w-5 text-primary" />
-                  <CardTitle>Currently Building</CardTitle>
+                  <CardTitle className="text-lg">Currently Building</CardTitle>
                 </div>
-                <CardDescription>What I'm working on right now</CardDescription>
-              </CardHeader>
-              <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Building Kleff, a developer-first cloud infrastructure platform, and refining my
-                  portfolio with an admin panel + auth system, designed to scale into a full
-                  platform for showcasing projects and technical writing.
+                  Kleff — a developer-first cloud infrastructure platform
                 </p>
-              </CardContent>
+              </CardHeader>
             </Card>
 
-            {/* CTA */}
-            <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
-              <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
-                <div className="space-y-1">
-                  <CardTitle className="text-base">Want to work together?</CardTitle>
-                  <CardDescription>
-                    I'm open to freelance work, consulting, and full-time opportunities.
-                  </CardDescription>
-                </div>
-                <Button asChild variant="outline" className="rounded-2xl">
-                  <Link href="/contact">
-                    Get in touch <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </CardHeader>
-            </Card>
+            {/* CTA - Left Aligned */}
+            <div className="space-y-4 py-8">
+              <h3 className="text-xl font-semibold">Let's work together</h3>
+              <p className="text-muted-foreground">
+                Open to freelance, consulting, and full-time opportunities
+              </p>
+              <Button asChild className="rounded-2xl">
+                <Link href="/contact">
+                  Get in touch <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </section>

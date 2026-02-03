@@ -6,15 +6,15 @@ import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
-import { 
-  Bold, 
-  Italic, 
-  Strikethrough, 
-  Code, 
-  Heading1, 
-  Heading2, 
+import {
+  Bold,
+  Italic,
+  Strikethrough,
+  Code,
+  Heading1,
+  Heading2,
   Heading3,
-  List, 
+  List,
   ListOrdered,
   Quote,
   Undo,
@@ -27,8 +27,18 @@ import {
   Underline as UnderlineIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 interface RichTextEditorProps {
   content: string;
@@ -66,6 +76,11 @@ const MenuButton = ({
 );
 
 export function RichTextEditor({ content, onChange, placeholder = "Start writing..." }: RichTextEditorProps) {
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -100,39 +115,46 @@ export function RichTextEditor({ content, onChange, placeholder = "Start writing
     },
   });
 
+  const openLinkDialog = useCallback(() => {
+    if (!editor) return;
+    const previousUrl = editor.getAttributes('link').href || '';
+    setLinkUrl(previousUrl);
+    setLinkDialogOpen(true);
+  }, [editor]);
+
   const setLink = useCallback(() => {
     if (!editor) return;
-    
-    const previousUrl = editor.getAttributes('link').href;
-    const url = window.prompt('URL', previousUrl);
 
-    if (url === null) return;
-
-    if (url === '') {
+    if (linkUrl === '') {
       editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      return;
+    } else {
+      editor.chain().focus().extendMarkRange('link').setLink({ href: linkUrl }).run();
     }
 
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-  }, [editor]);
+    setLinkDialogOpen(false);
+    setLinkUrl('');
+  }, [editor, linkUrl]);
+
+  const openImageDialog = useCallback(() => {
+    setImageUrl('');
+    setImageDialogOpen(true);
+  }, []);
 
   const addImage = useCallback(() => {
-    if (!editor) return;
-    
-    const url = window.prompt('Image URL');
-    if (url) {
-      editor.chain().focus().setImage({ src: url }).run();
-    }
-  }, [editor]);
+    if (!editor || !imageUrl) return;
+    editor.chain().focus().setImage({ src: imageUrl }).run();
+    setImageDialogOpen(false);
+    setImageUrl('');
+  }, [editor, imageUrl]);
 
   if (!editor) {
     return null;
   }
 
   return (
-    <div className="border rounded-2xl overflow-hidden bg-background">
+    <div className="border rounded-2xl bg-background">
       {/* Toolbar */}
-      <div className="border-b bg-muted/30 p-2 flex flex-wrap gap-1">
+      <div className="sticky top-0 z-10 border-b bg-background backdrop-blur-sm p-2 flex flex-wrap gap-1 rounded-t-2xl shadow-sm">
         {/* Text Formatting */}
         <div className="flex gap-1 border-r pr-2">
           <MenuButton
@@ -250,14 +272,14 @@ export function RichTextEditor({ content, onChange, placeholder = "Start writing
         {/* Links & Images */}
         <div className="flex gap-1 border-r pr-2">
           <MenuButton
-            onClick={setLink}
+            onClick={openLinkDialog}
             isActive={editor.isActive('link')}
             title="Add Link"
           >
             <Link2 className="h-4 w-4" />
           </MenuButton>
           <MenuButton
-            onClick={addImage}
+            onClick={openImageDialog}
             title="Add Image"
           >
             <ImageIcon className="h-4 w-4" />
@@ -385,7 +407,81 @@ export function RichTextEditor({ content, onChange, placeholder = "Start writing
           margin: 1em 0;
         }
       `}</style>
-      <EditorContent editor={editor} className="bg-background" />
+      <EditorContent editor={editor} className="bg-background rounded-b-2xl overflow-hidden" />
+
+      {/* Link Dialog */}
+      <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Link</DialogTitle>
+            <DialogDescription>
+              Enter the URL for the link. Leave empty to remove the link.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="link-url">URL</Label>
+              <Input
+                id="link-url"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="https://example.com"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    setLink();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={setLink}>
+              {linkUrl === '' ? 'Remove Link' : 'Add Link'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Dialog */}
+      <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Image</DialogTitle>
+            <DialogDescription>
+              Enter the URL of the image you want to insert.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="image-url">Image URL</Label>
+              <Input
+                id="image-url"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://example.com/image.jpg"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addImage();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImageDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={addImage} disabled={!imageUrl}>
+              Add Image
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

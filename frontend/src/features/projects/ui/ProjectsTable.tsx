@@ -1,17 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,16 +13,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { 
-  Plus, 
-  MoreVertical, 
-  Edit, 
-  Trash2, 
-  Eye, 
+import {
+  Plus,
+  MoreVertical,
+  Edit,
+  Trash2,
+  Eye,
   EyeOff,
   ExternalLink,
   Star,
-  StarOff
+  StarOff,
+  Search,
+  Filter
 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ProjectCreateDialog } from './ProjectCreateDialog';
@@ -45,6 +40,8 @@ interface ProjectsTableProps {
   onRefresh?: () => void;
 }
 
+type FilterStatus = 'all' | 'published' | 'draft' | 'featured';
+
 export function ProjectsTable({
   projects,
   loading = false,
@@ -57,6 +54,45 @@ export function ProjectsTable({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
+  const [selectedTech, setSelectedTech] = useState<string>('all');
+
+  // Get all unique technologies
+  const allTechnologies = useMemo(() => {
+    const techSet = new Set<string>();
+    projects.forEach((project) => {
+      project.technologies?.forEach((tech) => techSet.add(tech));
+    });
+    return Array.from(techSet).sort();
+  }, [projects]);
+
+  // Filter projects based on search and filters
+  const filteredProjects = useMemo(() => {
+    return projects.filter((project) => {
+      // Search filter
+      const matchesSearch =
+        searchQuery === '' ||
+        project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        project.slug.toLowerCase().includes(searchQuery.toLowerCase());
+
+      // Status filter
+      let matchesStatus = true;
+      if (statusFilter === 'published') {
+        matchesStatus = project.published;
+      } else if (statusFilter === 'draft') {
+        matchesStatus = !project.published;
+      } else if (statusFilter === 'featured') {
+        matchesStatus = project.featured;
+      }
+
+      // Technology filter
+      const matchesTech =
+        selectedTech === 'all' || project.technologies?.includes(selectedTech);
+
+      return matchesSearch && matchesStatus && matchesTech;
+    });
+  }, [projects, searchQuery, statusFilter, selectedTech]);
 
   const handleDeleteClick = (id: string, title: string) => {
     setProjectToDelete({ id, title });
@@ -73,7 +109,6 @@ export function ProjectsTable({
   const handleCreateDialogClose = (open: boolean) => {
     setCreateDialogOpen(open);
     if (!open && onRefresh) {
-      // Refresh the projects list when dialog closes after successful creation
       onRefresh();
     }
   };
@@ -81,6 +116,7 @@ export function ProjectsTable({
   return (
     <>
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
@@ -92,6 +128,7 @@ export function ProjectsTable({
           </Button>
         </div>
 
+        {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-4">
           <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
             <CardHeader className="pb-3">
@@ -133,172 +170,233 @@ export function ProjectsTable({
           </Card>
         </div>
 
-        <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
-          <CardHeader>
-            <CardTitle>All Projects</CardTitle>
-            <CardDescription>View and manage all your projects</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="text-center py-8 text-muted-foreground">Loading projects...</div>
-            ) : projects.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">No projects yet</p>
-                <Button onClick={() => setCreateDialogOpen(true)} className="rounded-2xl">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create your first project
-                </Button>
-              </div>
-            ) : (
-              <div className="rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Technologies</TableHead>
-                      <TableHead>Updated</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {projects.map((project) => (
-                      <TableRow key={project.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {project.featured && (
-                              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                            )}
-                            <div>
-                              <div className="font-medium">{project.title}</div>
-                              <div className="text-sm text-muted-foreground">/{project.slug}</div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={project.published ? 'default' : 'secondary'}>
-                            {project.published ? 'Published' : 'Draft'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {project.technologies?.slice(0, 3).map((tech) => (
-                              <Badge key={tech} variant="outline" className="text-xs">
-                                {tech}
-                              </Badge>
-                            ))}
-                            {project.technologies && project.technologies.length > 3 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{project.technologies.length - 3}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(project.updatedAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              
-                              <DropdownMenuItem asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="w-full justify-start font-normal"
-                                  onClick={() => onEdit(project.id)}
-                                >
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  Edit
-                                </Button>
-                              </DropdownMenuItem>
-                              
-                              <DropdownMenuItem asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="w-full justify-start font-normal"
-                                  onClick={() => window.open(`/projects/${project.slug}`, '_blank')}
-                                >
-                                  <ExternalLink className="mr-2 h-4 w-4" />
-                                  View
-                                </Button>
-                              </DropdownMenuItem>
-                              
-                              <DropdownMenuSeparator />
-                              
-                              <DropdownMenuItem asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="w-full justify-start font-normal"
-                                  onClick={() => onTogglePublish(project.id, !project.published)}
-                                >
-                                  {project.published ? (
-                                    <>
-                                      <EyeOff className="mr-2 h-4 w-4" />
-                                      Unpublish
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Eye className="mr-2 h-4 w-4" />
-                                      Publish
-                                    </>
-                                  )}
-                                </Button>
-                              </DropdownMenuItem>
-                              
-                              <DropdownMenuItem asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="w-full justify-start font-normal"
-                                  onClick={() => onToggleFeatured(project.id, !project.featured)}
-                                >
-                                  {project.featured ? (
-                                    <>
-                                      <StarOff className="mr-2 h-4 w-4" />
-                                      Unfeature
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Star className="mr-2 h-4 w-4" />
-                                      Feature
-                                    </>
-                                  )}
-                                </Button>
-                              </DropdownMenuItem>
-                              
-                              <DropdownMenuSeparator />
-                              
-                              <DropdownMenuItem asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="w-full justify-start font-normal text-destructive hover:text-destructive"
-                                  onClick={() => handleDeleteClick(project.id, project.title)}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
-                                </Button>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+        {/* Search and Filters */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search projects..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={statusFilter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('all')}
+              className="rounded-2xl"
+            >
+              All
+            </Button>
+            <Button
+              variant={statusFilter === 'published' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('published')}
+              className="rounded-2xl"
+            >
+              Published
+            </Button>
+            <Button
+              variant={statusFilter === 'draft' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('draft')}
+              className="rounded-2xl"
+            >
+              Drafts
+            </Button>
+            <Button
+              variant={statusFilter === 'featured' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('featured')}
+              className="rounded-2xl"
+            >
+              <Star className="mr-1 h-3 w-3" />
+              Featured
+            </Button>
+
+            {allTechnologies.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="rounded-2xl">
+                    <Filter className="mr-2 h-4 w-4" />
+                    {selectedTech === 'all' ? 'Technology' : selectedTech}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>Filter by Technology</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setSelectedTech('all')}>
+                    All Technologies
+                  </DropdownMenuItem>
+                  {allTechnologies.map((tech) => (
+                    <DropdownMenuItem key={tech} onClick={() => setSelectedTech(tech)}>
+                      {tech}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+
+        {/* Projects Grid */}
+        {loading ? (
+          <div className="text-center py-12 text-muted-foreground">Loading projects...</div>
+        ) : projects.length === 0 ? (
+          <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
+            <CardContent className="text-center py-12">
+              <p className="text-muted-foreground mb-4">No projects yet</p>
+              <Button onClick={() => setCreateDialogOpen(true)} className="rounded-2xl">
+                <Plus className="mr-2 h-4 w-4" />
+                Create your first project
+              </Button>
+            </CardContent>
+          </Card>
+        ) : filteredProjects.length === 0 ? (
+          <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
+            <CardContent className="text-center py-12">
+              <p className="text-muted-foreground">No projects match your filters</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredProjects.map((project) => (
+              <Card
+                key={project.id}
+                className="bg-background/80 backdrop-blur dark:bg-background/60 hover:border-primary/50 transition-colors"
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        {project.featured && (
+                          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0" />
+                        )}
+                        <CardTitle className="text-lg truncate">{project.title}</CardTitle>
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">/{project.slug}</p>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+
+                        <DropdownMenuItem onClick={() => onEdit(project.id)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem
+                          onClick={() => window.open(`/projects/${project.slug}`, '_blank')}
+                        >
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          View
+                        </DropdownMenuItem>
+
+                        <DropdownMenuSeparator />
+
+                        <DropdownMenuItem
+                          onClick={() => onTogglePublish(project.id, !project.published)}
+                        >
+                          {project.published ? (
+                            <>
+                              <EyeOff className="mr-2 h-4 w-4" />
+                              Unpublish
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Publish
+                            </>
+                          )}
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem
+                          onClick={() => onToggleFeatured(project.id, !project.featured)}
+                        >
+                          {project.featured ? (
+                            <>
+                              <StarOff className="mr-2 h-4 w-4" />
+                              Unfeature
+                            </>
+                          ) : (
+                            <>
+                              <Star className="mr-2 h-4 w-4" />
+                              Feature
+                            </>
+                          )}
+                        </DropdownMenuItem>
+
+                        <DropdownMenuSeparator />
+
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => handleDeleteClick(project.id, project.title)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={project.published ? 'default' : 'secondary'} className="text-xs">
+                      {project.published ? 'Published' : 'Draft'}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(project.updatedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  {project.technologies && project.technologies.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {project.technologies.slice(0, 4).map((tech) => (
+                        <Badge key={tech} variant="outline" className="text-xs px-2 py-0.5">
+                          {tech}
+                        </Badge>
+                      ))}
+                      {project.technologies.length > 4 && (
+                        <Badge variant="outline" className="text-xs px-2 py-0.5">
+                          +{project.technologies.length - 4}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onEdit(project.id)}
+                      className="flex-1 rounded-2xl"
+                    >
+                      <Edit className="mr-2 h-3 w-3" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(`/projects/${project.slug}`, '_blank')}
+                      className="flex-1 rounded-2xl"
+                    >
+                      <ExternalLink className="mr-2 h-3 w-3" />
+                      View
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       <ProjectCreateDialog

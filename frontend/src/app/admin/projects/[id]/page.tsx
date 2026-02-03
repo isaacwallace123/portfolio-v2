@@ -276,200 +276,253 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
         </TabsContent>
 
         <TabsContent value="basic" className="flex-1 overflow-auto m-0 p-8">
-          <div className="max-w-4xl mx-auto space-y-8">
-            <div className="grid gap-6 md:grid-cols-2">
+          <div className="max-w-7xl mx-auto space-y-8">
+            {/* Basic Information Section */}
+            <div className="space-y-6 pb-8 border-b">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Basic Information</h3>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="title" className="text-base">Project Title *</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {formData.title.length}/{CHAR_LIMITS.title}
+                    </span>
+                  </div>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => handleTitleChange(e.target.value)}
+                    className="text-base h-11"
+                    placeholder="My Awesome Project"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="slug" className="text-base">URL Slug *</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {formData.slug.length}/{CHAR_LIMITS.slug}
+                    </span>
+                  </div>
+                  <Input
+                    id="slug"
+                    value={formData.slug}
+                    onChange={(e) => handleSlugChange(e.target.value)}
+                    className="text-base h-11"
+                    placeholder="my-awesome-project"
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="title" className="text-base">Project Title *</Label>
+                  <Label htmlFor="description" className="text-base">Description</Label>
                   <span className="text-xs text-muted-foreground">
-                    {formData.title.length}/{CHAR_LIMITS.title}
+                    {formData.description.length}/{CHAR_LIMITS.description}
                   </span>
                 </div>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                  className="text-base h-11"
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => handleDescriptionChange(e.target.value)}
+                  rows={5}
+                  className="text-base resize-none"
+                  placeholder="Detailed description of your project..."
                 />
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="slug" className="text-base">URL Slug *</Label>
+                  <Label htmlFor="excerpt" className="text-base">Short Excerpt</Label>
                   <span className="text-xs text-muted-foreground">
-                    {formData.slug.length}/{CHAR_LIMITS.slug}
+                    {formData.excerpt.length}/{CHAR_LIMITS.excerpt}
                   </span>
                 </div>
-                <Input
-                  id="slug"
-                  value={formData.slug}
-                  onChange={(e) => handleSlugChange(e.target.value)}
-                  className="text-base h-11"
+                <Textarea
+                  id="excerpt"
+                  value={formData.excerpt}
+                  onChange={(e) => handleExcerptChange(e.target.value)}
+                  rows={3}
+                  className="text-base resize-none"
+                  placeholder="A brief summary for cards and previews..."
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="description" className="text-base">Description</Label>
-                <span className="text-xs text-muted-foreground">
-                  {formData.description.length}/{CHAR_LIMITS.description}
-                </span>
-              </div>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => handleDescriptionChange(e.target.value)}
-                rows={5}
-                className="text-base resize-none"
-              />
-            </div>
+            {/* Images Section */}
+            <div className="space-y-6 pb-8 border-b">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Project Images</h3>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="excerpt" className="text-base">Short Excerpt</Label>
-                <span className="text-xs text-muted-foreground">
-                  {formData.excerpt.length}/{CHAR_LIMITS.excerpt}
-                </span>
-              </div>
-              <Textarea
-                id="excerpt"
-                value={formData.excerpt}
-                onChange={(e) => handleExcerptChange(e.target.value)}
-                rows={3}
-                className="text-base resize-none"
-              />
-            </div>
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="icon" className="text-base">Icon URL</Label>
+                  <Input
+                    id="icon"
+                    type="url"
+                    value={formData.icon}
+                    onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                    className="text-base h-11"
+                    placeholder="https://example.com/icon.png"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Displayed on project list/cards (recommended: small square image)
+                  </p>
+                </div>
 
-            <div className="space-y-6 pt-4 border-t">
-              <h3 className="text-lg font-semibold">Images</h3>
-              
-              <div className="space-y-2">
-                <Label htmlFor="icon" className="text-base">Icon URL</Label>
-                <Input
-                  id="icon"
-                  type="url"
-                  value={formData.icon}
-                  onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                  className="text-base h-11"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Displayed on project list/cards (recommended: small square image)
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="thumbnail" className="text-base">Thumbnail URL</Label>
-                <Input
-                  id="thumbnail"
-                  type="url"
-                  value={formData.thumbnail}
-                  onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
-                  className="text-base h-11"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Displayed on project overview/detail pages (recommended: larger banner image)
-                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="thumbnail" className="text-base">Thumbnail URL</Label>
+                  <Input
+                    id="thumbnail"
+                    type="url"
+                    value={formData.thumbnail}
+                    onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
+                    className="text-base h-11"
+                    placeholder="https://example.com/thumbnail.png"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Displayed on project overview/detail pages (recommended: larger banner image)
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="startDate" className="text-base">Start Date</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  className="text-base h-11"
-                />
-              </div>
+            {/* Timeline Section */}
+            <div className="space-y-6">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Project Timeline</h3>
 
-              <div className="space-y-2">
-                <Label htmlFor="endDate" className="text-base">End Date</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  className="text-base h-11"
-                />
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="startDate" className="text-base">Start Date</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    className="text-base h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="endDate" className="text-base">End Date</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                    className="text-base h-11"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Leave empty if project is ongoing
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </TabsContent>
 
         <TabsContent value="settings" className="flex-1 overflow-auto m-0 p-8">
-          <div className="max-w-4xl mx-auto space-y-8">
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="liveUrl" className="text-base">Live Demo URL</Label>
-                <Input
-                  id="liveUrl"
-                  type="url"
-                  value={formData.liveUrl}
-                  onChange={(e) => setFormData({ ...formData, liveUrl: e.target.value })}
-                  className="text-base h-11"
-                />
-              </div>
+          <div className="max-w-7xl mx-auto space-y-8">
+            {/* Links Section */}
+            <div className="space-y-6 pb-8 border-b">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Project Links</h3>
 
-              <div className="space-y-2">
-                <Label htmlFor="githubUrl" className="text-base">GitHub Repository</Label>
-                <Input
-                  id="githubUrl"
-                  type="url"
-                  value={formData.githubUrl}
-                  onChange={(e) => setFormData({ ...formData, githubUrl: e.target.value })}
-                  className="text-base h-11"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-base">Tags</Label>
-              <TagInput
-                value={formData.tags}
-                onChange={(tags) => setFormData({ ...formData, tags })}
-                placeholder="Type a tag and press Enter"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-base">Technologies</Label>
-              <TagInput
-                value={formData.technologies}
-                onChange={(technologies) => setFormData({ ...formData, technologies })}
-                placeholder="Type a technology and press Enter"
-              />
-            </div>
-
-            <div className="space-y-6 pt-4">
-              <div className="flex items-center justify-between p-6 border rounded-2xl">
-                <div className="space-y-1">
-                  <Label htmlFor="published" className="text-base font-semibold">Published</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Make this project visible to the public
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="liveUrl" className="text-base">Live Demo URL</Label>
+                  <Input
+                    id="liveUrl"
+                    type="url"
+                    value={formData.liveUrl}
+                    onChange={(e) => setFormData({ ...formData, liveUrl: e.target.value })}
+                    className="text-base h-11"
+                    placeholder="https://example.com"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Link to the live version of your project
                   </p>
                 </div>
-                <Switch
-                  id="published"
-                  checked={formData.published}
-                  onCheckedChange={(checked) => setFormData({ ...formData, published: checked })}
-                />
-              </div>
 
-              <div className="flex items-center justify-between p-6 border rounded-2xl">
-                <div className="space-y-1">
-                  <Label htmlFor="featured" className="text-base font-semibold">Featured</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Highlight on homepage
+                <div className="space-y-2">
+                  <Label htmlFor="githubUrl" className="text-base">GitHub Repository</Label>
+                  <Input
+                    id="githubUrl"
+                    type="url"
+                    value={formData.githubUrl}
+                    onChange={(e) => setFormData({ ...formData, githubUrl: e.target.value })}
+                    className="text-base h-11"
+                    placeholder="https://github.com/username/repo"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Link to your project's source code
                   </p>
                 </div>
-                <Switch
-                  id="featured"
-                  checked={formData.featured}
-                  onCheckedChange={(checked) => setFormData({ ...formData, featured: checked })}
-                />
+              </div>
+            </div>
+
+            {/* Categorization Section */}
+            <div className="space-y-6 pb-8 border-b">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Categorization</h3>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-base">Tags</Label>
+                  <TagInput
+                    value={formData.tags}
+                    onChange={(tags) => setFormData({ ...formData, tags })}
+                    placeholder="Type a tag and press Enter"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Add tags to categorize your project
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-base">Technologies</Label>
+                  <TagInput
+                    value={formData.technologies}
+                    onChange={(technologies) => setFormData({ ...formData, technologies })}
+                    placeholder="Type a technology and press Enter"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Technologies and tools used in this project
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Visibility Section */}
+            <div className="space-y-6">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Visibility Settings</h3>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-6 border rounded-2xl hover:bg-muted/50 transition-colors">
+                  <div className="space-y-1">
+                    <Label htmlFor="published" className="text-base font-semibold cursor-pointer">Published</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Make this project visible to the public
+                    </p>
+                  </div>
+                  <Switch
+                    id="published"
+                    checked={formData.published}
+                    onCheckedChange={(checked) => setFormData({ ...formData, published: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-6 border rounded-2xl hover:bg-muted/50 transition-colors">
+                  <div className="space-y-1">
+                    <Label htmlFor="featured" className="text-base font-semibold cursor-pointer">Featured</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Highlight this project on the homepage
+                    </p>
+                  </div>
+                  <Switch
+                    id="featured"
+                    checked={formData.featured}
+                    onCheckedChange={(checked) => setFormData({ ...formData, featured: checked })}
+                  />
+                </div>
               </div>
             </div>
           </div>

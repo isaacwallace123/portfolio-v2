@@ -22,7 +22,7 @@ interface PageEditorDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   page?: ProjectPage;
-  pages?: ProjectPage[]; // All pages to check if start page exists
+  pages?: ProjectPage[];
   onSave: (data: Partial<ProjectPage>) => Promise<void>;
 }
 
@@ -89,9 +89,12 @@ export function PageEditorDialog({ open, onOpenChange, page, pages = [], onSave 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{page ? 'Edit Page' : 'Create New Page'}</DialogTitle>
+      <DialogContent
+        className="max-h-[90vh] overflow-hidden flex flex-col"
+        style={{ width: '95vw', maxWidth: '1400px' }}
+      >
+        <DialogHeader className="shrink-0">
+          <DialogTitle className="text-xl">{page ? 'Edit Page' : 'Create New Page'}</DialogTitle>
           <DialogDescription>
             {page
               ? 'Update the page details and content.'
@@ -99,94 +102,106 @@ export function PageEditorDialog({ open, onOpenChange, page, pages = [], onSave 
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => handleTitleChange(e.target.value)}
-              placeholder="My Page Title"
-            />
-          </div>
+        <div className="flex-1 overflow-y-auto pr-2">
+          <div className="space-y-6 py-4">
+            {/* Page Info Section */}
+            <div className="space-y-4 pb-6 border-b">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Page Information</h3>
 
-          <div className="space-y-2">
-            <Label htmlFor="slug">Slug</Label>
-            <Input
-              id="slug"
-              value={slug}
-              onChange={(e) => handleSlugChange(e.target.value)}
-              placeholder="my-page-slug"
-            />
-            <p className="text-xs text-muted-foreground">
-              URL: /projects/[project-slug]/{slug || 'page-slug'}
-            </p>
-          </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="title" className="text-base">Page Title</Label>
+                  <Input
+                    id="title"
+                    value={title}
+                    onChange={(e) => handleTitleChange(e.target.value)}
+                    placeholder="My Page Title"
+                    className="h-11"
+                  />
+                </div>
 
-          {/* Show start page controls */}
-          {page?.isStartPage ? (
-            // Editing the start page - show as locked
-            <div className="flex items-center space-x-2 p-3 rounded-lg border bg-muted/30">
-              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-              <span className="text-sm font-medium">This is the start page (cannot be changed)</span>
+                <div className="space-y-2">
+                  <Label htmlFor="slug" className="text-base">URL Slug</Label>
+                  <Input
+                    id="slug"
+                    value={slug}
+                    onChange={(e) => handleSlugChange(e.target.value)}
+                    placeholder="my-page-slug"
+                    className="h-11"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    URL: /projects/[project-slug]/{slug || 'page-slug'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Show start page controls */}
+              {page?.isStartPage ? (
+                <div className="flex items-center space-x-2 p-4 rounded-xl border bg-muted/30">
+                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0" />
+                  <span className="text-sm font-medium">This is the start page (cannot be changed)</span>
+                </div>
+              ) : !hasStartPage && !page ? (
+                <div className="flex items-center space-x-2 p-4 rounded-xl border bg-muted/30">
+                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0" />
+                  <span className="text-sm font-medium">This will be the start page (first page in project)</span>
+                </div>
+              ) : hasStartPage ? (
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2 opacity-50 p-4 rounded-xl border">
+                    <Checkbox
+                      id="isStartPage"
+                      checked={false}
+                      disabled={true}
+                    />
+                    <Label htmlFor="isStartPage" className="cursor-not-allowed text-sm">
+                      Set as start page (already have a start page)
+                    </Label>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 p-4 rounded-xl border hover:bg-muted/50 transition-colors">
+                  <Checkbox
+                    id="isStartPage"
+                    checked={isStartPage}
+                    onCheckedChange={(checked) => setIsStartPage(checked as boolean)}
+                  />
+                  <Label htmlFor="isStartPage" className="cursor-pointer text-sm">
+                    Set as start page (default entry point)
+                  </Label>
+                </div>
+              )}
             </div>
-          ) : !hasStartPage && !page ? (
-            // Creating first page - show as auto-enabled and locked
-            <div className="flex items-center space-x-2 p-3 rounded-lg border bg-muted/30">
-              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-              <span className="text-sm font-medium">This will be the start page (first page in project)</span>
-            </div>
-          ) : hasStartPage ? (
-            // Already have a start page - show disabled checkbox
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2 opacity-50">
-                <Checkbox
-                  id="isStartPage"
-                  checked={false}
-                  disabled={true}
+
+            {/* Content Section */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Page Content</h3>
+              <div className="space-y-2">
+                <RichTextEditor
+                  content={content}
+                  onChange={setContent}
+                  placeholder="Write your page content here..."
                 />
-                <Label htmlFor="isStartPage" className="cursor-not-allowed">
-                  Set as start page (already have a start page)
-                </Label>
               </div>
             </div>
-          ) : (
-            // Can set as start page
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="isStartPage"
-                checked={isStartPage}
-                onCheckedChange={(checked) => setIsStartPage(checked as boolean)}
-              />
-              <Label htmlFor="isStartPage" className="cursor-pointer">
-                Set as start page (default entry point)
-              </Label>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label>Content</Label>
-            <RichTextEditor
-              content={content}
-              onChange={setContent}
-              placeholder="Write your page content here..."
-            />
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0 mt-4 pt-4 border-t">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={saving}
+            className="rounded-2xl"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={!title.trim() || !slug.trim() || !content.trim() || saving}
+            className="rounded-2xl"
           >
-            {saving ? 'Saving...' : page ? 'Update' : 'Create'}
+            {saving ? 'Saving...' : page ? 'Update Page' : 'Create Page'}
           </Button>
         </DialogFooter>
       </DialogContent>

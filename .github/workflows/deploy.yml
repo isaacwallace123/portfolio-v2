@@ -3,6 +3,7 @@ name: Build & Deploy
 on:
   push:
     branches: [master]
+  workflow_dispatch: {}
 
 env:
   REGISTRY: ghcr.io
@@ -56,18 +57,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Sync docker-compose.yml
-        run: cp docker-compose.yml ${{ secrets.DEPLOY_PATH }}/docker-compose.yml
-
-      - name: Generate .env
+      - name: Ensure deploy dir exists
         run: |
-          cat > ${{ secrets.DEPLOY_PATH }}/.env << 'ENVEOF'
+          mkdir -p "${{ secrets.DEPLOY_PATH }}"
+
+      - name: Sync docker-compose.prod.yml
+        run: |
+          cp docker-compose.prod.yml "${{ secrets.DEPLOY_PATH }}/docker-compose.prod.yml"
+
+      - name: Generate .env (prod)
+        run: |
+          cat > "${{ secrets.DEPLOY_PATH }}/.env" << 'ENVEOF'
           POSTGRES_USER=${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+
+          # Don't expose DB/Redis in prod unless you truly need it
           POSTGRES_PORT=5432
           REDIS_PORT=6379
-          FRONTEND_PORT=3000
+
+          # Grafana uses 3000, so prod should be 3001 -> container 3000
+          FRONTEND_PORT=3001
+
           NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL }}
           NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
           ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
@@ -76,14 +87,27 @@ jobs:
           ADMIN_PASSWORD_HASH_ENCRYPTED=${{ secrets.ADMIN_PASSWORD_HASH_ENCRYPTED }}
           ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
           NODE_ENV=production
+
           CLOUDFLARE_TUNNEL_TOKEN=${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
+
+          # Persist uploads on Unraid (set this secret, or leave it as-is in compose)
+          UPLOADS_PATH=${{ secrets.UPLOADS_PATH }}
           ENVEOF
 
       - name: Log in to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-      - name: Pull and restart
+      - name: Pull and restart (prod)
         run: |
-          cd ${{ secrets.DEPLOY_PATH }}
-          docker-compose pull frontend
-          docker-compose up -d --no-build
+          set -euo pipefail
+          cd "${{ secrets.DEPLOY_PATH }}"
+          docker-compose -f docker-compose.prod.yml pull
+          docker-compose -f docker-compose.prod.yml up -d
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          docker ps -a
+          docker logs --tail=200 portfolio_db || true
+          docker logs --tail=200 portfolio_frontend || true
+          docker logs --tail=200 portfolio_tunnel || true

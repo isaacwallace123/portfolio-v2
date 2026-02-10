@@ -9,8 +9,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-portfolio}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
@@ -23,8 +21,6 @@ services:
     image: redis:7-alpine
     container_name: portfolio_redis
     restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -35,39 +31,37 @@ services:
     networks: [portfolio-network]
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - SESSION_PASSWORD=${SESSION_PASSWORD}
-        - HASH_ENCRYPTION_KEY=${HASH_ENCRYPTION_KEY}
-        - ADMIN_PASSWORD_HASH_ENCRYPTED=${ADMIN_PASSWORD_HASH_ENCRYPTED}
-        - ADMIN_EMAIL=${ADMIN_EMAIL}
-        - DATABASE_URL=postgresql://${POSTGRES_USER:-portfolio}:${POSTGRES_PASSWORD:-portfolio_password}@postgres:5432/${POSTGRES_DB:-portfolio}
-        - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-        - ENCRYPTION_KEY=${ENCRYPTION_KEY}
-    image: portfolio-frontend:dev
+    image: ghcr.io/isaacwallace123/portfolio-frontend:latest
     container_name: portfolio_frontend
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-portfolio}:${POSTGRES_PASSWORD:-portfolio_password}@postgres:5432/${POSTGRES_DB:-portfolio}
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3001}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       SESSION_PASSWORD: ${SESSION_PASSWORD}
       HASH_ENCRYPTION_KEY: ${HASH_ENCRYPTION_KEY}
       ADMIN_PASSWORD_HASH_ENCRYPTED: ${ADMIN_PASSWORD_HASH_ENCRYPTED}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
-      NODE_ENV: development
+      NODE_ENV: production
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "${FRONTEND_PORT:-3001}:3000"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
-      - ./frontend/public/uploads:/app/public/uploads
+      - ${UPLOADS_PATH:-/mnt/user/appdata/portfolio/uploads}:/app/public/uploads
+    networks: [portfolio-network]
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: portfolio_tunnel
+    restart: unless-stopped
+    command: tunnel run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - frontend
     networks: [portfolio-network]
 
 volumes:

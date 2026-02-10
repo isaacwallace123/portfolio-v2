@@ -118,29 +118,29 @@ export default async function AdminDashboard() {
             </Card>
           </Link>
 
-          <Card className="group relative overflow-hidden bg-background/80 backdrop-blur dark:bg-background/60 opacity-60">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="rounded-lg bg-primary/10 p-2">
-                  <FileText className="h-5 w-5 text-primary" />
+          <Link href="/admin/skills">
+            <Card className="group relative overflow-hidden bg-background/80 backdrop-blur dark:bg-background/60 transition-all hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                  </div>
                 </div>
-                <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
-              </div>
-              <CardTitle className="text-lg">Content</CardTitle>
-              <CardDescription>Edit pages and sections</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full justify-between"
-                disabled
-              >
-                Coming Soon
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </CardContent>
-          </Card>
+                <CardTitle className="text-lg">Skills</CardTitle>
+                <CardDescription>Manage your skill badges and globe</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-between group-hover:text-primary"
+                >
+                  Open
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </CardContent>
+            </Card>
+          </Link>
 
           <Card className="group relative overflow-hidden bg-background/80 backdrop-blur dark:bg-background/60 opacity-60">
             <CardHeader>

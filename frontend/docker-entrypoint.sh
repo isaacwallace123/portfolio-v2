@@ -2,7 +2,10 @@
 set -e
 
 echo "Pushing database schema..."
-node node_modules/.pnpm/prisma@5.22.0/node_modules/prisma/build/index.js db push --accept-data-loss
+node node_modules/.pnpm/prisma@5.22.0/node_modules/prisma/build/index.js db push --accept-data-loss --skip-generate
+
+echo "Seeding default skills..."
+node prisma/seed-skills.js
 
 echo "Creating admin user from environment..."
 node -e "

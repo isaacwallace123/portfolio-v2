@@ -81,7 +81,6 @@
 }
 
 .dark {
-  /* Dark theme - Softer blacks, not deep space */
   --background: 240 10% 3.9%;
   --foreground: 0 0% 98%;
   --card: 240 10% 3.9%;

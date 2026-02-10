@@ -1,11 +1,21 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Code2, Cpu, Rocket, Server, Wrench, Briefcase, GraduationCap, ChevronDown, Award, Heart, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { SkillItem } from "@/components/ui/globe";
+import { useTheme } from "@/shared/providers/ThemeProvider";
+import Image from "next/image";
+import type { Skill } from "@/features/skills/lib/types";
+
+const SkillGlobe = dynamic(
+  () => import("@/components/ui/globe").then((m) => m.SkillGlobe),
+  { ssr: false }
+);
 
 const highlights = [
   {
@@ -166,22 +176,6 @@ const formatDate = (timestamp: number): string => {
 const sortedWork = [...workExperience].sort((a, b) => b.startDate - a.startDate);
 const sortedEducation = [...education].sort((a, b) => b.startDate - a.startDate);
 
-const skills = [
-  "Next.js",
-  "React",
-  "TypeScript",
-  "Go",
-  "PostgreSQL",
-  "Docker",
-  "Tailwind CSS",
-  "Git",
-  "CI/CD",
-  "Kubernetes",
-  "Linux",
-  "Node.js",
-  "REST APIs",
-  "System Design",
-];
 
 const focusAreas = [
   { label: "Frontend", value: "Next.js + TypeScript + shadcn + Tailwind", icon: Cpu },
@@ -190,8 +184,35 @@ const focusAreas = [
 ];
 
 export default function AboutPage() {
+  const { theme } = useTheme();
   const [expandedJobs, setExpandedJobs] = useState<Set<number>>(new Set());
   const [showAllExperience, setShowAllExperience] = useState(false);
+  const [liveSkills, setLiveSkills] = useState<SkillItem[]>([]);
+  const [liveCategories, setLiveCategories] = useState<[string, string[]][]>([]);
+  const [liveIconMap, setLiveIconMap] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    fetch("/api/skills")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: Skill[]) => {
+        if (!data.length) return;
+        setLiveSkills(data.map((s) => ({ label: s.label, icon: s.icon })));
+        const grouped = new Map<string, { label: string; icon: string }[]>();
+        data.forEach((s) => {
+          const arr = grouped.get(s.category) || [];
+          arr.push({ label: s.label, icon: s.icon });
+          grouped.set(s.category, arr);
+        });
+        setLiveCategories(
+          Array.from(grouped.entries()).map(([cat, items]) => [
+            cat,
+            items.map((i) => i.label),
+          ] as [string, string[]])
+        );
+        setLiveIconMap(new Map(data.map((s) => [s.label, s.icon])));
+      })
+      .catch(() => {});
+  }, []);
 
   const toggleJob = (index: number) => {
     setExpandedJobs((prev) => {
@@ -351,58 +372,95 @@ export default function AboutPage() {
               )}
             </div>
 
-            {/* Two Column Layout - Education & Skills */}
-            <div className="grid md:grid-cols-2 gap-12">
-              {/* Education */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="h-5 w-5 text-primary" />
-                  <h2 className="text-2xl font-bold tracking-tight">Education</h2>
-                </div>
-
-                <div className="space-y-3">
-                  {sortedEducation.map((edu, index) => {
-                    const period = formatDateRange(edu.startDate, edu.endDate);
-
-                    return (
-                      <Card
-                        key={index}
-                        className="bg-background/80 backdrop-blur dark:bg-background/60 border-primary/30"
-                      >
-                        <CardHeader className="pb-3">
-                          <div className="space-y-2">
-                            <div className="flex items-start justify-between gap-2">
-                              <CardTitle className="text-base leading-tight">
-                                {edu.degree}
-                              </CardTitle>
-                              {!edu.endDate && (
-                                <Badge variant="default" className="shrink-0 bg-emerald-500 hover:bg-emerald-600 text-xs px-2 py-0">
-                                  Active
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="text-sm text-muted-foreground">{edu.school}</div>
-                            <div className="text-xs text-muted-foreground">{period}</div>
-                          </div>
-                        </CardHeader>
-                      </Card>
-                    );
-                  })}
-                </div>
+            {/* Education */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="h-5 w-5 text-primary" />
+                <h2 className="text-2xl font-bold tracking-tight">Education</h2>
               </div>
 
-              {/* Skills */}
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold tracking-tight">Skills</h2>
-                <div className="flex flex-wrap gap-2">
-                  {skills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="rounded-full border bg-muted/30 px-3 py-1.5 text-sm"
+              <div className="space-y-3">
+                {sortedEducation.map((edu, index) => {
+                  const period = formatDateRange(edu.startDate, edu.endDate);
+
+                  return (
+                    <Card
+                      key={index}
+                      className="bg-background/80 backdrop-blur dark:bg-background/60 border-primary/30"
                     >
-                      {skill}
-                    </span>
+                      <CardHeader className="pb-3">
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <CardTitle className="text-base leading-tight">
+                              {edu.degree}
+                            </CardTitle>
+                            {!edu.endDate && (
+                              <Badge variant="default" className="shrink-0 bg-emerald-500 hover:bg-emerald-600 text-xs px-2 py-0">
+                                Active
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground">{edu.school}</div>
+                          <div className="text-xs text-muted-foreground">{period}</div>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Skills */}
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold tracking-tight">Skills</h2>
+
+              <div className="grid gap-8 lg:grid-cols-[1fr_1.4fr] items-start">
+                {/* Skill badges — left */}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                  {liveCategories.map(([category, labels]) => (
+                    <div key={category} className={labels.length > 6 ? "col-span-2" : ""}>
+                      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70 mb-1.5">
+                        {category}
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {labels.map((s) => (
+                          <Badge
+                            key={s}
+                            variant="secondary"
+                            className="rounded-full text-[11px] pl-1.5 pr-2 py-0.5 gap-1 inline-flex items-center"
+                          >
+                            {liveIconMap.get(s) && (
+                              <Image
+                                src={liveIconMap.get(s)!}
+                                alt=""
+                                width={14}
+                                height={14}
+                                className="shrink-0"
+                              />
+                            )}
+                            {s}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
                   ))}
+                </div>
+
+                {/* Globe — right */}
+                <div className="hidden lg:block">
+                  {liveSkills.length > 0 && (
+                    <SkillGlobe
+                      skills={liveSkills}
+                      height={500}
+                      rotateAuto
+                      rotateSpeed={0.5}
+                      connectionsColor={theme === "dark" ? "#ffffff" : "#000000"}
+                      lineOpacity={0.25}
+                      iconSize={0.18}
+                      iconOffset={0.12}
+                      depthFade
+                    />
+                  )}
                 </div>
               </div>
             </div>

@@ -85,5 +85,5 @@ jobs:
       - name: Pull and restart
         run: |
           cd ${{ secrets.DEPLOY_PATH }}
-          docker compose pull frontend
-          docker compose up -d --no-build
+          docker-compose pull frontend
+          docker-compose up -d --no-build

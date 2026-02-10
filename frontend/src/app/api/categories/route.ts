@@ -3,29 +3,22 @@ import { requireAdmin } from '@/features/auth/model/session';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
-const skillSchema = z.object({
-  label: z.string().min(1, 'Label is required'),
-  icon: z.string().min(1, 'Icon path is required'),
-  categoryId: z.string().min(1, 'Category is required'),
+const categorySchema = z.object({
+  name: z.string().min(1, 'Name is required'),
   order: z.number().optional(),
 });
 
-// GET is public — about page needs to read skills without auth
+// GET is public — about page needs categories for display ordering
 export async function GET() {
   try {
-    const skills = await prisma.skill.findMany({
-      include: {
-        category: {
-          select: { id: true, name: true, order: true },
-        },
-      },
-      orderBy: [{ category: { order: 'asc' } }, { order: 'asc' }, { label: 'asc' }],
+    const categories = await prisma.category.findMany({
+      orderBy: [{ order: 'asc' }, { name: 'asc' }],
     });
-    return NextResponse.json(skills);
+    return NextResponse.json(categories);
   } catch (error) {
-    console.error('Error fetching skills:', error);
+    console.error('Error fetching categories:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch skills' },
+      { error: 'Failed to fetch categories' },
       { status: 500 }
     );
   }
@@ -35,10 +28,10 @@ export async function POST(request: NextRequest) {
   try {
     await requireAdmin();
     const body = await request.json();
-    const data = skillSchema.parse(body);
+    const data = categorySchema.parse(body);
 
-    const skill = await prisma.skill.create({ data });
-    return NextResponse.json(skill, { status: 201 });
+    const category = await prisma.category.create({ data });
+    return NextResponse.json(category, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -46,9 +39,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    console.error('Error creating skill:', error);
+    console.error('Error creating category:', error);
     return NextResponse.json(
-      { error: 'Failed to create skill' },
+      { error: 'Failed to create category' },
       { status: 500 }
     );
   }
@@ -62,19 +55,19 @@ export async function PUT(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json(
-        { error: 'Skill ID is required' },
+        { error: 'Category ID is required' },
         { status: 400 }
       );
     }
 
-    const validated = skillSchema.partial().parse(data);
+    const validated = categorySchema.partial().parse(data);
 
-    const skill = await prisma.skill.update({
+    const category = await prisma.category.update({
       where: { id },
       data: validated,
     });
 
-    return NextResponse.json(skill);
+    return NextResponse.json(category);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -82,9 +75,9 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
-    console.error('Error updating skill:', error);
+    console.error('Error updating category:', error);
     return NextResponse.json(
-      { error: 'Failed to update skill' },
+      { error: 'Failed to update category' },
       { status: 500 }
     );
   }
@@ -98,17 +91,17 @@ export async function DELETE(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json(
-        { error: 'Skill ID is required' },
+        { error: 'Category ID is required' },
         { status: 400 }
       );
     }
 
-    await prisma.skill.delete({ where: { id } });
+    await prisma.category.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting skill:', error);
+    console.error('Error deleting category:', error);
     return NextResponse.json(
-      { error: 'Failed to delete skill' },
+      { error: 'Failed to delete category' },
       { status: 500 }
     );
   }

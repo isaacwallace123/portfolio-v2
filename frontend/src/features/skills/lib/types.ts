@@ -2,7 +2,12 @@ export type Skill = {
   id: string;
   label: string;
   icon: string;
-  category: string;
+  categoryId: string;
+  category: {
+    id: string;
+    name: string;
+    order: number;
+  };
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -11,7 +16,7 @@ export type Skill = {
 export type CreateSkillDto = {
   label: string;
   icon: string;
-  category: string;
+  categoryId: string;
   order?: number;
 };
 

@@ -39,6 +39,7 @@ services:
 
   # Frontend
   frontend:
+    image: ghcr.io/isaacwallace123/portfolio-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -71,6 +72,17 @@ services:
         condition: service_healthy
     volumes:
       - ./frontend/public/uploads:/app/public/uploads
+    networks:
+      - portfolio-network
+
+  # Cloudflare Tunnel
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: portfolio_tunnel
+    restart: unless-stopped
+    command: tunnel run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - frontend
     networks:
       - portfolio-network
 

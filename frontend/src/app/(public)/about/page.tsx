@@ -199,9 +199,9 @@ export default function AboutPage() {
         setLiveSkills(data.map((s) => ({ label: s.label, icon: s.icon })));
         const grouped = new Map<string, { label: string; icon: string }[]>();
         data.forEach((s) => {
-          const arr = grouped.get(s.category) || [];
+          const arr = grouped.get(s.category.name) || [];
           arr.push({ label: s.label, icon: s.icon });
-          grouped.set(s.category, arr);
+          grouped.set(s.category.name, arr);
         });
         setLiveCategories(
           Array.from(grouped.entries()).map(([cat, items]) => [

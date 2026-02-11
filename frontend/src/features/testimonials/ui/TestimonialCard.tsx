@@ -19,7 +19,7 @@ export function TestimonialCard({ testimonial }: TestimonialCardProps) {
     .slice(0, 2);
 
   return (
-    <Card className="flex flex-col gap-4 p-6">
+    <Card className="flex h-full flex-col gap-4 p-6">
       <div className="flex items-center gap-3">
         <Avatar size="lg">
           {testimonial.avatar && <AvatarImage src={testimonial.avatar} alt={testimonial.name} />}

@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/stepper';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { UrlInput } from '@/components/ui/url-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -376,23 +377,21 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
 
                 <div className="space-y-2">
                   <Label htmlFor="liveUrl">Live Demo URL</Label>
-                  <Input
+                  <UrlInput
                     id="liveUrl"
-                    type="url"
                     value={formData.liveUrl}
-                    onChange={(e) => setFormData({ ...formData, liveUrl: e.target.value })}
-                    placeholder="https://example.com"
+                    onChange={(url) => setFormData({ ...formData, liveUrl: url })}
+                    placeholder="example.com"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="githubUrl">GitHub Repository</Label>
-                  <Input
+                  <UrlInput
                     id="githubUrl"
-                    type="url"
                     value={formData.githubUrl}
-                    onChange={(e) => setFormData({ ...formData, githubUrl: e.target.value })}
-                    placeholder="https://github.com/username/repo"
+                    onChange={(url) => setFormData({ ...formData, githubUrl: url })}
+                    placeholder="github.com/username/repo"
                   />
                 </div>
               </div>

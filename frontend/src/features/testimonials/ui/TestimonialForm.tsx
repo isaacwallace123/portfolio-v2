@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { ImagePlus, X, Loader2 } from 'lucide-react';
+import { useState, useRef, useMemo } from 'react';
+import { ImagePlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { UrlInput } from '@/components/ui/url-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { StarRating } from './StarRating';
@@ -17,19 +18,23 @@ type TestimonialFormProps = {
 export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
-  const [avatar, setAvatar] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [linkedin, setLinkedin] = useState('');
   const [message, setMessage] = useState('');
   const [rating, setRating] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const avatarPreview = useMemo(
+    () => (avatarFile ? URL.createObjectURL(avatarFile) : null),
+    [avatarFile]
+  );
 
   const linkedinInvalid =
     linkedin.trim().length > 0 &&
-    !/^https?:\/\/(www\.)?linkedin\.com\//.test(linkedin.trim());
+    !/^https:\/\/(www\.)?linkedin\.com\//.test(linkedin.trim());
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (avatarInputRef.current) avatarInputRef.current.value = '';
@@ -39,26 +44,7 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
       return;
     }
 
-    try {
-      setUploadingAvatar(true);
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('/api/uploads/public', {
-        method: 'POST',
-        body: formData,
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to upload image');
-      }
-      const data = await res.json();
-      setAvatar(data.url);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to upload image';
-      toast.error(msg);
-    } finally {
-      setUploadingAvatar(false);
-    }
+    setAvatarFile(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,17 +62,35 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
       toast.error('Please select a rating');
       return;
     }
-    if (linkedin.trim() && !/^https?:\/\/(www\.)?linkedin\.com\//.test(linkedin.trim())) {
+    if (linkedin.trim() && !/^https:\/\/(www\.)?linkedin\.com\//.test(linkedin.trim())) {
       toast.error('LinkedIn URL must be a linkedin.com link');
       return;
     }
 
     try {
       setSubmitting(true);
+
+      // Upload avatar only at submission time
+      let avatarUrl: string | undefined;
+      if (avatarFile) {
+        const formData = new FormData();
+        formData.append('file', avatarFile);
+        const res = await fetch('/api/uploads/public', {
+          method: 'POST',
+          body: formData,
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Failed to upload image');
+        }
+        const data = await res.json();
+        avatarUrl = data.url;
+      }
+
       await testimonialsApi.create({
         name: name.trim(),
         role: role.trim() || undefined,
-        avatar: avatar || undefined,
+        avatar: avatarUrl,
         linkedin: linkedin.trim() || undefined,
         message: message.trim(),
         rating,
@@ -94,7 +98,7 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
       toast.success('Thank you! Your testimonial has been submitted for review.');
       setName('');
       setRole('');
-      setAvatar('');
+      setAvatarFile(null);
       setLinkedin('');
       setMessage('');
       setRating(0);
@@ -108,7 +112,8 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* About you */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="testimonial-name">Name *</Label>
@@ -130,73 +135,71 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
           />
         </div>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Avatar</Label>
-          <input
-            ref={avatarInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            onChange={handleAvatarUpload}
-            className="hidden"
-          />
-          {avatar ? (
-            <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-2">
-              <img
-                src={avatar}
-                alt="Avatar preview"
-                className="h-10 w-10 rounded-full object-cover"
-              />
-              <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
-                Uploaded
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0"
-                onClick={() => setAvatar('')}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : (
+
+      <div className="space-y-2">
+        <Label htmlFor="testimonial-linkedin">LinkedIn</Label>
+        <UrlInput
+          id="testimonial-linkedin"
+          placeholder="linkedin.com/in/yourname"
+          value={linkedin}
+          onChange={setLinkedin}
+          className={linkedinInvalid ? 'border-destructive focus-visible:ring-destructive' : ''}
+        />
+        {linkedinInvalid && (
+          <p className="text-xs text-destructive">Must be a linkedin.com link</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label>Photo</Label>
+        <input
+          ref={avatarInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={handleAvatarSelect}
+          className="hidden"
+        />
+        {avatarPreview ? (
+          <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-2.5">
+            <img
+              src={avatarPreview}
+              alt="Avatar preview"
+              className="h-9 w-9 rounded-full object-cover"
+            />
+            <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+              {avatarFile?.name}
+            </span>
             <Button
               type="button"
-              variant="outline"
-              className="w-full justify-start gap-2 text-muted-foreground"
-              disabled={uploadingAvatar}
-              onClick={() => avatarInputRef.current?.click()}
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0"
+              onClick={() => setAvatarFile(null)}
             >
-              {uploadingAvatar ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ImagePlus className="h-4 w-4" />
-              )}
-              {uploadingAvatar ? 'Uploading...' : 'Upload a photo'}
+              <X className="h-3.5 w-3.5" />
             </Button>
-          )}
-          <p className="text-xs text-muted-foreground">JPEG, PNG, WebP, GIF. Max 2MB.</p>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="testimonial-linkedin">LinkedIn</Label>
-          <Input
-            id="testimonial-linkedin"
-            placeholder="https://linkedin.com/in/yourname"
-            type="url"
-            value={linkedin}
-            onChange={(e) => setLinkedin(e.target.value)}
-            className={linkedinInvalid ? 'border-destructive focus-visible:ring-destructive' : ''}
-          />
-          {linkedinInvalid && (
-            <p className="text-xs text-destructive">Must be a linkedin.com link</p>
-          )}
-        </div>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-2 text-muted-foreground"
+            onClick={() => avatarInputRef.current?.click()}
+          >
+            <ImagePlus className="h-4 w-4" />
+            Upload a photo
+          </Button>
+        )}
+        <p className="text-xs text-muted-foreground">Optional. JPEG, PNG, WebP, or GIF. Max 2 MB.</p>
       </div>
+
+      {/* Review */}
       <div className="space-y-2">
         <Label>Rating *</Label>
         <StarRating value={rating} onChange={setRating} size={28} />
       </div>
+
       <div className="space-y-2">
         <Label htmlFor="testimonial-message">Message *</Label>
         <Textarea
@@ -209,7 +212,8 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
           minLength={10}
         />
       </div>
-      <Button type="submit" disabled={submitting}>
+
+      <Button type="submit" className="w-full" disabled={submitting}>
         {submitting ? 'Submitting...' : 'Submit Testimonial'}
       </Button>
     </form>

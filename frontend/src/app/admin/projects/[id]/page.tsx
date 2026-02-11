@@ -3,6 +3,7 @@
 import { useState, use, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { UrlInput } from '@/components/ui/url-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -416,13 +417,12 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="liveUrl" className="text-base">Live Demo URL</Label>
-                  <Input
+                  <UrlInput
                     id="liveUrl"
-                    type="url"
                     value={formData.liveUrl}
-                    onChange={(e) => setFormData({ ...formData, liveUrl: e.target.value })}
+                    onChange={(url) => setFormData({ ...formData, liveUrl: url })}
                     className="text-base h-11"
-                    placeholder="https://example.com"
+                    placeholder="example.com"
                   />
                   <p className="text-xs text-muted-foreground">
                     Link to the live version of your project
@@ -431,13 +431,12 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
 
                 <div className="space-y-2">
                   <Label htmlFor="githubUrl" className="text-base">GitHub Repository</Label>
-                  <Input
+                  <UrlInput
                     id="githubUrl"
-                    type="url"
                     value={formData.githubUrl}
-                    onChange={(e) => setFormData({ ...formData, githubUrl: e.target.value })}
+                    onChange={(url) => setFormData({ ...formData, githubUrl: url })}
                     className="text-base h-11"
-                    placeholder="https://github.com/username/repo"
+                    placeholder="github.com/username/repo"
                   />
                   <p className="text-xs text-muted-foreground">
                     Link to your project's source code

@@ -7,16 +7,18 @@ import { LayoutDashboard } from "lucide-react";
 import { GitHubSettingsCard } from "@/features/settings/ui/GitHubSettingsCard";
 
 async function getStats() {
-  const [projectTotal, projectPublished, testimonialTotal, testimonialPending, skillCount] =
+  const [projectTotal, projectPublished, testimonialTotal, testimonialPending, skillCount, contactTotal, contactUnread] =
     await Promise.all([
       prisma.project.count(),
       prisma.project.count({ where: { published: true } }),
       prisma.testimonial.count(),
       prisma.testimonial.count({ where: { status: 'pending' } }),
       prisma.skill.count(),
+      prisma.contactMessage.count(),
+      prisma.contactMessage.count({ where: { status: 'unread' } }),
     ]);
 
-  return { projectTotal, projectPublished, testimonialTotal, testimonialPending, skillCount };
+  return { projectTotal, projectPublished, testimonialTotal, testimonialPending, skillCount, contactTotal, contactUnread };
 }
 
 export default async function AdminDashboard() {
@@ -37,7 +39,7 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
         <Link href="/admin/projects">
           <Card className="bg-background/80 backdrop-blur dark:bg-background/60 hover:border-primary/30 transition-colors">
             <CardHeader className="pb-3">
@@ -79,6 +81,25 @@ export default async function AdminDashboard() {
             <CardContent>
               <div className="text-2xl font-bold">{stats.skillCount}</div>
               <p className="text-xs text-muted-foreground mt-1">skill badges on globe</p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/admin/contacts">
+          <Card className="bg-background/80 backdrop-blur dark:bg-background/60 hover:border-primary/30 transition-colors">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Contacts</CardTitle>
+                {stats.contactUnread > 0 && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {stats.contactUnread} unread
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.contactTotal}</div>
+              <p className="text-xs text-muted-foreground mt-1">total messages</p>
             </CardContent>
           </Card>
         </Link>

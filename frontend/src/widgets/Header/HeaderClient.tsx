@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/widgets/ThemeToggle';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, LogOut, LayoutDashboard, Menu, X, Home, User, FolderOpen, LogIn, type LucideIcon } from 'lucide-react';
+import { Shield, LogOut, LayoutDashboard, Menu, X, Home, User, FolderOpen, Mail, LogIn, type LucideIcon } from 'lucide-react';
 import { logoutAction } from '@/features/auth/model/actions';
 import { useTransition, useState, useEffect, useRef } from 'react';
 
@@ -14,6 +14,7 @@ const navItems: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/about', label: 'About', icon: User },
   { href: '/projects', label: 'Projects', icon: FolderOpen },
+  { href: '/contact', label: 'Contact', icon: Mail },
 ];
 
 interface HeaderClientProps {

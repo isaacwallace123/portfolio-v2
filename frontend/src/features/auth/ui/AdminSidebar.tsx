@@ -9,6 +9,7 @@ import {
   FolderOpen,
   FileText,
   MessageSquare,
+  Mail,
   HardDrive,
   Home,
   User,
@@ -19,6 +20,7 @@ const adminItems = [
   { href: '/admin/projects', icon: FolderOpen, label: 'Projects' },
   { href: '/admin/skills', icon: FileText, label: 'Skills' },
   { href: '/admin/testimonials', icon: MessageSquare, label: 'Testimonials' },
+  { href: '/admin/contacts', icon: Mail, label: 'Contacts' },
   { href: '/admin/uploads', icon: HardDrive, label: 'Uploads' },
 ];
 

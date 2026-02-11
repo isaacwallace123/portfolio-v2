@@ -5,7 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Code2, Cpu, Rocket, Server, Wrench, Briefcase, GraduationCap, ChevronDown, Award, Heart, ExternalLink } from "lucide-react";
+import { ArrowRight, Code2, Cpu, Rocket, Server, Wrench, Briefcase, GraduationCap, ChevronDown, Award, Heart, ExternalLink, Images } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { SkillItem } from "@/components/ui/globe";
 import { useTheme } from "@/shared/providers/ThemeProvider";
@@ -13,6 +13,9 @@ import Image from "next/image";
 import type { Skill } from "@/features/skills/lib/types";
 import { GitHubSection } from "@/features/github/ui/GitHubSection";
 import { useTranslations, useLocale } from "next-intl";
+import type { Experience, ExperienceMedia } from "@/features/experience/lib/types";
+import { localizeExperience } from "@/lib/localize";
+import { MediaGalleryDialog } from "@/features/experience/ui/MediaGalleryDialog";
 
 const SkillGlobe = dynamic(
   () => import("@/components/ui/globe").then((m) => m.SkillGlobe),
@@ -20,39 +23,25 @@ const SkillGlobe = dynamic(
 );
 
 const highlightIcons = [Code2, Rocket, Server];
-
-const workStartDates = [
-  Date.UTC(2024, 10, 1, 12),
-  Date.UTC(2024, 10, 1, 12),
-  Date.UTC(2023, 4, 1, 12),
-  Date.UTC(2019, 10, 1, 12),
-];
-const workEndDates: (number | null)[] = [
-  null,
-  null,
-  Date.UTC(2024, 7, 1, 12),
-  Date.UTC(2021, 8, 1, 12),
-];
-const workLogos = ["K", "CC", "CW", "M"];
-
-const educationDates = [{ start: Date.UTC(2022, 7, 1, 12), end: null, logo: "CH" }];
-
-const certDates = [{ issueDate: Date.UTC(2023, 4, 1, 12), credentialId: "6-1C6-V4QAX8", url: "https://certification.testout.com/verifycert/6-1C6-V4QAX8" }];
-const certSkills = [["Computer Hardware", "Technical Support"]];
-
-const volunteerDates = [{ start: Date.UTC(2013, 3, 1, 12), end: Date.UTC(2013, 4, 1, 12) }];
-
 const focusIcons = [Cpu, Server, Wrench];
 
 export default function AboutPage() {
   const { theme } = useTheme();
   const t = useTranslations("about");
   const locale = useLocale();
-  const [expandedJobs, setExpandedJobs] = useState<Set<number>>(new Set());
+  const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
   const [showAllExperience, setShowAllExperience] = useState(false);
   const [liveSkills, setLiveSkills] = useState<SkillItem[]>([]);
   const [liveCategories, setLiveCategories] = useState<[string, string[]][]>([]);
   const [liveIconMap, setLiveIconMap] = useState<Map<string, string>>(new Map());
+
+  // Experience data from DB
+  const [experiences, setExperiences] = useState<Experience[]>([]);
+  const [mediaDialog, setMediaDialog] = useState<{ open: boolean; title: string; media: ExperienceMedia[] }>({
+    open: false,
+    title: "",
+    media: [],
+  });
 
   useEffect(() => {
     fetch("/api/skills")
@@ -77,9 +66,33 @@ export default function AboutPage() {
       .catch(() => {});
   }, []);
 
-  const calculateDuration = (startTimestamp: number, endTimestamp: number | null): string => {
-    const end = endTimestamp || Date.now();
-    const diffMs = end - startTimestamp;
+  useEffect(() => {
+    fetch("/api/experience")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: Experience[]) => {
+        setExperiences(data.map((e) => localizeExperience(e, locale)));
+      })
+      .catch(() => {});
+  }, [locale]);
+
+  const work = experiences
+    .filter((e) => e.type === "WORK")
+    .sort((a, b) => {
+      const aStart = a.startDate ? new Date(a.startDate).getTime() : 0;
+      const bStart = b.startDate ? new Date(b.startDate).getTime() : 0;
+      return bStart - aStart;
+    });
+  const education = experiences.filter((e) => e.type === "EDUCATION");
+  const certifications = experiences.filter((e) => e.type === "CERTIFICATION");
+  const volunteer = experiences.filter((e) => e.type === "VOLUNTEER");
+
+  const visibleWork = showAllExperience ? work : work.slice(0, 2);
+
+  const calculateDuration = (startDate: string | null, endDate: string | null): string => {
+    if (!startDate) return "";
+    const start = new Date(startDate).getTime();
+    const end = endDate ? new Date(endDate).getTime() : Date.now();
+    const diffMs = end - start;
     const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30.44));
 
     const years = Math.floor(diffMonths / 12);
@@ -91,47 +104,48 @@ export default function AboutPage() {
     return parts.join(" ") || t("duration.months", { count: 1 });
   };
 
-  const formatDateRange = (startTimestamp: number, endTimestamp: number | null): string => {
+  const formatDateRange = (startDate: string | null, endDate: string | null): string => {
+    if (!startDate) return "";
     const dateLocale = locale === "fr" ? "fr-CA" : "en-US";
-    const start = new Date(startTimestamp);
+    const start = new Date(startDate);
     const startMonth = start.toLocaleString(dateLocale, { month: "short" });
     const startYear = start.getFullYear();
 
-    if (!endTimestamp) {
+    if (!endDate) {
       return `${startMonth} ${startYear} - ${t("present")}`;
     }
 
-    const end = new Date(endTimestamp);
+    const end = new Date(endDate);
     const endMonth = end.toLocaleString(dateLocale, { month: "short" });
     const endYear = end.getFullYear();
 
     return `${startMonth} ${startYear} - ${endMonth} ${endYear}`;
   };
 
-  const formatDate = (timestamp: number): string => {
+  const formatSingleDate = (dateStr: string | null): string => {
+    if (!dateStr) return "";
     const dateLocale = locale === "fr" ? "fr-CA" : "en-US";
-    const date = new Date(timestamp);
+    const date = new Date(dateStr);
     const month = date.toLocaleString(dateLocale, { month: "short" });
     const year = date.getFullYear();
     return `${month} ${year}`;
   };
 
-  const toggleJob = (index: number) => {
+  const toggleJob = (id: string) => {
     setExpandedJobs((prev) => {
       const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
+      if (next.has(id)) {
+        next.delete(id);
       } else {
-        next.add(index);
+        next.add(id);
       }
       return next;
     });
   };
 
-  const workCount = workStartDates.length;
-  const sortedWorkIndices = Array.from({ length: workCount }, (_, i) => i)
-    .sort((a, b) => workStartDates[b] - workStartDates[a]);
-  const visibleWork = showAllExperience ? sortedWorkIndices : sortedWorkIndices.slice(0, 2);
+  const openMedia = (title: string, media: ExperienceMedia[]) => {
+    setMediaDialog({ open: true, title, media });
+  };
 
   return (
     <main className="relative flex-1">
@@ -179,128 +193,192 @@ export default function AboutPage() {
               ))}
             </div>
 
-            {/* Work Experience - Compact & Expandable */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2">
-                <Briefcase className="h-5 w-5 text-primary" />
-                <h2 className="text-2xl font-bold tracking-tight">{t("experience")}</h2>
-              </div>
-
-              <div className="space-y-3">
-                {visibleWork.map((jobIdx) => {
-                  const period = formatDateRange(workStartDates[jobIdx], workEndDates[jobIdx]);
-                  const duration = calculateDuration(workStartDates[jobIdx], workEndDates[jobIdx]);
-                  const isExpanded = expandedJobs.has(jobIdx);
-                  const isActive = !workEndDates[jobIdx];
-
-                  return (
-                    <Card
-                      key={jobIdx}
-                      className={`bg-background/80 backdrop-blur dark:bg-background/60 transition-all ${isActive ? 'border-primary/50' : ''}`}
-                    >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40 text-sm font-bold">
-                            {workLogos[jobIdx]}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <CardTitle className="text-base">{t(`workExperience.${jobIdx}.role`)}</CardTitle>
-                                <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-                                  <span className="font-medium">{t(`workExperience.${jobIdx}.company`)}</span>
-                                  {isActive && (
-                                    <>
-                                      <span>·</span>
-                                      <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 text-xs px-2 py-0">
-                                        {t("active")}
-                                      </Badge>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 shrink-0"
-                                onClick={() => toggleJob(jobIdx)}
-                              >
-                                <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                              </Button>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                              <span>{period}</span>
-                              <span>·</span>
-                              <span>{duration}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </CardHeader>
-
-                      {isExpanded && (
-                        <CardContent className="pt-0 space-y-3">
-                          <p className="text-sm text-muted-foreground leading-relaxed">
-                            {t(`workExperience.${jobIdx}.description`)}
-                          </p>
-                        </CardContent>
-                      )}
-                    </Card>
-                  );
-                })}
-              </div>
-
-              {sortedWorkIndices.length > 2 && (
-                <div className="flex justify-center">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-2xl"
-                    onClick={() => setShowAllExperience(!showAllExperience)}
-                  >
-                    {showAllExperience ? t("showLess") : t("showMore", { count: sortedWorkIndices.length - 2 })}
-                  </Button>
+            {/* Work Experience */}
+            {work.length > 0 && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="h-5 w-5 text-primary" />
+                  <h2 className="text-2xl font-bold tracking-tight">{t("experience")}</h2>
                 </div>
-              )}
-            </div>
+
+                <div className="space-y-3">
+                  {visibleWork.map((job) => {
+                    const period = formatDateRange(job.startDate, job.endDate);
+                    const duration = calculateDuration(job.startDate, job.endDate);
+                    const isExpanded = expandedJobs.has(job.id);
+                    const isActive = !job.endDate && !!job.startDate;
+
+                    return (
+                      <Card
+                        key={job.id}
+                        className={`bg-background/80 backdrop-blur dark:bg-background/60 transition-all ${isActive ? 'border-primary/50' : ''}`}
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start gap-3">
+                            {job.logo ? (
+                              <img src={job.logo} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover border" />
+                            ) : (
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40 text-sm font-bold">
+                                {job.organization.slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <CardTitle className="text-base">{job.title}</CardTitle>
+                                  <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                                    <span className="font-medium">{job.organization}</span>
+                                    {job.jobType && (
+                                      <>
+                                        <span>·</span>
+                                        <span>{job.jobType}</span>
+                                      </>
+                                    )}
+                                    {isActive && (
+                                      <>
+                                        <span>·</span>
+                                        <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 text-xs px-2 py-0">
+                                          {t("active")}
+                                        </Badge>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 shrink-0"
+                                  onClick={() => toggleJob(job.id)}
+                                >
+                                  <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                </Button>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                <span>{period}</span>
+                                <span>·</span>
+                                <span>{duration}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </CardHeader>
+
+                        {isExpanded && (
+                          <CardContent className="pt-0 space-y-3">
+                            {job.description && (
+                              <p className="text-sm text-muted-foreground leading-relaxed">
+                                {job.description}
+                              </p>
+                            )}
+                            {job.location && (
+                              <p className="text-xs text-muted-foreground">{job.location}</p>
+                            )}
+                            {job.media.length > 0 && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-2xl gap-2"
+                                onClick={() => openMedia(job.title, job.media)}
+                              >
+                                <Images className="h-4 w-4" />
+                                {t("viewMedia")} ({job.media.length})
+                              </Button>
+                            )}
+                          </CardContent>
+                        )}
+                      </Card>
+                    );
+                  })}
+                </div>
+
+                {work.length > 2 && (
+                  <div className="flex justify-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-2xl"
+                      onClick={() => setShowAllExperience(!showAllExperience)}
+                    >
+                      {showAllExperience ? t("showLess") : t("showMore", { count: work.length - 2 })}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Education */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2">
-                <GraduationCap className="h-5 w-5 text-primary" />
-                <h2 className="text-2xl font-bold tracking-tight">{t("education")}</h2>
-              </div>
+            {education.length > 0 && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="h-5 w-5 text-primary" />
+                  <h2 className="text-2xl font-bold tracking-tight">{t("education")}</h2>
+                </div>
 
-              <div className="space-y-3">
-                {educationDates.map((edu, index) => {
-                  const period = formatDateRange(edu.start, edu.end);
+                <div className="space-y-3">
+                  {education.map((edu) => {
+                    const period = formatDateRange(edu.startDate, edu.endDate);
+                    const isActive = !edu.endDate && !!edu.startDate;
 
-                  return (
-                    <Card
-                      key={index}
-                      className="bg-background/80 backdrop-blur dark:bg-background/60 border-primary/30"
-                    >
-                      <CardHeader className="pb-3">
-                        <div className="space-y-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <CardTitle className="text-base leading-tight">
-                              {t(`educationList.${index}.degree`)}
-                            </CardTitle>
-                            {!edu.end && (
-                              <Badge variant="default" className="shrink-0 bg-emerald-500 hover:bg-emerald-600 text-xs px-2 py-0">
-                                {t("active")}
-                              </Badge>
+                    return (
+                      <Card
+                        key={edu.id}
+                        className={`bg-background/80 backdrop-blur dark:bg-background/60 ${isActive ? 'border-primary/30' : ''}`}
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start gap-3">
+                            {edu.logo ? (
+                              <img src={edu.logo} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover border" />
+                            ) : (
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40 text-sm font-bold">
+                                {edu.organization.slice(0, 2).toUpperCase()}
+                              </div>
                             )}
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <CardTitle className="text-base leading-tight">
+                                  {edu.title}
+                                </CardTitle>
+                                {isActive && (
+                                  <Badge variant="default" className="shrink-0 bg-emerald-500 hover:bg-emerald-600 text-xs px-2 py-0">
+                                    {t("active")}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-sm text-muted-foreground">{edu.organization}</div>
+                              {edu.location && (
+                                <div className="text-xs text-muted-foreground">{edu.location}</div>
+                              )}
+                              <div className="text-xs text-muted-foreground mt-1">{period}</div>
+                            </div>
                           </div>
-                          <div className="text-sm text-muted-foreground">{t(`educationList.${index}.school`)}</div>
-                          <div className="text-xs text-muted-foreground">{period}</div>
-                        </div>
-                      </CardHeader>
-                    </Card>
-                  );
-                })}
+                        </CardHeader>
+                        {(edu.description || edu.media.length > 0) && (
+                          <CardContent className="pt-0 space-y-3">
+                            {edu.description && (
+                              <p className="text-sm text-muted-foreground leading-relaxed">
+                                {edu.description}
+                              </p>
+                            )}
+                            {edu.media.length > 0 && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-2xl gap-2"
+                                onClick={() => openMedia(edu.title, edu.media)}
+                              >
+                                <Images className="h-4 w-4" />
+                                {t("viewMedia")} ({edu.media.length})
+                              </Button>
+                            )}
+                          </CardContent>
+                        )}
+                      </Card>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Skills */}
             <div className="space-y-6">
@@ -384,107 +462,146 @@ export default function AboutPage() {
             </div>
 
             {/* Certifications */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2">
-                <Award className="h-5 w-5 text-primary" />
-                <h2 className="text-2xl font-bold tracking-tight">{t("certifications")}</h2>
-              </div>
+            {certifications.length > 0 && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2">
+                  <Award className="h-5 w-5 text-primary" />
+                  <h2 className="text-2xl font-bold tracking-tight">{t("certifications")}</h2>
+                </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                {certDates.map((cert, index) => (
-                  <Card key={index} className="bg-background/80 backdrop-blur dark:bg-background/60">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-1">
-                          <CardTitle className="text-base">{t(`certificationsList.${index}.title`)}</CardTitle>
-                          <div className="text-sm text-muted-foreground">{t(`certificationsList.${index}.issuer`)}</div>
-                        </div>
-                        <Award className="h-5 w-5 text-primary shrink-0" />
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-2">
-                        {t("issued", { date: formatDate(cert.issueDate) })}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 pt-0">
-                      <div className="text-xs text-muted-foreground">
-                        {t("credentialId", { id: cert.credentialId })}
-                      </div>
-
-                      {certSkills[index] && certSkills[index].length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {certSkills[index].map((skill) => (
-                            <Badge
-                              key={skill}
-                              variant="secondary"
-                              className="rounded-full text-xs px-2 py-0.5"
-                            >
-                              {skill}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-
-                      <Button asChild variant="outline" size="sm" className="w-full rounded-2xl">
-                        <a href={cert.url} target="_blank" rel="noopener noreferrer">
-                          {t("verify")} <ExternalLink className="ml-2 h-3 w-3" />
-                        </a>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-
-            {/* Volunteer Experience */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2">
-                <Heart className="h-5 w-5 text-primary" />
-                <h2 className="text-2xl font-bold tracking-tight">{t("volunteer")}</h2>
-              </div>
-
-              <div className="space-y-3">
-                {volunteerDates.map((vol, index) => {
-                  const period = formatDateRange(vol.start, vol.end);
-                  const duration = calculateDuration(vol.start, vol.end);
-
-                  return (
-                    <Card key={index} className="bg-background/80 backdrop-blur dark:bg-background/60 border-primary/20">
+                <div className="grid gap-4 md:grid-cols-2">
+                  {certifications.map((cert) => (
+                    <Card key={cert.id} className="bg-background/80 backdrop-blur dark:bg-background/60">
                       <CardHeader className="pb-3">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-primary/10">
-                            <Heart className="h-5 w-5 text-primary" />
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-1">
+                            <CardTitle className="text-base">{cert.title}</CardTitle>
+                            <div className="text-sm text-muted-foreground">{cert.organization}</div>
                           </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <CardTitle className="text-base">{t(`volunteerList.${index}.role`)}</CardTitle>
-                                <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-                                  <span className="font-medium">{t(`volunteerList.${index}.organization`)}</span>
-                                  <span>·</span>
-                                  <Badge variant="outline" className="text-xs px-2 py-0">{t(`volunteerList.${index}.cause`)}</Badge>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                              <span>{period}</span>
-                              <span>·</span>
-                              <span>{duration}</span>
-                            </div>
-                          </div>
+                          <Award className="h-5 w-5 text-primary shrink-0" />
                         </div>
+                        {cert.startDate && (
+                          <div className="text-xs text-muted-foreground mt-2">
+                            {t("issued", { date: formatSingleDate(cert.startDate) })}
+                          </div>
+                        )}
                       </CardHeader>
+                      <CardContent className="space-y-3 pt-0">
+                        {cert.credentialId && (
+                          <div className="text-xs text-muted-foreground">
+                            {t("credentialId", { id: cert.credentialId })}
+                          </div>
+                        )}
 
-                      <CardContent className="pt-0">
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          {t(`volunteerList.${index}.description`)}
-                        </p>
+                        {cert.skills.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {cert.skills.map((skill) => (
+                              <Badge
+                                key={skill}
+                                variant="secondary"
+                                className="rounded-full text-xs px-2 py-0.5"
+                              >
+                                {skill}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+
+                        {cert.credentialUrl && (
+                          <Button asChild variant="outline" size="sm" className="w-full rounded-2xl">
+                            <a href={cert.credentialUrl} target="_blank" rel="noopener noreferrer">
+                              {t("verify")} <ExternalLink className="ml-2 h-3 w-3" />
+                            </a>
+                          </Button>
+                        )}
+
+                        {cert.media.length > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-2xl gap-2"
+                            onClick={() => openMedia(cert.title, cert.media)}
+                          >
+                            <Images className="h-4 w-4" />
+                            {t("viewMedia")} ({cert.media.length})
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Volunteer Experience */}
+            {volunteer.length > 0 && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2">
+                  <Heart className="h-5 w-5 text-primary" />
+                  <h2 className="text-2xl font-bold tracking-tight">{t("volunteer")}</h2>
+                </div>
+
+                <div className="space-y-3">
+                  {volunteer.map((vol) => {
+                    const period = formatDateRange(vol.startDate, vol.endDate);
+                    const duration = calculateDuration(vol.startDate, vol.endDate);
+
+                    return (
+                      <Card key={vol.id} className="bg-background/80 backdrop-blur dark:bg-background/60 border-primary/20">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-primary/10">
+                              <Heart className="h-5 w-5 text-primary" />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <CardTitle className="text-base">{vol.title}</CardTitle>
+                                  <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                                    <span className="font-medium">{vol.organization}</span>
+                                    {vol.cause && (
+                                      <>
+                                        <span>·</span>
+                                        <Badge variant="outline" className="text-xs px-2 py-0">{vol.cause}</Badge>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                <span>{period}</span>
+                                <span>·</span>
+                                <span>{duration}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </CardHeader>
+
+                        <CardContent className="pt-0 space-y-3">
+                          {vol.description && (
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {vol.description}
+                            </p>
+                          )}
+                          {vol.media.length > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="rounded-2xl gap-2"
+                              onClick={() => openMedia(vol.title, vol.media)}
+                            >
+                              <Images className="h-4 w-4" />
+                              {t("viewMedia")} ({vol.media.length})
+                            </Button>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Currently Building - Left Aligned */}
             <Card className="bg-linear-to-br from-primary/5 to-primary/10 border-primary/20">
@@ -514,6 +631,13 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
+
+      <MediaGalleryDialog
+        open={mediaDialog.open}
+        onOpenChange={(open) => setMediaDialog((prev) => ({ ...prev, open }))}
+        title={mediaDialog.title}
+        media={mediaDialog.media}
+      />
     </main>
   );
 }

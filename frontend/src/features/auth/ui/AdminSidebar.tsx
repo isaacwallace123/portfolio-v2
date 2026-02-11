@@ -13,12 +13,14 @@ import {
   HardDrive,
   Home,
   User,
+  Briefcase,
 } from 'lucide-react';
 
 const adminItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/projects', icon: FolderOpen, label: 'Projects' },
   { href: '/admin/skills', icon: FileText, label: 'Skills' },
+  { href: '/admin/experience', icon: Briefcase, label: 'Experience' },
   { href: '/admin/testimonials', icon: MessageSquare, label: 'Testimonials' },
   { href: '/admin/contacts', icon: Mail, label: 'Contacts' },
   { href: '/admin/uploads', icon: HardDrive, label: 'Uploads' },

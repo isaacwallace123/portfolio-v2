@@ -144,6 +144,57 @@ model PageConnection {
   @@map("page_connections")
 }
 
+enum ExperienceType {
+  WORK
+  EDUCATION
+  CERTIFICATION
+  VOLUNTEER
+}
+
+model Experience {
+  id              String          @id @default(cuid())
+  type            ExperienceType
+  title           String
+  titleFr         String?
+  organization    String
+  organizationFr  String?
+  description     String?
+  descriptionFr   String?
+  location        String?
+  locationFr      String?
+  jobType         String?
+  jobTypeFr       String?
+  cause           String?
+  causeFr         String?
+  startDate       DateTime?
+  endDate         DateTime?
+  credentialId    String?
+  credentialUrl   String?
+  skills          String[]
+  logo            String?
+  order           Int             @default(0)
+  media           ExperienceMedia[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([type])
+  @@map("experiences")
+}
+
+model ExperienceMedia {
+  id            String     @id @default(cuid())
+  experienceId  String
+  experience    Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  url           String
+  caption       String?
+  captionFr     String?
+  order         Int        @default(0)
+  createdAt     DateTime   @default(now())
+
+  @@index([experienceId])
+  @@map("experience_media")
+}
+
 model ContactMessage {
   id        String   @id @default(cuid())
   name      String

@@ -51,3 +51,48 @@ export function localizeCategory<T extends LocalizableCategory>(category: T, loc
     name: category.nameFr || category.name,
   };
 }
+
+type LocalizableExperience = {
+  title: string;
+  organization: string;
+  description: string | null;
+  location: string | null;
+  jobType: string | null;
+  cause: string | null;
+  titleFr?: string | null;
+  organizationFr?: string | null;
+  descriptionFr?: string | null;
+  locationFr?: string | null;
+  jobTypeFr?: string | null;
+  causeFr?: string | null;
+  media?: LocalizableExperienceMedia[];
+  [key: string]: unknown;
+};
+
+type LocalizableExperienceMedia = {
+  caption: string | null;
+  captionFr?: string | null;
+  [key: string]: unknown;
+};
+
+export function localizeExperience<T extends LocalizableExperience>(exp: T, locale: string): T {
+  if (locale !== 'fr') return exp;
+  return {
+    ...exp,
+    title: exp.titleFr || exp.title,
+    organization: exp.organizationFr || exp.organization,
+    description: exp.descriptionFr || exp.description,
+    location: exp.locationFr || exp.location,
+    jobType: exp.jobTypeFr || exp.jobType,
+    cause: exp.causeFr || exp.cause,
+    media: exp.media?.map(m => localizeExperienceMedia(m, locale)),
+  };
+}
+
+export function localizeExperienceMedia<T extends LocalizableExperienceMedia>(media: T, locale: string): T {
+  if (locale !== 'fr') return media;
+  return {
+    ...media,
+    caption: media.captionFr || media.caption,
+  };
+}

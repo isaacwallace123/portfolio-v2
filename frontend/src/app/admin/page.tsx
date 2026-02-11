@@ -7,7 +7,7 @@ import { LayoutDashboard } from "lucide-react";
 import { GitHubSettingsCard } from "@/features/settings/ui/GitHubSettingsCard";
 
 async function getStats() {
-  const [projectTotal, projectPublished, testimonialTotal, testimonialPending, skillCount, contactTotal, contactUnread] =
+  const [projectTotal, projectPublished, testimonialTotal, testimonialPending, skillCount, contactTotal, contactUnread, experienceCount] =
     await Promise.all([
       prisma.project.count(),
       prisma.project.count({ where: { published: true } }),
@@ -16,9 +16,10 @@ async function getStats() {
       prisma.skill.count(),
       prisma.contactMessage.count(),
       prisma.contactMessage.count({ where: { status: 'unread' } }),
+      prisma.experience.count(),
     ]);
 
-  return { projectTotal, projectPublished, testimonialTotal, testimonialPending, skillCount, contactTotal, contactUnread };
+  return { projectTotal, projectPublished, testimonialTotal, testimonialPending, skillCount, contactTotal, contactUnread, experienceCount };
 }
 
 export default async function AdminDashboard() {
@@ -39,7 +40,7 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-5">
         <Link href="/admin/projects">
           <Card className="bg-background/80 backdrop-blur dark:bg-background/60 hover:border-primary/30 transition-colors">
             <CardHeader className="pb-3">
@@ -81,6 +82,18 @@ export default async function AdminDashboard() {
             <CardContent>
               <div className="text-2xl font-bold">{stats.skillCount}</div>
               <p className="text-xs text-muted-foreground mt-1">skill badges on globe</p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/admin/experience">
+          <Card className="bg-background/80 backdrop-blur dark:bg-background/60 hover:border-primary/30 transition-colors">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Experience</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.experienceCount}</div>
+              <p className="text-xs text-muted-foreground mt-1">total entries</p>
             </CardContent>
           </Card>
         </Link>

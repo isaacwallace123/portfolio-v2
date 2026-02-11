@@ -44,62 +44,11 @@
     "verify": "Verify",
     "issued": "Issued {date}",
     "credentialId": "ID: {id}",
+    "viewMedia": "View Media",
     "highlights": {
       "0": { "title": "Clean architecture", "description": "I care about maintainable code: clear boundaries, good naming, and predictable structure." },
       "1": { "title": "Performance-minded", "description": "I optimize where it matters: shipping fast UIs and reliable backends without over-engineering." },
       "2": { "title": "DevOps & homelab", "description": "I enjoy infrastructure: containerization, monitoring, and building systems that run well in the real world." }
-    },
-    "workExperience": {
-      "0": {
-        "role": "Founder",
-        "company": "Kleff",
-        "jobType": "Self-employed",
-        "location": "Montreal, Quebec, Canada \u00b7 Hybrid",
-        "description": "Leading the vision, architecture, and development of Kleff, a developer-first cloud infrastructure platform. I design and build the core systems while guiding product direction, technical strategy, and business operations."
-      },
-      "1": {
-        "role": "Sales Associate",
-        "company": "Canada Computers & Electronics",
-        "jobType": "Permanent Part-time",
-        "location": "Brossard, Quebec, Canada \u00b7 On-site",
-        "description": "I communicated with clients to understand their needs and guide them towards a product that matched their requirements."
-      },
-      "2": {
-        "role": "Stocker",
-        "company": "Costco Wholesale",
-        "jobType": "Permanent Part-time",
-        "location": "Candiac, Quebec, Canada \u00b7 On-site",
-        "description": "I was a merchandise placer responsible for placing stock and maintaining prices and quality in the freezer department."
-      },
-      "3": {
-        "role": "Team Leader",
-        "company": "McDonald's",
-        "jobType": "Permanent Part-time",
-        "location": "Laprairie, Quebec, Canada \u00b7 On-site",
-        "description": "I worked as the team leader for the McDonalds kitchen team to ensure quality control, fluid workflow, and proper customer satisfaction."
-      }
-    },
-    "educationList": {
-      "0": {
-        "degree": "DEC in Computer Science",
-        "school": "Champlain College",
-        "location": "Saint-Lambert, Quebec",
-        "description": "Focused on software development, algorithms, data structures, and system design."
-      }
-    },
-    "certificationsList": {
-      "0": {
-        "title": "TestOut PC Pro Certification",
-        "issuer": "TestOut Corporation"
-      }
-    },
-    "volunteerList": {
-      "0": {
-        "role": "Fundraiser",
-        "organization": "Vid\u00e9otron",
-        "cause": "Children",
-        "description": "Participated in a fundraising initiative for Enfants du Soleil with Vid\u00e9otron, working outdoors alongside other volunteers to collect donations in support of children's healthcare."
-      }
     },
     "focusAreasList": {
       "0": { "label": "Frontend", "value": "Next.js + TypeScript + shadcn + Tailwind" },

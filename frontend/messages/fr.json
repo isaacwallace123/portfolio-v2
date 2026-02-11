@@ -44,62 +44,11 @@
     "verify": "V\u00e9rifier",
     "issued": "\u00c9mis le {date}",
     "credentialId": "ID : {id}",
+    "viewMedia": "Voir les m\u00e9dias",
     "highlights": {
       "0": { "title": "Architecture propre", "description": "Je me soucie du code maintenable : des limites claires, un bon nommage et une structure pr\u00e9visible." },
       "1": { "title": "Ax\u00e9 sur la performance", "description": "J'optimise l\u00e0 o\u00f9 c'est important : des interfaces rapides et des backends fiables sans sur-ing\u00e9nierie." },
       "2": { "title": "DevOps & homelab", "description": "J'aime l'infrastructure : la conteneurisation, la surveillance et la construction de syst\u00e8mes qui fonctionnent bien dans le monde r\u00e9el." }
-    },
-    "workExperience": {
-      "0": {
-        "role": "Fondateur",
-        "company": "Kleff",
-        "jobType": "Travailleur autonome",
-        "location": "Montr\u00e9al, Qu\u00e9bec, Canada \u00b7 Hybride",
-        "description": "Diriger la vision, l'architecture et le d\u00e9veloppement de Kleff, une plateforme d'infrastructure cloud ax\u00e9e sur les d\u00e9veloppeurs. Je con\u00e7ois et construis les syst\u00e8mes principaux tout en guidant la direction du produit, la strat\u00e9gie technique et les op\u00e9rations commerciales."
-      },
-      "1": {
-        "role": "Associ\u00e9 aux ventes",
-        "company": "Canada Computers & Electronics",
-        "jobType": "Temps partiel permanent",
-        "location": "Brossard, Qu\u00e9bec, Canada \u00b7 Sur place",
-        "description": "J'ai communiqu\u00e9 avec les clients pour comprendre leurs besoins et les guider vers un produit correspondant \u00e0 leurs exigences."
-      },
-      "2": {
-        "role": "Manutentionnaire",
-        "company": "Costco Wholesale",
-        "jobType": "Temps partiel permanent",
-        "location": "Candiac, Qu\u00e9bec, Canada \u00b7 Sur place",
-        "description": "J'\u00e9tais responsable du placement des marchandises et du maintien des prix et de la qualit\u00e9 dans le d\u00e9partement des surgel\u00e9s."
-      },
-      "3": {
-        "role": "Chef d'\u00e9quipe",
-        "company": "McDonald's",
-        "jobType": "Temps partiel permanent",
-        "location": "Laprairie, Qu\u00e9bec, Canada \u00b7 Sur place",
-        "description": "J'ai travaill\u00e9 comme chef d'\u00e9quipe de la cuisine McDonald's pour assurer le contr\u00f4le qualit\u00e9, un flux de travail fluide et la satisfaction client."
-      }
-    },
-    "educationList": {
-      "0": {
-        "degree": "DEC en informatique",
-        "school": "Coll\u00e8ge Champlain",
-        "location": "Saint-Lambert, Qu\u00e9bec",
-        "description": "Ax\u00e9 sur le d\u00e9veloppement logiciel, les algorithmes, les structures de donn\u00e9es et la conception de syst\u00e8mes."
-      }
-    },
-    "certificationsList": {
-      "0": {
-        "title": "Certification TestOut PC Pro",
-        "issuer": "TestOut Corporation"
-      }
-    },
-    "volunteerList": {
-      "0": {
-        "role": "Collecteur de fonds",
-        "organization": "Vid\u00e9otron",
-        "cause": "Enfants",
-        "description": "J'ai particip\u00e9 \u00e0 une initiative de collecte de fonds pour Enfants du Soleil avec Vid\u00e9otron, travaillant en ext\u00e9rieur aux c\u00f4t\u00e9s d'autres b\u00e9n\u00e9voles pour collecter des dons en soutien aux soins de sant\u00e9 des enfants."
-      }
     },
     "focusAreasList": {
       "0": { "label": "Frontend", "value": "Next.js + TypeScript + shadcn + Tailwind" },

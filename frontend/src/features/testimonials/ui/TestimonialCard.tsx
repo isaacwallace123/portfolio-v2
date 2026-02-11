@@ -46,7 +46,11 @@ export function TestimonialCard({ testimonial }: TestimonialCardProps) {
         </div>
       </div>
       <StarRating value={testimonial.rating} readonly size={16} />
-      <p className="text-sm leading-relaxed text-muted-foreground">{testimonial.message}</p>
+      <blockquote className="relative flex-1 pl-4 border-l-2 border-primary/30">
+        <p className="text-sm leading-relaxed text-muted-foreground italic">
+          &ldquo;{testimonial.message}&rdquo;
+        </p>
+      </blockquote>
     </Card>
   );
 }

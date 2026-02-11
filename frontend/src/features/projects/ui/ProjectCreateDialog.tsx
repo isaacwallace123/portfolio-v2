@@ -28,6 +28,7 @@ import { Switch } from '@/components/ui/switch';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { TagInput } from '@/components/ui/taginput';
 import { RichTextEditor } from '@/features/projects/ui/RichTextEditor';
+import { ImageUploadField } from '@/features/uploads/ui/ImageUploadField';
 import { toast } from 'sonner';
 
 interface ProjectCreateDialogProps {
@@ -356,32 +357,21 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
             {/* Step 3: Images & Links */}
             <StepperContent value={3}>
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="icon">Icon URL</Label>
-                  <Input
-                    id="icon"
-                    type="url"
+                <div className="grid gap-4 md:grid-cols-2">
+                  <ImageUploadField
+                    label="Icon"
                     value={formData.icon}
-                    onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                    placeholder="https://example.com/icon.png"
+                    onChange={(url) => setFormData({ ...formData, icon: url })}
+                    hint="Small square image for project cards (64x64 or 128x128)"
+                    aspect="square"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Small square image for project cards (recommended: 64x64 or 128x128)
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="thumbnail">Thumbnail URL</Label>
-                  <Input
-                    id="thumbnail"
-                    type="url"
+                  <ImageUploadField
+                    label="Thumbnail"
                     value={formData.thumbnail}
-                    onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
-                    placeholder="https://example.com/thumbnail.png"
+                    onChange={(url) => setFormData({ ...formData, thumbnail: url })}
+                    hint="Banner image for project detail page (1200x630)"
+                    aspect="banner"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Banner image for project detail page (recommended: 1200x630)
-                  </p>
                 </div>
 
                 <div className="space-y-2">

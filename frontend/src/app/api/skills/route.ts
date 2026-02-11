@@ -2,6 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/features/auth/model/session';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { unlink } from 'fs/promises';
+import { join, basename } from 'path';
+
+const ICONS_DIR = join(process.cwd(), 'public', 'uploads', 'icons');
+
+// Uploaded icons get UUID filenames; default icons have readable names like "react.png"
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\./i;
+
+function isUploadedIcon(iconUrl: string): boolean {
+  const filename = basename(iconUrl);
+  return UUID_RE.test(filename);
+}
+
+async function tryDeleteIcon(iconUrl: string) {
+  if (!iconUrl || !isUploadedIcon(iconUrl)) return;
+  const filename = basename(iconUrl);
+  try {
+    await unlink(join(ICONS_DIR, filename));
+  } catch {
+    // File may already be gone — ignore
+  }
+}
 
 const skillSchema = z.object({
   label: z.string().min(1, 'Label is required'),
@@ -69,6 +91,14 @@ export async function PUT(request: NextRequest) {
 
     const validated = skillSchema.partial().parse(data);
 
+    // If icon is changing, delete the old uploaded icon
+    if (validated.icon) {
+      const existing = await prisma.skill.findUnique({ where: { id }, select: { icon: true } });
+      if (existing && existing.icon !== validated.icon) {
+        await tryDeleteIcon(existing.icon);
+      }
+    }
+
     const skill = await prisma.skill.update({
       where: { id },
       data: validated,
@@ -103,7 +133,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    const skill = await prisma.skill.findUnique({ where: { id }, select: { icon: true } });
     await prisma.skill.delete({ where: { id } });
+    if (skill) await tryDeleteIcon(skill.icon);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting skill:', error);

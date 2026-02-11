@@ -15,6 +15,7 @@ import { TagInput } from '@/components/ui/taginput';
 import { useProjectPages } from '@/features/projects/hooks/useProjectPages';
 import { useProject } from '@/features/projects/hooks/useProject';
 import { useProjectForm } from '@/features/projects/hooks';
+import { ImageUploadField } from '@/features/uploads/ui/ImageUploadField';
 import type { ProjectPage } from '@/features/projects/lib/types';
 import { toast } from 'sonner';
 
@@ -355,35 +356,20 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Project Images</h3>
 
               <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="icon" className="text-base">Icon URL</Label>
-                  <Input
-                    id="icon"
-                    type="url"
-                    value={formData.icon}
-                    onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                    className="text-base h-11"
-                    placeholder="https://example.com/icon.png"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Displayed on project list/cards (recommended: small square image)
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="thumbnail" className="text-base">Thumbnail URL</Label>
-                  <Input
-                    id="thumbnail"
-                    type="url"
-                    value={formData.thumbnail}
-                    onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
-                    className="text-base h-11"
-                    placeholder="https://example.com/thumbnail.png"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Displayed on project overview/detail pages (recommended: larger banner image)
-                  </p>
-                </div>
+                <ImageUploadField
+                  label="Icon"
+                  value={formData.icon}
+                  onChange={(url) => setFormData({ ...formData, icon: url })}
+                  hint="Displayed on project list/cards (recommended: small square image)"
+                  aspect="square"
+                />
+                <ImageUploadField
+                  label="Thumbnail"
+                  value={formData.thumbnail}
+                  onChange={(url) => setFormData({ ...formData, thumbnail: url })}
+                  hint="Displayed on project overview/detail pages (recommended: larger banner image)"
+                  aspect="banner"
+                />
               </div>
             </div>
 

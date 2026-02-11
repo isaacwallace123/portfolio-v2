@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  
+
   images: {
     remotePatterns: [
       {
@@ -16,9 +16,19 @@ const nextConfig = {
   },
 
   swcMinify: true,
-  
+
   experimental: {
     optimizePackageImports: ['lucide-react', '@tiptap/react'],
+  },
+
+  // Rewrite legacy /icons/* paths to the uploads API route
+  async rewrites() {
+    return [
+      {
+        source: '/icons/:path*',
+        destination: '/api/uploads/icons/:path*',
+      },
+    ];
   },
 };
 

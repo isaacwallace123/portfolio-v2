@@ -99,6 +99,22 @@ model Skill {
   @@map("skills")
 }
 
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  role      String?
+  avatar    String?
+  linkedin  String?
+  message   String
+  rating    Float
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("testimonials")
+}
+
 model PageConnection {
   id           String      @id @default(cuid())
   sourcePageId String

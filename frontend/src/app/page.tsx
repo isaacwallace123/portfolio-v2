@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Github, Linkedin, Mail } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { ProjectCard } from "@/features/projects/ui/ProjectCard";
+import { TestimonialsSection } from "@/features/testimonials/ui/TestimonialsSection";
 
 const tech = ["Next.js", "React", "TypeScript", "Go", "PostgreSQL", "Docker"];
 
@@ -154,6 +155,8 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      <TestimonialsSection />
     </main>
   );
 }

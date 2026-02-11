@@ -4,11 +4,13 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  LayoutDashboard, 
-  FolderOpen, 
-  Settings, 
+import {
+  LayoutDashboard,
+  FolderOpen,
+  Settings,
   FileText,
+  MessageSquare,
+  HardDrive,
   ArrowRight,
   Clock,
   CheckCircle2
@@ -17,13 +19,21 @@ import {
 async function getProjectStats() {
   const total = await prisma.project.count();
   const published = await prisma.project.count({ where: { published: true } });
-  
+
   return { total, published };
+}
+
+async function getTestimonialStats() {
+  const total = await prisma.testimonial.count();
+  const pending = await prisma.testimonial.count({ where: { status: 'pending' } });
+
+  return { total, pending };
 }
 
 export default async function AdminDashboard() {
   const user = await requireAdmin();
   const { total, published } = await getProjectStats();
+  const { total: testimonialTotal, pending: testimonialPending } = await getTestimonialStats();
 
   const recentActivity = [
     { action: "Logged in", time: "Just now", status: "success" },
@@ -93,7 +103,7 @@ export default async function AdminDashboard() {
           <h2 className="text-xl font-semibold">Quick Actions</h2>
         </div>
         
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Link href="/admin/projects">
             <Card className="group relative overflow-hidden bg-background/80 backdrop-blur dark:bg-background/60 transition-all hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
               <CardHeader>
@@ -142,29 +152,58 @@ export default async function AdminDashboard() {
             </Card>
           </Link>
 
-          <Card className="group relative overflow-hidden bg-background/80 backdrop-blur dark:bg-background/60 opacity-60">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="rounded-lg bg-primary/10 p-2">
-                  <Settings className="h-5 w-5 text-primary" />
+          <Link href="/admin/testimonials">
+            <Card className="group relative overflow-hidden bg-background/80 backdrop-blur dark:bg-background/60 transition-all hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <MessageSquare className="h-5 w-5 text-primary" />
+                  </div>
+                  {testimonialPending > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {testimonialPending} pending
+                    </Badge>
+                  )}
                 </div>
-                <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
-              </div>
-              <CardTitle className="text-lg">Settings</CardTitle>
-              <CardDescription>Configure your portfolio</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full justify-between"
-                disabled
-              >
-                Coming Soon
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </CardContent>
-          </Card>
+                <CardTitle className="text-lg">Testimonials</CardTitle>
+                <CardDescription>Review and manage testimonials</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-between group-hover:text-primary"
+                >
+                  Open
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/admin/uploads">
+            <Card className="group relative overflow-hidden bg-background/80 backdrop-blur dark:bg-background/60 transition-all hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <HardDrive className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+                <CardTitle className="text-lg">Uploads</CardTitle>
+                <CardDescription>Manage images and documents</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-between group-hover:text-primary"
+                >
+                  Open
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
 

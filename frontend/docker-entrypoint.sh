@@ -1,14 +1,28 @@
 #!/bin/sh
 set -e
 
+# Fix ownership on the uploads volume (host mount may be root-owned)
+chown -R nextjs:nodejs /app/public/uploads
+
+# Seed default icons into the uploads volume
+if [ -d /app/default-icons ]; then
+  mkdir -p /app/public/uploads/icons
+  echo "Seeding default icons..."
+  for f in /app/default-icons/*; do
+    name=$(basename "$f")
+    [ ! -f "/app/public/uploads/icons/$name" ] && cp "$f" "/app/public/uploads/icons/$name"
+  done
+  chown -R nextjs:nodejs /app/public/uploads/icons
+fi
+
 echo "Pushing database schema..."
-node node_modules/.pnpm/prisma@5.22.0/node_modules/prisma/build/index.js db push --accept-data-loss --skip-generate
+su-exec nextjs node node_modules/.pnpm/prisma@5.22.0/node_modules/prisma/build/index.js db push --accept-data-loss --skip-generate
 
 echo "Seeding categories and skills..."
-node prisma/seed.js
+su-exec nextjs node prisma/seed.js
 
 echo "Creating admin user from environment..."
-node -e "
+su-exec nextjs node -e "
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -49,4 +63,4 @@ createAdmin();
 "
 
 echo "Starting Next.js server..."
-exec node server.js
+exec su-exec nextjs node server.js

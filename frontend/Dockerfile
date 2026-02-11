@@ -56,7 +56,7 @@ RUN pnpm run build
 
 # Stage 3: Runner
 FROM node:20-alpine AS runner
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl su-exec
 
 WORKDIR /app
 
@@ -85,7 +85,9 @@ RUN chmod +x ./docker-entrypoint.sh && chown nextjs:nodejs ./docker-entrypoint.s
 # Create uploads directory with proper permissions
 RUN mkdir -p /app/public/uploads && chown -R nextjs:nodejs /app/public/uploads
 
-USER nextjs
+# Save default icons to a seed directory (volume mount will overlay public/uploads at runtime)
+COPY --from=builder /app/public/uploads/icons /app/default-icons
+RUN chown -R nextjs:nodejs /app/default-icons
 
 EXPOSE 3000
 

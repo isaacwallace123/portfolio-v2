@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import { useSkills } from "@/features/skills/hooks/useSkills";
 import { useCategories } from "@/features/categories/hooks/useCategories";
@@ -48,7 +47,6 @@ import {
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  ArrowLeft,
   Plus,
   Trash2,
   Pencil,
@@ -356,13 +354,6 @@ export default function AdminSkillsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/admin">
-                <ArrowLeft className="h-4 w-4 mr-1" /> Dashboard
-              </Link>
-            </Button>
-          </div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
             <Sparkles className="h-8 w-8 text-primary" />
             Skills

@@ -82,8 +82,9 @@ COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma
 COPY docker-entrypoint.sh ./
 RUN chmod +x ./docker-entrypoint.sh && chown nextjs:nodejs ./docker-entrypoint.sh
 
-# Create uploads directory with proper permissions
+# Create uploads directory and .next/cache with proper permissions
 RUN mkdir -p /app/public/uploads && chown -R nextjs:nodejs /app/public/uploads
+RUN mkdir -p /app/.next/cache && chown -R nextjs:nodejs /app/.next/cache
 
 # Save default icons to a seed directory (volume mount will overlay public/uploads at runtime)
 COPY --from=builder /app/public/uploads/icons /app/default-icons

@@ -198,9 +198,9 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
   }
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 4rem)' }}>
+    <div className="flex flex-col h-full">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <div className="sticky top-16 z-40 border-b bg-background/95 backdrop-blur shrink-0">
+        <div className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur shrink-0">
           <div className="flex items-center justify-between px-6 py-3">
             <div className="flex items-center gap-4">
               <Button asChild variant="ghost" size="sm" className="rounded-2xl">

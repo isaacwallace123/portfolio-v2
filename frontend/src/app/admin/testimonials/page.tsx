@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useTestimonials } from "@/features/testimonials/hooks/useTestimonials";
 import { StarRating } from "@/features/testimonials/ui/StarRating";
 import type { Testimonial } from "@/features/testimonials/lib/types";
@@ -20,7 +19,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft,
   Check,
   X,
   Trash2,
@@ -168,13 +166,6 @@ export default function AdminTestimonialsPage() {
     <div className="mx-auto w-full max-w-5xl px-6 py-8 space-y-8">
       {/* Header */}
       <div className="space-y-1">
-        <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/admin">
-              <ArrowLeft className="h-4 w-4 mr-1" /> Dashboard
-            </Link>
-          </Button>
-        </div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <MessageSquare className="h-8 w-8 text-primary" />
           Testimonials

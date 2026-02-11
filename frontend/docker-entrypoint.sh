@@ -4,6 +4,10 @@ set -e
 # Fix ownership on the uploads volume (host mount may be root-owned)
 chown -R nextjs:nodejs /app/public/uploads
 
+# Ensure .next/cache is writable for prerender cache
+mkdir -p /app/.next/cache
+chown -R nextjs:nodejs /app/.next/cache
+
 # Seed default icons into the uploads volume
 if [ -d /app/default-icons ]; then
   mkdir -p /app/public/uploads/icons

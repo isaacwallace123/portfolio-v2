@@ -11,6 +11,7 @@ import type { SkillItem } from "@/components/ui/globe";
 import { useTheme } from "@/shared/providers/ThemeProvider";
 import Image from "next/image";
 import type { Skill } from "@/features/skills/lib/types";
+import { GitHubSection } from "@/features/github/ui/GitHubSection";
 
 const SkillGlobe = dynamic(
   () => import("@/components/ui/globe").then((m) => m.SkillGlobe),
@@ -464,6 +465,9 @@ export default function AboutPage() {
                 </div>
               </div>
             </div>
+
+            {/* GitHub — repos, languages, radar chart */}
+            <GitHubSection />
 
             {/* Focus Areas - Horizontal Cards */}
             <div className="space-y-6">

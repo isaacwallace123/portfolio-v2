@@ -115,6 +115,14 @@ model Testimonial {
   @@map("testimonials")
 }
 
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
 model PageConnection {
   id           String      @id @default(cuid())
   sourcePageId String

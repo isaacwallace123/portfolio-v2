@@ -4,8 +4,6 @@ import { useRouter } from 'next/navigation';
 import { useProjects } from '@/features/projects/hooks';
 import { ProjectsTable } from '@/features/projects/ui';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
 
 export default function AdminProjectsPage() {
   const router = useRouter();
@@ -25,15 +23,6 @@ export default function AdminProjectsPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-6 py-8">
-      <div className="mb-6">
-        <Button asChild variant="ghost" size="sm" className="rounded-2xl -ml-4">
-          <Link href="/admin">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Link>
-        </Button>
-      </div>
-      
       <ProjectsTable
         projects={projects}
         loading={loading}

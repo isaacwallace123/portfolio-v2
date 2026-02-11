@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/features/auth/model/session';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { translateFields } from '@/lib/deepl';
 
 const categorySchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -31,6 +32,19 @@ export async function POST(request: NextRequest) {
     const data = categorySchema.parse(body);
 
     const category = await prisma.category.create({ data });
+
+    // Auto-translate to French
+    try {
+      const translated = await translateFields({ name: data.name });
+      if (Object.keys(translated).length > 0) {
+        const updatedCategory = await prisma.category.update({
+          where: { id: category.id },
+          data: translated,
+        });
+        return NextResponse.json(updatedCategory, { status: 201 });
+      }
+    } catch {}
+
     return NextResponse.json(category, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -62,10 +76,29 @@ export async function PUT(request: NextRequest) {
 
     const validated = categorySchema.partial().parse(data);
 
+    const existingCategory = await prisma.category.findUnique({ where: { id } });
+    if (!existingCategory) {
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+    }
+
     const category = await prisma.category.update({
       where: { id },
       data: validated,
     });
+
+    // Only translate if name actually changed
+    if (validated.name && validated.name !== existingCategory.name) {
+      try {
+        const translated = await translateFields({ name: validated.name });
+        if (Object.keys(translated).length > 0) {
+          const updatedCategory = await prisma.category.update({
+            where: { id },
+            data: translated,
+          });
+          return NextResponse.json(updatedCategory);
+        }
+      } catch {}
+    }
 
     return NextResponse.json(category);
   } catch (error) {

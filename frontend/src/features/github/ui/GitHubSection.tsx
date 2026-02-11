@@ -5,14 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useGithubStats } from '../hooks/useGithubStats';
 import { LanguageRadarChart } from './LanguageRadarChart';
+import { useTranslations, useLocale } from 'next-intl';
 
 export function GitHubSection() {
+  const t = useTranslations('github');
+  const locale = useLocale();
   const { stats, loading } = useGithubStats();
 
   if (loading) {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold tracking-tight">GitHub</h2>
+        <h2 className="text-2xl font-bold tracking-tight">{t('title')}</h2>
         <div className="grid gap-4 md:grid-cols-3">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="h-24 animate-pulse bg-muted" />
@@ -27,7 +30,7 @@ export function GitHubSection() {
   }
 
   const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString('en-US', {
+    new Date(dateStr).toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -37,7 +40,7 @@ export function GitHubSection() {
     <div className="space-y-6 min-w-0 overflow-hidden">
       <div className="flex items-center gap-2">
         <Github className="h-6 w-6" />
-        <h2 className="text-2xl font-bold tracking-tight">GitHub</h2>
+        <h2 className="text-2xl font-bold tracking-tight">{t('title')}</h2>
       </div>
 
       {/* Stats Cards */}
@@ -45,31 +48,31 @@ export function GitHubSection() {
         <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Repositories
+              {t('repositories')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.repos.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Public repos</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('publicRepos')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Languages
+              {t('languages')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.languages.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Unique languages used</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('uniqueLanguages')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Top Language
+              {t('topLanguage')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -77,7 +80,7 @@ export function GitHubSection() {
               {stats.languages[0]?.language || '—'}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {stats.languages[0] ? `${stats.languages[0].percentage}% of total` : 'No data'}
+              {stats.languages[0] ? t('percentOfTotal', { percentage: stats.languages[0].percentage }) : t('noData')}
             </p>
           </CardContent>
         </Card>
@@ -89,8 +92,8 @@ export function GitHubSection() {
 
         <Card className="bg-background/80 backdrop-blur dark:bg-background/60 min-w-0">
           <CardHeader>
-            <CardTitle>Repositories</CardTitle>
-            <CardDescription>Public GitHub repositories</CardDescription>
+            <CardTitle>{t('repositories')}</CardTitle>
+            <CardDescription>{t('publicGithubRepos')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 max-h-100 overflow-y-auto min-w-0">
             {stats.repos.map((repo) => (
@@ -113,7 +116,7 @@ export function GitHubSection() {
                     </p>
                   )}
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    Updated {formatDate(repo.updated_at)}
+                    {t('updated', { date: formatDate(repo.updated_at) })}
                   </p>
                 </div>
                 <div className="flex items-center gap-3 ml-3">

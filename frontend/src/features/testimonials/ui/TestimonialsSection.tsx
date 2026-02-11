@@ -24,8 +24,10 @@ import { useApprovedTestimonials } from '../hooks/useApprovedTestimonials';
 import { TestimonialCard } from './TestimonialCard';
 import { TestimonialForm } from './TestimonialForm';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 export function TestimonialsSection() {
+  const t = useTranslations('testimonials');
   const { testimonials, loading, refresh } = useApprovedTestimonials();
   const [formOpen, setFormOpen] = useState(false);
   const [api, setApi] = useState<CarouselApi>();
@@ -54,10 +56,10 @@ export function TestimonialsSection() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-              Testimonials
+              {t('title')}
             </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
-              What people say
+              {t('subtitle')}
             </h2>
           </div>
           <Button
@@ -66,7 +68,7 @@ export function TestimonialsSection() {
             onClick={() => setFormOpen(true)}
           >
             <MessageSquarePlus className="mr-2 h-4 w-4" />
-            Leave a review
+            {t('leaveReview')}
           </Button>
         </div>
 
@@ -78,8 +80,8 @@ export function TestimonialsSection() {
           </div>
         ) : testimonials.length > 0 && testimonials.length <= 3 ? (
           <div className="grid justify-center gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {testimonials.map((t) => (
-              <TestimonialCard key={t.id} testimonial={t} />
+            {testimonials.map((testimonial) => (
+              <TestimonialCard key={testimonial.id} testimonial={testimonial} />
             ))}
           </div>
         ) : testimonials.length > 3 ? (
@@ -99,9 +101,9 @@ export function TestimonialsSection() {
               ]}
             >
               <CarouselContent>
-                {testimonials.map((t) => (
-                  <CarouselItem key={t.id} className="md:basis-1/2 lg:basis-1/3">
-                    <TestimonialCard testimonial={t} />
+                {testimonials.map((testimonial) => (
+                  <CarouselItem key={testimonial.id} className="md:basis-1/2 lg:basis-1/3">
+                    <TestimonialCard testimonial={testimonial} />
                   </CarouselItem>
                 ))}
               </CarouselContent>
@@ -116,7 +118,7 @@ export function TestimonialsSection() {
                   <button
                     key={i}
                     type="button"
-                    aria-label={`Go to slide ${i + 1}`}
+                    aria-label={t('goToSlide', { number: i + 1 })}
                     className={cn(
                       'h-1.5 rounded-full transition-all',
                       current === i
@@ -132,12 +134,12 @@ export function TestimonialsSection() {
         ) : (
           <div className="rounded-lg border border-dashed p-12 text-center">
             <p className="text-muted-foreground">
-              No testimonials yet. Be the first to{' '}
+              {t('noTestimonials')}{' '}
               <button
                 className="underline underline-offset-4 hover:text-foreground"
                 onClick={() => setFormOpen(true)}
               >
-                leave a review
+                {t('leaveReviewLink')}
               </button>
               !
             </p>
@@ -148,9 +150,9 @@ export function TestimonialsSection() {
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Leave a review</DialogTitle>
+            <DialogTitle>{t('formTitle')}</DialogTitle>
             <DialogDescription>
-              Share your experience. Your testimonial will be reviewed before publishing.
+              {t('formDescription')}
             </DialogDescription>
           </DialogHeader>
           <TestimonialForm

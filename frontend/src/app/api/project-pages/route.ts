@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/features/auth/model/session';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { translateFields } from '@/lib/deepl';
 
 const pageSchema = z.object({
   projectId: z.string(),
@@ -149,6 +150,25 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Auto-translate to French (awaited so translations are included in response)
+    try {
+      const translated = await translateFields({
+        title: validatedData.title,
+        content: validatedData.content,
+      });
+      if (Object.keys(translated).length > 0) {
+        const updatedPage = await prisma.projectPage.update({
+          where: { id: page.id },
+          data: translated,
+          include: {
+            outgoingConnections: { include: { targetPage: true } },
+            incomingConnections: { include: { sourcePage: true } },
+          },
+        });
+        return NextResponse.json(updatedPage, { status: 201 });
+      }
+    } catch {}
+
     return NextResponse.json(page, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -175,18 +195,21 @@ export async function PUT(request: NextRequest) {
 
     const validatedData = pageSchema.partial().parse(data);
 
+    const existingPage = await prisma.projectPage.findUnique({ where: { id } });
+
+    if (!existingPage) {
+      return NextResponse.json({ error: 'Page not found' }, { status: 404 });
+    }
+
     if (validatedData.isStartPage) {
-      const page = await prisma.projectPage.findUnique({ where: { id } });
-      if (page) {
-        await prisma.projectPage.updateMany({
-          where: {
-            projectId: page.projectId,
-            isStartPage: true,
-            id: { not: id },
-          },
-          data: { isStartPage: false },
-        });
-      }
+      await prisma.projectPage.updateMany({
+        where: {
+          projectId: existingPage.projectId,
+          isStartPage: true,
+          id: { not: id },
+        },
+        data: { isStartPage: false },
+      });
     }
 
     const updatedPage = await prisma.projectPage.update({
@@ -205,6 +228,28 @@ export async function PUT(request: NextRequest) {
         },
       },
     });
+
+    // Only translate fields that actually changed (saves DeepL API characters)
+    const fieldsToTranslate: Record<string, string | null | undefined> = {};
+    if (validatedData.title && validatedData.title !== existingPage.title) fieldsToTranslate.title = validatedData.title;
+    if (validatedData.content !== undefined && validatedData.content !== existingPage.content) fieldsToTranslate.content = validatedData.content;
+
+    if (Object.keys(fieldsToTranslate).length > 0) {
+      try {
+        const translated = await translateFields(fieldsToTranslate);
+        if (Object.keys(translated).length > 0) {
+          const refreshedPage = await prisma.projectPage.update({
+            where: { id },
+            data: translated,
+            include: {
+              outgoingConnections: { include: { targetPage: true } },
+              incomingConnections: { include: { sourcePage: true } },
+            },
+          });
+          return NextResponse.json(refreshedPage);
+        }
+      } catch {}
+    }
 
     return NextResponse.json(updatedPage);
   } catch (error) {

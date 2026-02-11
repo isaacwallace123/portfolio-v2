@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/features/auth/model/session';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { translateFields } from '@/lib/deepl';
 
 const projectSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -126,6 +127,26 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Auto-translate to French via DeepL
+    try {
+      const translated = await translateFields({
+        title: validatedData.title,
+        description: validatedData.description,
+        content: validatedData.content,
+        excerpt: validatedData.excerpt,
+      });
+      if (Object.keys(translated).length > 0) {
+        const updatedProject = await prisma.project.update({
+          where: { id: project.id },
+          data: translated,
+          include: {
+            author: { select: { id: true, email: true, role: true } },
+          },
+        });
+        return NextResponse.json(updatedProject, { status: 201 });
+      }
+    } catch {}
+
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -204,6 +225,29 @@ export async function PUT(request: NextRequest) {
         },
       },
     });
+
+    // Only translate fields that actually changed (saves DeepL API characters)
+    const fieldsToTranslate: Record<string, string | null | undefined> = {};
+    if (validatedData.title && validatedData.title !== existingProject.title) fieldsToTranslate.title = validatedData.title;
+    if (validatedData.description !== undefined && validatedData.description !== (existingProject.description ?? '')) fieldsToTranslate.description = validatedData.description;
+    if (validatedData.content && validatedData.content !== existingProject.content) fieldsToTranslate.content = validatedData.content;
+    if (validatedData.excerpt !== undefined && validatedData.excerpt !== (existingProject.excerpt ?? '')) fieldsToTranslate.excerpt = validatedData.excerpt;
+
+    if (Object.keys(fieldsToTranslate).length > 0) {
+      try {
+        const translated = await translateFields(fieldsToTranslate);
+        if (Object.keys(translated).length > 0) {
+          const refreshedProject = await prisma.project.update({
+            where: { id },
+            data: translated,
+            include: {
+              author: { select: { id: true, email: true, role: true } },
+            },
+          });
+          return NextResponse.json(refreshedProject);
+        }
+      } catch {}
+    }
 
     return NextResponse.json(project);
   } catch (error) {

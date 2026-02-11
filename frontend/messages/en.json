@@ -1,0 +1,210 @@
+{
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "projects": "Projects",
+    "contact": "Contact",
+    "login": "Login",
+    "logout": "Logout",
+    "adminPanel": "Admin Panel",
+    "adminDashboard": "Admin Dashboard"
+  },
+  "home": {
+    "available": "Available for opportunities",
+    "greeting": "Hi, I'm <name>Isaac Wallace</name>.",
+    "tagline": "Full-stack developer building scalable, elegant products with a strong focus on performance, clean architecture, and great UX.",
+    "viewWork": "View My Work",
+    "getInTouch": "Get In Touch",
+    "techShipWith": "Tech I ship with",
+    "currentlyBuilding": "Currently building",
+    "currentlyBuildingDesc": "A scalable portfolio with an admin panel + auth, designed to grow into a full platform.",
+    "featured": "Featured",
+    "projectsWorthClicking": "Projects worth clicking",
+    "seeAll": "See all"
+  },
+  "about": {
+    "title": "About",
+    "subtitle": "Building robust systems with clean UX",
+    "tagline": "Full-stack developer focused on scalable web apps and production-ready engineering",
+    "viewProjects": "View projects",
+    "getInTouch": "Get in touch",
+    "experience": "Experience",
+    "education": "Education",
+    "skills": "Skills",
+    "certifications": "Certifications",
+    "focusAreas": "Focus Areas",
+    "volunteer": "Volunteer",
+    "currentlyBuilding": "Currently Building",
+    "letsWork": "Let's work together",
+    "openTo": "Open to freelance, consulting, and full-time opportunities",
+    "active": "Active",
+    "showLess": "Show Less",
+    "showMore": "Show {count} More",
+    "present": "Present",
+    "verify": "Verify",
+    "issued": "Issued {date}",
+    "credentialId": "ID: {id}",
+    "highlights": {
+      "0": { "title": "Clean architecture", "description": "I care about maintainable code: clear boundaries, good naming, and predictable structure." },
+      "1": { "title": "Performance-minded", "description": "I optimize where it matters: shipping fast UIs and reliable backends without over-engineering." },
+      "2": { "title": "DevOps & homelab", "description": "I enjoy infrastructure: containerization, monitoring, and building systems that run well in the real world." }
+    },
+    "workExperience": {
+      "0": {
+        "role": "Founder",
+        "company": "Kleff",
+        "jobType": "Self-employed",
+        "location": "Montreal, Quebec, Canada \u00b7 Hybrid",
+        "description": "Leading the vision, architecture, and development of Kleff, a developer-first cloud infrastructure platform. I design and build the core systems while guiding product direction, technical strategy, and business operations."
+      },
+      "1": {
+        "role": "Sales Associate",
+        "company": "Canada Computers & Electronics",
+        "jobType": "Permanent Part-time",
+        "location": "Brossard, Quebec, Canada \u00b7 On-site",
+        "description": "I communicated with clients to understand their needs and guide them towards a product that matched their requirements."
+      },
+      "2": {
+        "role": "Stocker",
+        "company": "Costco Wholesale",
+        "jobType": "Permanent Part-time",
+        "location": "Candiac, Quebec, Canada \u00b7 On-site",
+        "description": "I was a merchandise placer responsible for placing stock and maintaining prices and quality in the freezer department."
+      },
+      "3": {
+        "role": "Team Leader",
+        "company": "McDonald's",
+        "jobType": "Permanent Part-time",
+        "location": "Laprairie, Quebec, Canada \u00b7 On-site",
+        "description": "I worked as the team leader for the McDonalds kitchen team to ensure quality control, fluid workflow, and proper customer satisfaction."
+      }
+    },
+    "educationList": {
+      "0": {
+        "degree": "DEC in Computer Science",
+        "school": "Champlain College",
+        "location": "Saint-Lambert, Quebec",
+        "description": "Focused on software development, algorithms, data structures, and system design."
+      }
+    },
+    "certificationsList": {
+      "0": {
+        "title": "TestOut PC Pro Certification",
+        "issuer": "TestOut Corporation"
+      }
+    },
+    "volunteerList": {
+      "0": {
+        "role": "Fundraiser",
+        "organization": "Vid\u00e9otron",
+        "cause": "Children",
+        "description": "Participated in a fundraising initiative for Enfants du Soleil with Vid\u00e9otron, working outdoors alongside other volunteers to collect donations in support of children's healthcare."
+      }
+    },
+    "focusAreasList": {
+      "0": { "label": "Frontend", "value": "Next.js + TypeScript + shadcn + Tailwind" },
+      "1": { "label": "Backend", "value": "Go (Fiber), APIs, auth, data modeling" },
+      "2": { "label": "Infra", "value": "Docker, Linux, monitoring/observability" }
+    },
+    "currentlyBuildingDesc": "Kleff \u2014 a developer-first cloud infrastructure platform",
+    "duration": {
+      "years": "{count} yr{count, plural, one {} other {s}}",
+      "months": "{count} mo{count, plural, one {} other {s}}"
+    }
+  },
+  "contact": {
+    "title": "Contact",
+    "subtitle": "Get in touch",
+    "sendMessage": "Send a message",
+    "formDescription": "Fill out the form below and I'll get back to you as soon as I can.",
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "subject": "Subject",
+    "subjectPlaceholder": "What's this about?",
+    "message": "Message",
+    "messagePlaceholder": "Your message...",
+    "send": "Send Message",
+    "sending": "Sending...",
+    "sentTitle": "Message sent!",
+    "sentDescription": "Thanks for reaching out. I'll get back to you as soon as possible.",
+    "sendAnother": "Send another message",
+    "fillAll": "Please fill in all fields",
+    "invalidEmail": "Please enter a valid email address",
+    "success": "Message sent! I'll get back to you soon."
+  },
+  "projects": {
+    "viewDetails": "View Details",
+    "present": "Present",
+    "backToProjects": "Back to Projects",
+    "backToOverview": "Back to Overview",
+    "techStack": "Tech Stack",
+    "viewLive": "View Live",
+    "viewCode": "View Code",
+    "pages": "Pages",
+    "exploreMore": "Explore More",
+    "continueReading": "Continue Reading",
+    "published": "Published {date}",
+    "projectNotFound": "Project Not Found",
+    "pageNotFound": "Page Not Found"
+  },
+  "testimonials": {
+    "title": "Testimonials",
+    "subtitle": "What people say",
+    "leaveReview": "Leave a review",
+    "noTestimonials": "No testimonials yet. Be the first to",
+    "leaveReviewLink": "leave a review",
+    "formTitle": "Leave a review",
+    "formDescription": "Share your experience. Your testimonial will be reviewed before publishing.",
+    "nameLabel": "Name *",
+    "namePlaceholder": "Your name",
+    "roleLabel": "Role / Company",
+    "rolePlaceholder": "e.g. Software Engineer at Acme",
+    "linkedinLabel": "LinkedIn",
+    "linkedinPlaceholder": "linkedin.com/in/yourname",
+    "linkedinInvalid": "Must be a linkedin.com link",
+    "photoLabel": "Photo",
+    "uploadPhoto": "Upload a photo",
+    "photoHint": "Optional. JPEG, PNG, WebP, or GIF. Max 2 MB.",
+    "ratingLabel": "Rating *",
+    "messageLabel": "Message *",
+    "messagePlaceholder": "Share your experience...",
+    "submit": "Submit Testimonial",
+    "submitting": "Submitting...",
+    "submitted": "Thank you! Your testimonial has been submitted for review.",
+    "imageTooLarge": "Image too large. Maximum size is 2MB.",
+    "enterName": "Please enter your name",
+    "messageMinLength": "Message must be at least 10 characters",
+    "selectRating": "Please select a rating",
+    "linkedinUrlInvalid": "LinkedIn URL must be a linkedin.com link",
+    "goToSlide": "Go to slide {number}"
+  },
+  "github": {
+    "title": "GitHub",
+    "repositories": "Repositories",
+    "languages": "Languages",
+    "topLanguage": "Top Language",
+    "publicRepos": "Public repos",
+    "uniqueLanguages": "Unique languages used",
+    "percentOfTotal": "{percentage}% of total",
+    "noData": "No data",
+    "publicGithubRepos": "Public GitHub repositories",
+    "updated": "Updated {date}"
+  },
+  "breadcrumbs": {
+    "home": "Home",
+    "projects": "Projects",
+    "about": "About",
+    "contact": "Contact"
+  },
+  "login": {
+    "title": "Admin Login",
+    "description": "Sign in to manage your portfolio content.",
+    "loading": "Loading\u2026"
+  },
+  "metadata": {
+    "title": "Isaac Wallace - Portfolio",
+    "description": "Full-stack engineer specializing in scalable web applications"
+  }
+}

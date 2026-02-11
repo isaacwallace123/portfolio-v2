@@ -60,6 +60,7 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       RESEND_API_KEY: ${RESEND_API_KEY}
       CONTACT_EMAIL: ${CONTACT_EMAIL}
+      DEEPL_API_KEY: ${DEEPL_API_KEY}
       NODE_ENV: development
     ports:
       - "${FRONTEND_PORT:-3000}:3000"

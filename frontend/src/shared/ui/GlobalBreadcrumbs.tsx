@@ -1,25 +1,19 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
-import Link from 'next/link';
+import { usePathname, Link } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import { ChevronRight } from 'lucide-react';
-
-const routeLabels: Record<string, string> = {
-  'projects': 'Projects',
-  'about': 'About',
-  'contact': 'Contact',
-  'admin': 'Admin',
-};
 
 export function GlobalBreadcrumbs() {
   const pathname = usePathname();
-  
+  const t = useTranslations('breadcrumbs');
+
   if (pathname === '/') {
     return null;
   }
 
   const segments = pathname.split('/').filter(Boolean);
-  
+
   if (segments.length < 2) {
     return null;
   }
@@ -27,6 +21,12 @@ export function GlobalBreadcrumbs() {
   if (segments[0] === 'admin') {
     return null;
   }
+
+  const routeLabels: Record<string, string> = {
+    'projects': t('projects'),
+    'about': t('about'),
+    'contact': t('contact'),
+  };
 
   return (
     <div className="border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
@@ -36,16 +36,16 @@ export function GlobalBreadcrumbs() {
             href="/"
             className="text-muted-foreground hover:text-foreground transition-colors"
           >
-            Home
+            {t('home')}
           </Link>
-          
+
           {segments.map((segment, index) => {
             const href = '/' + segments.slice(0, index + 1).join('/');
             const isLast = index === segments.length - 1;
-            
+
             const decodedSegment = decodeURIComponent(segment);
-            
-            const label = routeLabels[segment] || 
+
+            const label = routeLabels[segment] ||
               decodedSegment
                 .split('-')
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1))

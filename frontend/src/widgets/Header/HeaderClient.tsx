@@ -4,18 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/widgets/ThemeToggle';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { Link, usePathname } from '@/i18n/navigation';
+import NextLink from 'next/link';
 import { Shield, LogOut, LayoutDashboard, Menu, X, Home, User, FolderOpen, Mail, LogIn, type LucideIcon } from 'lucide-react';
 import { logoutAction } from '@/features/auth/model/actions';
 import { useTransition, useState, useEffect, useRef } from 'react';
-
-const navItems: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/about', label: 'About', icon: User },
-  { href: '/projects', label: 'Projects', icon: FolderOpen },
-  { href: '/contact', label: 'Contact', icon: Mail },
-];
+import { useTranslations } from 'next-intl';
+import { LanguageSwitcher } from '@/shared/ui/LanguageSwitcher';
 
 interface HeaderClientProps {
   user?: {
@@ -31,13 +26,19 @@ export function HeaderClient({ user }: HeaderClientProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const t = useTranslations('nav');
 
-  // Close mobile menu on route change
+  const navItems: { href: string; label: string; icon: LucideIcon }[] = [
+    { href: '/', label: t('home'), icon: Home },
+    { href: '/about', label: t('about'), icon: User },
+    { href: '/projects', label: t('projects'), icon: FolderOpen },
+    { href: '/contact', label: t('contact'), icon: Mail },
+  ];
+
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -56,15 +57,13 @@ export function HeaderClient({ user }: HeaderClientProps) {
     });
   };
 
-  // Get initials from email
   const getInitials = (email: string) => {
-    return 'IW'; // Always use IW as requested
+    return 'IW';
   };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
-        {/* Left side - Hamburger + Logo */}
         <div className="flex items-center gap-2">
           {isAdminPage ? (
             <Button
@@ -85,25 +84,24 @@ export function HeaderClient({ user }: HeaderClientProps) {
               {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           )}
-          <Link href={isAdminPage ? '/admin' : '/'} className="flex items-center gap-2">
-            {isAdminPage && user ? (
-              <>
-                <div className="rounded-lg bg-primary/10 p-1.5">
-                  <Shield className="h-4 w-4 text-primary" />
-                </div>
-                <div className="hidden sm:block">
-                  <span className="text-sm font-bold">Admin Panel</span>
-                </div>
-              </>
-            ) : (
+          {isAdminPage && user ? (
+            <NextLink href="/admin" className="flex items-center gap-2">
+              <div className="rounded-lg bg-primary/10 p-1.5">
+                <Shield className="h-4 w-4 text-primary" />
+              </div>
+              <div className="hidden sm:block">
+                <span className="text-sm font-bold">{t('adminPanel')}</span>
+              </div>
+            </NextLink>
+          ) : (
+            <Link href="/" className="flex items-center gap-2">
               <span className="text-xl font-bold bg-linear-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                 IW
               </span>
-            )}
-          </Link>
+            </Link>
+          )}
         </div>
 
-        {/* Center - Navigation (desktop only, hidden on admin pages) */}
         <nav className={cn('hidden items-center gap-1 md:flex', isAdminPage && 'md:hidden')}>
           {navItems.map((item) => (
             <Button
@@ -120,8 +118,8 @@ export function HeaderClient({ user }: HeaderClientProps) {
           ))}
         </nav>
 
-        {/* Right side - Theme toggle + Auth */}
         <div className="flex items-center gap-3">
+          {!isAdminPage && <LanguageSwitcher />}
           <ThemeToggle />
 
           {user ? (
@@ -150,10 +148,10 @@ export function HeaderClient({ user }: HeaderClientProps) {
                         className="w-full justify-start"
                         onClick={() => setIsDropdownOpen(false)}
                       >
-                        <Link href="/admin" className="flex items-center gap-3">
+                        <NextLink href="/admin" className="flex items-center gap-3">
                           <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
-                          <span>Admin Dashboard</span>
-                        </Link>
+                          <span>{t('adminDashboard')}</span>
+                        </NextLink>
                       </Button>
                     )}
 
@@ -164,7 +162,7 @@ export function HeaderClient({ user }: HeaderClientProps) {
                       className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
                     >
                       <LogOut className="mr-3 h-4 w-4" />
-                      <span>{isPending ? 'Logging out...' : 'Logout'}</span>
+                      <span>{isPending ? '...' : t('logout')}</span>
                     </Button>
                   </div>
                 </div>
@@ -172,13 +170,12 @@ export function HeaderClient({ user }: HeaderClientProps) {
             </div>
           ) : (
             <Button asChild size="sm" variant="outline" className="hidden md:inline-flex">
-              <Link href="/login">Login</Link>
+              <Link href="/login">{t('login')}</Link>
             </Button>
           )}
         </div>
       </div>
 
-      {/* Mobile nav menu */}
       {isMobileMenuOpen && !isAdminPage && (
         <div className="border-t border-border/40 bg-background/95 backdrop-blur md:hidden">
           <nav className="flex flex-col px-4 py-2">
@@ -203,7 +200,7 @@ export function HeaderClient({ user }: HeaderClientProps) {
                 className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
               >
                 <LogIn className="h-4 w-4" />
-                Login
+                {t('login')}
               </Link>
             )}
           </nav>

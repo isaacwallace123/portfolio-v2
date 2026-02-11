@@ -10,12 +10,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { StarRating } from './StarRating';
 import { testimonialsApi } from '../api/testimonialsApi';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 type TestimonialFormProps = {
   onSubmitted?: () => void;
 };
 
 export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
+  const t = useTranslations('testimonials');
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -40,7 +42,7 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
     if (avatarInputRef.current) avatarInputRef.current.value = '';
 
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image too large. Maximum size is 2MB.');
+      toast.error(t('imageTooLarge'));
       return;
     }
 
@@ -51,26 +53,25 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
     e.preventDefault();
 
     if (!name.trim()) {
-      toast.error('Please enter your name');
+      toast.error(t('enterName'));
       return;
     }
     if (message.trim().length < 10) {
-      toast.error('Message must be at least 10 characters');
+      toast.error(t('messageMinLength'));
       return;
     }
     if (rating === 0) {
-      toast.error('Please select a rating');
+      toast.error(t('selectRating'));
       return;
     }
     if (linkedin.trim() && !/^https:\/\/(www\.)?linkedin\.com\//.test(linkedin.trim())) {
-      toast.error('LinkedIn URL must be a linkedin.com link');
+      toast.error(t('linkedinUrlInvalid'));
       return;
     }
 
     try {
       setSubmitting(true);
 
-      // Upload avatar only at submission time
       let avatarUrl: string | undefined;
       if (avatarFile) {
         const formData = new FormData();
@@ -95,7 +96,7 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
         message: message.trim(),
         rating,
       });
-      toast.success('Thank you! Your testimonial has been submitted for review.');
+      toast.success(t('submitted'));
       setName('');
       setRole('');
       setAvatarFile(null);
@@ -113,23 +114,22 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* About you */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="testimonial-name">Name *</Label>
+          <Label htmlFor="testimonial-name">{t('nameLabel')}</Label>
           <Input
             id="testimonial-name"
-            placeholder="Your name"
+            placeholder={t('namePlaceholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="testimonial-role">Role / Company</Label>
+          <Label htmlFor="testimonial-role">{t('roleLabel')}</Label>
           <Input
             id="testimonial-role"
-            placeholder="e.g. Software Engineer at Acme"
+            placeholder={t('rolePlaceholder')}
             value={role}
             onChange={(e) => setRole(e.target.value)}
           />
@@ -137,21 +137,21 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="testimonial-linkedin">LinkedIn</Label>
+        <Label htmlFor="testimonial-linkedin">{t('linkedinLabel')}</Label>
         <UrlInput
           id="testimonial-linkedin"
-          placeholder="linkedin.com/in/yourname"
+          placeholder={t('linkedinPlaceholder')}
           value={linkedin}
           onChange={setLinkedin}
           className={linkedinInvalid ? 'border-destructive focus-visible:ring-destructive' : ''}
         />
         {linkedinInvalid && (
-          <p className="text-xs text-destructive">Must be a linkedin.com link</p>
+          <p className="text-xs text-destructive">{t('linkedinInvalid')}</p>
         )}
       </div>
 
       <div className="space-y-2">
-        <Label>Photo</Label>
+        <Label>{t('photoLabel')}</Label>
         <input
           ref={avatarInputRef}
           type="file"
@@ -188,23 +188,22 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
             onClick={() => avatarInputRef.current?.click()}
           >
             <ImagePlus className="h-4 w-4" />
-            Upload a photo
+            {t('uploadPhoto')}
           </Button>
         )}
-        <p className="text-xs text-muted-foreground">Optional. JPEG, PNG, WebP, or GIF. Max 2 MB.</p>
+        <p className="text-xs text-muted-foreground">{t('photoHint')}</p>
       </div>
 
-      {/* Review */}
       <div className="space-y-2">
-        <Label>Rating *</Label>
+        <Label>{t('ratingLabel')}</Label>
         <StarRating value={rating} onChange={setRating} size={28} />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="testimonial-message">Message *</Label>
+        <Label htmlFor="testimonial-message">{t('messageLabel')}</Label>
         <Textarea
           id="testimonial-message"
-          placeholder="Share your experience..."
+          placeholder={t('messagePlaceholder')}
           rows={4}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
@@ -214,7 +213,7 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
       </div>
 
       <Button type="submit" className="w-full" disabled={submitting}>
-        {submitting ? 'Submitting...' : 'Submit Testimonial'}
+        {submitting ? t('submitting') : t('submit')}
       </Button>
     </form>
   );

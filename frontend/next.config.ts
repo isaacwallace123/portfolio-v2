@@ -1,5 +1,10 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
   output: 'standalone',
 
   images: {
@@ -10,12 +15,6 @@ const nextConfig = {
       },
     ],
   },
-
-  telemetry: {
-    enabled: false,
-  },
-
-  swcMinify: true,
 
   experimental: {
     optimizePackageImports: ['lucide-react', '@tiptap/react'],
@@ -32,4 +31,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+export default withNextIntl(nextConfig);

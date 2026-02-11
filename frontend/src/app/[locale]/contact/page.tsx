@@ -1,11 +1,14 @@
 'use client';
 
-import { Mail, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { ContactForm } from '@/features/contacts/ui/ContactForm';
+import { useTranslations } from 'next-intl';
 
 export default function ContactPage() {
+  const t = useTranslations('contact');
+
   return (
     <main className="relative flex-1">
       <section className="border-b">
@@ -15,21 +18,17 @@ export default function ContactPage() {
             <div className="space-y-6">
               <div className="space-y-3">
                 <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-                  Contact
+                  {t('title')}
                 </p>
                 <h1 className="text-4xl font-bold tracking-tight md:text-5xl max-w-3xl">
-                  Get in touch
+                  {t('subtitle')}
                 </h1>
-                <p className="text-lg text-muted-foreground md:text-xl max-w-2xl">
-                  Have a project in mind, a question, or just want to say hello?
-                  I&apos;d love to hear from you.
-                </p>
               </div>
 
               <div className="flex flex-wrap gap-3 pt-2">
                 <Button asChild variant="outline" className="rounded-2xl">
                   <Link href="/projects">
-                    View my work <ArrowRight className="ml-2 h-4 w-4" />
+                    {t('title')} <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
               </div>

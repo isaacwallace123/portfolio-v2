@@ -8,8 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { contactsApi } from '../api/contactsApi';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 export function ContactForm() {
+  const t = useTranslations('contact');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
@@ -21,12 +23,12 @@ export function ContactForm() {
     e.preventDefault();
 
     if (!name.trim() || !email.trim() || !subject.trim() || !message.trim()) {
-      toast.error('Please fill in all fields');
+      toast.error(t('fillAll'));
       return;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast.error('Please enter a valid email address');
+      toast.error(t('invalidEmail'));
       return;
     }
 
@@ -38,7 +40,7 @@ export function ContactForm() {
         subject: subject.trim(),
         message: message.trim(),
       });
-      toast.success('Message sent! I\'ll get back to you soon.');
+      toast.success(t('success'));
       setSent(true);
       setName('');
       setEmail('');
@@ -60,9 +62,9 @@ export function ContactForm() {
             <Send className="h-6 w-6 text-emerald-500" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold">Message sent!</h3>
+            <h3 className="text-lg font-semibold">{t('sentTitle')}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Thanks for reaching out. I&apos;ll get back to you as soon as possible.
+              {t('sentDescription')}
             </p>
           </div>
           <Button
@@ -70,7 +72,7 @@ export function ContactForm() {
             className="rounded-2xl"
             onClick={() => setSent(false)}
           >
-            Send another message
+            {t('sendAnother')}
           </Button>
         </CardContent>
       </Card>
@@ -80,30 +82,30 @@ export function ContactForm() {
   return (
     <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
       <CardHeader>
-        <CardTitle>Send a message</CardTitle>
+        <CardTitle>{t('sendMessage')}</CardTitle>
         <CardDescription>
-          Fill out the form below and I&apos;ll get back to you as soon as I can.
+          {t('formDescription')}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{t('name')}</Label>
               <Input
                 id="name"
-                placeholder="Your name"
+                placeholder={t('namePlaceholder')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={sending}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('email')}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t('emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={sending}
@@ -112,10 +114,10 @@ export function ContactForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="subject">Subject</Label>
+            <Label htmlFor="subject">{t('subject')}</Label>
             <Input
               id="subject"
-              placeholder="What's this about?"
+              placeholder={t('subjectPlaceholder')}
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               disabled={sending}
@@ -123,10 +125,10 @@ export function ContactForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="message">Message</Label>
+            <Label htmlFor="message">{t('message')}</Label>
             <textarea
               id="message"
-              placeholder="Your message..."
+              placeholder={t('messagePlaceholder')}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               disabled={sending}
@@ -137,7 +139,7 @@ export function ContactForm() {
 
           <Button type="submit" disabled={sending} className="gap-2">
             <Send className="h-4 w-4" />
-            {sending ? 'Sending...' : 'Send Message'}
+            {sending ? t('sending') : t('send')}
           </Button>
         </form>
       </CardContent>

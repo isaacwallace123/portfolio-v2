@@ -1,8 +1,11 @@
-import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+'use client';
+
+import { Link } from '@/i18n/navigation';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Github, ExternalLink, Calendar, Star } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { Project } from '../lib/types';
 
 interface ProjectCardProps {
@@ -11,6 +14,8 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, featured }: ProjectCardProps) {
+  const t = useTranslations('projects');
+
   return (
     <Card className="group relative overflow-hidden bg-background/80 dark:bg-background/60 backdrop-blur transition-all hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
       {project.icon && (
@@ -28,12 +33,11 @@ export function ProjectCard({ project, featured }: ProjectCardProps) {
           <h3 className="text-lg font-semibold line-clamp-1">{project.title}</h3>
           {featured && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0" />}
         </div>
-        
+
         {project.excerpt && (
           <p className="text-sm text-muted-foreground line-clamp-2">{project.excerpt}</p>
         )}
 
-        {/* Technologies */}
         {project.technologies && project.technologies.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {project.technologies.slice(0, 4).map((tech) => (
@@ -49,29 +53,27 @@ export function ProjectCard({ project, featured }: ProjectCardProps) {
           </div>
         )}
 
-        {/* Timeline */}
         {project.startDate && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Calendar className="h-3 w-3" />
             <span>
               {new Date(project.startDate).getFullYear()}
-              {project.endDate 
+              {project.endDate
                 ? ` - ${new Date(project.endDate).getFullYear()}`
-                : ' - Present'
+                : ` - ${t('present')}`
               }
             </span>
           </div>
         )}
 
-        {/* Links */}
         <div className="flex gap-2">
           <Button asChild variant="default" size="sm" className="flex-1 rounded-2xl">
             <Link href={`/projects/${project.slug}`}>
-              View Details
+              {t('viewDetails')}
               <ArrowRight className="ml-2 h-3 w-3" />
             </Link>
           </Button>
-          
+
           <div className="flex gap-1">
             {project.githubUrl && (
               <Button asChild variant="outline" size="sm" className="rounded-2xl h-8 w-8 p-0">

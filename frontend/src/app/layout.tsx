@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/shared/providers/ThemeProvider";
-import { PageTransition } from "@/shared/ui/PageTransition";
-import { Header } from "@/widgets/Header";
-import { GlobalBreadcrumbs } from "@/shared/ui/GlobalBreadcrumbs";
 import { InteractiveGridBackground } from "@/shared/ui/InteractiveGridBackground";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -27,16 +24,14 @@ const setInitialThemeScript = `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: setInitialThemeScript }} />
       </head>
       <body className="antialiased">
         <ThemeProvider>
           <InteractiveGridBackground />
-          <Header />
-          <GlobalBreadcrumbs />
-          <PageTransition>{children}</PageTransition>
+          {children}
           <Toaster />
         </ThemeProvider>
       </body>

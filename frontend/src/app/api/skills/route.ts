@@ -38,7 +38,7 @@ export async function GET() {
     const skills = await prisma.skill.findMany({
       include: {
         category: {
-          select: { id: true, name: true, order: true },
+          select: { id: true, name: true, nameFr: true, order: true },
         },
       },
       orderBy: [{ category: { order: 'asc' } }, { order: 'asc' }, { label: 'asc' }],

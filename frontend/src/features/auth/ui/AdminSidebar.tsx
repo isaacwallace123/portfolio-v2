@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
   FolderOpen,
@@ -13,8 +12,6 @@ import {
   HardDrive,
   Home,
   User,
-  Menu,
-  X,
 } from 'lucide-react';
 
 const adminItems = [
@@ -34,6 +31,12 @@ const siteItems = [
 export function AdminSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const toggle = () => setOpen((prev) => !prev);
+    window.addEventListener('toggle-admin-sidebar', toggle);
+    return () => window.removeEventListener('toggle-admin-sidebar', toggle);
+  }, []);
 
   const isActive = (href: string) => {
     if (href === '/admin') return pathname === '/admin';
@@ -94,17 +97,7 @@ export function AdminSidebar() {
         {nav}
       </aside>
 
-      {/* Mobile toggle */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="fixed bottom-4 left-4 z-50 md:hidden rounded-full shadow-lg bg-background border border-border/40"
-        onClick={() => setOpen(!open)}
-      >
-        {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </Button>
-
-      {/* Mobile overlay */}
+      {/* Mobile overlay (toggled via header hamburger) */}
       {open && (
         <>
           <div

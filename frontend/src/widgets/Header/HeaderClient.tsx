@@ -65,7 +65,16 @@ export function HeaderClient({ user }: HeaderClientProps) {
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
         {/* Left side - Hamburger + Logo */}
         <div className="flex items-center gap-2">
-          {!isAdminPage && (
+          {isAdminPage ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden -ml-2"
+              onClick={() => window.dispatchEvent(new CustomEvent('toggle-admin-sidebar'))}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          ) : (
             <Button
               variant="ghost"
               size="icon"

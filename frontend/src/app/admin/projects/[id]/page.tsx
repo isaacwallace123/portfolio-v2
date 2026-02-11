@@ -201,45 +201,21 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
     <div className="flex flex-col h-full">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
         <div className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur shrink-0">
-          <div className="flex items-center justify-between px-6 py-3">
-            <div className="flex items-center gap-4">
-              <Button asChild variant="ghost" size="sm" className="rounded-2xl">
+          <div className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
+            <div className="flex items-center gap-3 min-w-0">
+              <Button asChild variant="ghost" size="sm" className="rounded-2xl shrink-0">
                 <Link href="/admin/projects">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Link>
               </Button>
-              <div>
-                <h1 className="text-xl font-bold tracking-tight">{project.title}</h1>
+              <div className="min-w-0">
+                <h1 className="text-lg font-bold tracking-tight truncate sm:text-xl">{project.title}</h1>
                 <p className="text-xs text-muted-foreground">Edit Project</p>
               </div>
             </div>
 
-            <TabsList className="inline-flex h-11 items-center justify-center rounded-xl bg-muted/50 p-1 shadow-sm border border-border/50">
-              <TabsTrigger 
-                value="pages" 
-                className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
-              >
-                <Network className="h-4 w-4" />
-                Pages
-              </TabsTrigger>
-              <TabsTrigger 
-                value="basic" 
-                className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
-              >
-                <FileText className="h-4 w-4" />
-                Basic Info
-              </TabsTrigger>
-              <TabsTrigger 
-                value="settings" 
-                className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
-              >
-                <SettingsIcon className="h-4 w-4" />
-                Settings
-              </TabsTrigger>
-            </TabsList>
-
-            <div className="flex justify-end" style={{ width: '180px' }}>
+            <div className="ml-auto shrink-0 sm:order-last">
               {hasChanges && (
                 <Button
                   onClick={handleSave}
@@ -252,6 +228,30 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
                 </Button>
               )}
             </div>
+
+            <TabsList className="order-last w-full h-10 items-center justify-center rounded-xl bg-muted/50 p-1 shadow-sm border border-border/50 sm:order-0 sm:w-auto sm:h-11 sm:mx-auto">
+              <TabsTrigger
+                value="pages"
+                className="flex-1 gap-2 rounded-lg text-xs sm:flex-initial sm:text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <Network className="h-4 w-4" />
+                Pages
+              </TabsTrigger>
+              <TabsTrigger
+                value="basic"
+                className="flex-1 gap-2 rounded-lg text-xs sm:flex-initial sm:text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <FileText className="h-4 w-4" />
+                Basic Info
+              </TabsTrigger>
+              <TabsTrigger
+                value="settings"
+                className="flex-1 gap-2 rounded-lg text-xs sm:flex-initial sm:text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <SettingsIcon className="h-4 w-4" />
+                Settings
+              </TabsTrigger>
+            </TabsList>
           </div>
         </div>
 

@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/widgets/ThemeToggle';
 import { Link, usePathname } from '@/i18n/navigation';
 import NextLink from 'next/link';
-import { Shield, LogOut, LayoutDashboard, Menu, X, Home, User, FolderOpen, Mail, LogIn, type LucideIcon } from 'lucide-react';
+import { Shield, LogOut, LayoutDashboard, Menu, X, Home, User, FolderOpen, Mail, LogIn, Network, type LucideIcon } from 'lucide-react';
 import { logoutAction } from '@/features/auth/model/actions';
 import { useTransition, useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
@@ -33,6 +33,7 @@ export function HeaderClient({ user }: HeaderClientProps) {
     { href: '/about', label: t('about'), icon: User },
     { href: '/projects', label: t('projects'), icon: FolderOpen },
     { href: '/contact', label: t('contact'), icon: Mail },
+    { href: '/homelab', label: t('homelab'), icon: Network },
   ];
 
   useEffect(() => {

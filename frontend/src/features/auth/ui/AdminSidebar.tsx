@@ -14,6 +14,7 @@ import {
   Home,
   User,
   Briefcase,
+  Network,
 } from 'lucide-react';
 
 const adminItems = [
@@ -24,6 +25,7 @@ const adminItems = [
   { href: '/admin/testimonials', icon: MessageSquare, label: 'Testimonials' },
   { href: '/admin/contacts', icon: Mail, label: 'Contacts' },
   { href: '/admin/uploads', icon: HardDrive, label: 'Uploads' },
+  { href: '/admin/homelab', icon: Network, label: 'Homelab' },
 ];
 
 const siteItems = [

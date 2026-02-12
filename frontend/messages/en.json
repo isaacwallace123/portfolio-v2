@@ -7,7 +7,8 @@
     "login": "Login",
     "logout": "Logout",
     "adminPanel": "Admin Panel",
-    "adminDashboard": "Admin Dashboard"
+    "adminDashboard": "Admin Dashboard",
+    "homelab": "Homelab"
   },
   "home": {
     "available": "Available for opportunities",
@@ -145,12 +146,41 @@
     "home": "Home",
     "projects": "Projects",
     "about": "About",
-    "contact": "Contact"
+    "contact": "Contact",
+    "homelab": "Homelab"
   },
   "login": {
     "title": "Admin Login",
     "description": "Sign in to manage your portfolio content.",
     "loading": "Loading\u2026"
+  },
+  "homelab": {
+    "title": "Homelab",
+    "subtitle": "Live view of my server infrastructure",
+    "loading": "Loading topology...",
+    "noTopology": "No topology configured yet.",
+    "containerInfo": "Container Info",
+    "status": "Status",
+    "ports": "Ports",
+    "networks": "Networks",
+    "resources": "Resources",
+    "memory": "Memory",
+    "loadingStats": "Loading stats...",
+    "hostMetrics": "Host Metrics",
+    "hostCpu": "Host CPU",
+    "hostMemory": "Host Memory",
+    "hostDisk": "Host Disk",
+    "uptime": "Uptime",
+    "recentLogs": "Recent Logs",
+    "loadingLogs": "Loading logs...",
+    "noLogs": "No logs available",
+    "overview": "Overview",
+    "topology": "Topology",
+    "serverInfo": "Server Info",
+    "containersRunning": "{count} running",
+    "containersStopped": "{count} stopped",
+    "containers": "Containers",
+    "systemOverview": "System Overview"
   },
   "metadata": {
     "title": "Isaac Wallace - Portfolio",

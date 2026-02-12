@@ -195,6 +195,56 @@ model ExperienceMedia {
   @@map("experience_media")
 }
 
+model Server {
+  id          String         @id @default(cuid())
+  name        String
+  type        String
+  description String?
+  icon        String?
+  nodes       TopologyNode[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("servers")
+}
+
+model TopologyNode {
+  id            String               @id @default(cuid())
+  serverId      String
+  server        Server               @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  containerId   String
+  containerName String
+  icon          String?
+  positionX     Float                @default(0)
+  positionY     Float                @default(0)
+  visible            Boolean              @default(true)
+  order              Int                  @default(0)
+  nodeType           String               @default("container")
+  infrastructureType String?
+  outgoing           TopologyConnection[] @relation("TopologySource")
+  incoming      TopologyConnection[] @relation("TopologyTarget")
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([serverId])
+  @@map("topology_nodes")
+}
+
+model TopologyConnection {
+  id        String       @id @default(cuid())
+  sourceId  String
+  targetId  String
+  source    TopologyNode @relation("TopologySource", fields: [sourceId], references: [id], onDelete: Cascade)
+  target    TopologyNode @relation("TopologyTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  label     String?
+  animated  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+
+  @@index([sourceId])
+  @@index([targetId])
+  @@map("topology_connections")
+}
+
 model ContactMessage {
   id        String   @id @default(cuid())
   name      String

@@ -46,6 +46,8 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY}
       CONTACT_EMAIL: ${CONTACT_EMAIL}
       DEEPL_API_KEY: ${DEEPL_API_KEY}
+      INFRA_API_URL: http://infra-agent:8080
+      INFRA_API_KEY: ${INFRA_API_KEY}
       NODE_ENV: production
     ports:
       - "${FRONTEND_PORT:-3001}:3000"
@@ -56,6 +58,22 @@ services:
         condition: service_healthy
     volumes:
       - ${UPLOADS_PATH:-/mnt/user/appdata/portfolio/uploads}:/app/public/uploads
+    networks: [portfolio-network]
+
+  infra-agent:
+    image: ghcr.io/isaacwallace123/portfolio-infra:latest
+    container_name: portfolio_infra
+    restart: unless-stopped
+    environment:
+      INFRA_API_KEY: ${INFRA_API_KEY}
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
     networks: [portfolio-network]
 
   tunnel:

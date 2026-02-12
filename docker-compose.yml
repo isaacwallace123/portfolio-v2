@@ -61,6 +61,8 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY}
       CONTACT_EMAIL: ${CONTACT_EMAIL}
       DEEPL_API_KEY: ${DEEPL_API_KEY}
+      INFRA_API_URL: http://infra-agent:8080
+      INFRA_API_KEY: ${INFRA_API_KEY:-dev-infra-key}
       NODE_ENV: development
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
@@ -71,6 +73,24 @@ services:
         condition: service_healthy
     volumes:
       - ./frontend/public/uploads:/app/public/uploads
+    networks: [portfolio-network]
+
+  infra-agent:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: portfolio_infra
+    restart: unless-stopped
+    environment:
+      INFRA_API_KEY: ${INFRA_API_KEY:-dev-infra-key}
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
     networks: [portfolio-network]
 
 volumes:

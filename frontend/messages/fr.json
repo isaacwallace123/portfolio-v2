@@ -7,7 +7,8 @@
     "login": "Connexion",
     "logout": "D\u00e9connexion",
     "adminPanel": "Panneau d'administration",
-    "adminDashboard": "Tableau de bord admin"
+    "adminDashboard": "Tableau de bord admin",
+    "homelab": "Homelab"
   },
   "home": {
     "available": "Disponible pour des opportunit\u00e9s",
@@ -145,12 +146,41 @@
     "home": "Accueil",
     "projects": "Projets",
     "about": "\u00c0 propos",
-    "contact": "Contact"
+    "contact": "Contact",
+    "homelab": "Homelab"
   },
   "login": {
     "title": "Connexion administrateur",
     "description": "Connectez-vous pour g\u00e9rer le contenu de votre portfolio.",
     "loading": "Chargement\u2026"
+  },
+  "homelab": {
+    "title": "Homelab",
+    "subtitle": "Vue en direct de mon infrastructure serveur",
+    "loading": "Chargement de la topologie...",
+    "noTopology": "Aucune topologie configur\u00e9e pour le moment.",
+    "containerInfo": "Info conteneur",
+    "status": "Statut",
+    "ports": "Ports",
+    "networks": "R\u00e9seaux",
+    "resources": "Ressources",
+    "memory": "M\u00e9moire",
+    "loadingStats": "Chargement des stats...",
+    "hostMetrics": "M\u00e9triques h\u00f4te",
+    "hostCpu": "CPU h\u00f4te",
+    "hostMemory": "M\u00e9moire h\u00f4te",
+    "hostDisk": "Disque h\u00f4te",
+    "uptime": "Disponibilit\u00e9",
+    "recentLogs": "Logs r\u00e9cents",
+    "loadingLogs": "Chargement des logs...",
+    "noLogs": "Aucun log disponible",
+    "overview": "Aperçu",
+    "topology": "Topologie",
+    "serverInfo": "Info serveur",
+    "containersRunning": "{count} en cours",
+    "containersStopped": "{count} arrêté(s)",
+    "containers": "Conteneurs",
+    "systemOverview": "Aperçu du système"
   },
   "metadata": {
     "title": "Isaac Wallace - Portfolio",

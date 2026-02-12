@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -27,7 +28,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import {
-  ZoomIn, ZoomOut, Maximize, Search, Link2, Save, Trash2, Eye, EyeOff,
+  ZoomIn, ZoomOut, Maximize, Search, Link2, Save, Trash2,
   Server as ServerIcon, Globe2, Router, Database, Network, Shield, Plus,
   Settings, X,
 } from 'lucide-react';
@@ -66,6 +67,7 @@ interface NodeState {
   positionX: number;
   positionY: number;
   visible: boolean;
+  showLogs: boolean;
   order: number;
   nodeType?: string;
   infrastructureType?: string;
@@ -98,6 +100,7 @@ function HomelabEditor() {
 
   const initializedRef = useRef(false);
   const infraCounter = useRef(0);
+  const pendingAutoSave = useRef(false);
 
   // Load existing topology
   useEffect(() => {
@@ -121,6 +124,7 @@ function HomelabEditor() {
           positionX: node.positionX,
           positionY: node.positionY,
           visible: node.visible,
+          showLogs: node.showLogs,
           order: node.order,
           nodeType: node.nodeType,
           infrastructureType: node.infrastructureType ?? undefined,
@@ -202,6 +206,7 @@ function HomelabEditor() {
             positionX: 100 + (newCount % 4) * 200,
             positionY: 100 + Math.floor(newCount / 4) * 150,
             visible: true,
+            showLogs: true,
             order: existingNames.size + newCount,
             nodeType: 'container',
           };
@@ -264,6 +269,7 @@ function HomelabEditor() {
         positionX: 300 + Math.random() * 200,
         positionY: 100 + Math.random() * 200,
         visible: true,
+        showLogs: true,
         order: nodeStates.size,
         nodeType: 'infrastructure',
         infrastructureType: infraType,
@@ -368,11 +374,27 @@ function HomelabEditor() {
 
   const toggleVisibility = useCallback(
     (nodeKey: string) => {
+      pendingAutoSave.current = true;
       setNodeStates((prev) => {
         const next = new Map(prev);
         const state = next.get(nodeKey);
         if (state) {
           next.set(nodeKey, { ...state, visible: !state.visible });
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  const toggleShowLogs = useCallback(
+    (nodeKey: string) => {
+      pendingAutoSave.current = true;
+      setNodeStates((prev) => {
+        const next = new Map(prev);
+        const state = next.get(nodeKey);
+        if (state) {
+          next.set(nodeKey, { ...state, showLogs: !state.showLogs });
         }
         return next;
       });
@@ -429,6 +451,7 @@ function HomelabEditor() {
           positionX: node.position.x,
           positionY: node.position.y,
           visible: state?.visible ?? true,
+          showLogs: state?.showLogs ?? true,
           order: index,
           nodeType: state?.nodeType || 'container',
           infrastructureType: state?.infrastructureType,
@@ -460,6 +483,14 @@ function HomelabEditor() {
       setSaving(false);
     }
   }, [serverName, serverType, serverDescription, serverId, nodes, edges, nodeStates, saveTopology]);
+
+  // Auto-save when toggling visibility/showLogs
+  useEffect(() => {
+    if (pendingAutoSave.current) {
+      pendingAutoSave.current = false;
+      handleSave();
+    }
+  }, [nodeStates, handleSave]);
 
   // Node click → open right panel
   const handleNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -608,17 +639,22 @@ function HomelabEditor() {
               {/* Visibility toggle */}
               <div className="flex items-center justify-between">
                 <Label className="text-xs text-muted-foreground">Visible on public page</Label>
-                <button
-                  onClick={() => selectedNodeId && toggleVisibility(selectedNodeId)}
-                  className="p-1 hover:text-primary transition-colors"
-                >
-                  {selectedState?.visible !== false ? (
-                    <Eye className="h-4 w-4" />
-                  ) : (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </button>
+                <Switch
+                  checked={selectedState?.visible !== false}
+                  onCheckedChange={() => selectedNodeId && toggleVisibility(selectedNodeId)}
+                />
               </div>
+
+              {/* Show logs toggle */}
+              {isSelectedContainer && (
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">Allow view logs</Label>
+                  <Switch
+                    checked={selectedState?.showLogs !== false}
+                    onCheckedChange={() => selectedNodeId && toggleShowLogs(selectedNodeId)}
+                  />
+                </div>
+              )}
 
               <Separator />
 

@@ -20,6 +20,7 @@ export type TopologyNode = {
   positionX: number;
   positionY: number;
   visible: boolean;
+  showLogs: boolean;
   order: number;
   nodeType: string;
   infrastructureType: string | null;
@@ -113,6 +114,7 @@ export type SaveTopologyDto = {
     positionX: number;
     positionY: number;
     visible: boolean;
+    showLogs?: boolean;
     order: number;
     nodeType?: string;
     infrastructureType?: string;

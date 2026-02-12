@@ -75,10 +75,12 @@ function formatUptime(seconds: number | null): string {
 function DetailPanel({
   container,
   onClose,
+  showLogs,
   t,
 }: {
   container: ContainerInfo;
   onClose: () => void;
+  showLogs: boolean;
   t: (key: string) => string;
 }) {
   const [stats, setStats] = useState<ContainerStats | null>(null);
@@ -99,7 +101,7 @@ function DetailPanel({
     async function load() {
       const [statsData, logsData, metricsData] = await Promise.all([
         topologyApi.getContainerStats(container.name).catch(() => null),
-        topologyApi.getContainerLogs(container.name, 80).catch(() => null),
+        showLogs ? topologyApi.getContainerLogs(container.name, 80).catch(() => null) : null,
         topologyApi.getNodeMetrics().catch(() => null),
       ]);
 
@@ -174,7 +176,7 @@ function DetailPanel({
         <div className="px-5 pt-2 border-b border-border/40">
           <TabsList variant="line">
             <TabsTrigger value="metrics">{t('resources')}</TabsTrigger>
-            <TabsTrigger value="logs">{t('recentLogs')}</TabsTrigger>
+            {showLogs && <TabsTrigger value="logs">{t('recentLogs')}</TabsTrigger>}
           </TabsList>
         </div>
 
@@ -334,35 +336,37 @@ function DetailPanel({
         </TabsContent>
 
         {/* Logs Tab */}
-        <TabsContent value="logs" className="flex-1 m-0 flex flex-col min-h-0">
-          <div className="flex-1 overflow-y-auto bg-black/40 font-mono text-[11px] leading-relaxed p-3">
-            {logsLoading ? (
-              <p className="text-muted-foreground text-center py-8">{t('loadingLogs')}</p>
-            ) : logs.length > 0 ? (
-              logs.map((line, i) => {
-                const { timestamp, rest } = splitTimestamp(line);
-                const colorClass = getLogLineClassName(line);
-                const level = detectLogLevel(line);
-                return (
-                  <div key={i} className="flex items-start gap-2 py-px hover:bg-white/5 px-2 rounded">
-                    {timestamp && (
-                      <span className="text-[10px] text-gray-600 shrink-0 tabular-nums">{timestamp}</span>
-                    )}
-                    {level && (
-                      <span className={`shrink-0 text-[9px] font-bold px-1 rounded ${level.badgeClass}`}>
-                        {level.badge}
-                      </span>
-                    )}
-                    <span className={`${colorClass} whitespace-pre-wrap break-all`}>{rest}</span>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-muted-foreground text-center py-8">{t('noLogs')}</p>
-            )}
-            <div ref={logsEndRef} />
-          </div>
-        </TabsContent>
+        {showLogs && (
+          <TabsContent value="logs" className="flex-1 m-0 flex flex-col min-h-0">
+            <div className="flex-1 overflow-y-auto bg-black/40 font-mono text-[11px] leading-relaxed p-3">
+              {logsLoading ? (
+                <p className="text-muted-foreground text-center py-8">{t('loadingLogs')}</p>
+              ) : logs.length > 0 ? (
+                logs.map((line, i) => {
+                  const { timestamp, rest } = splitTimestamp(line);
+                  const colorClass = getLogLineClassName(line);
+                  const level = detectLogLevel(line);
+                  return (
+                    <div key={i} className="flex items-start gap-2 py-px hover:bg-white/5 px-2 rounded">
+                      {timestamp && (
+                        <span className="text-[10px] text-gray-600 shrink-0 tabular-nums">{timestamp}</span>
+                      )}
+                      {level && (
+                        <span className={`shrink-0 text-[9px] font-bold px-1 rounded ${level.badgeClass}`}>
+                          {level.badge}
+                        </span>
+                      )}
+                      <span className={`${colorClass} whitespace-pre-wrap break-all`}>{rest}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-muted-foreground text-center py-8">{t('noLogs')}</p>
+              )}
+              <div ref={logsEndRef} />
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
@@ -381,7 +385,16 @@ function TopologyCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, , onEdgesChange] = useEdgesState([]);
   const [selectedContainerName, setSelectedContainerName] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const initializedRef = useRef(false);
+
+  // Check admin status
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data) => setIsAdmin(data.isAdmin))
+      .catch(() => {});
+  }, []);
 
   // Fetch data
   useEffect(() => {
@@ -412,6 +425,16 @@ function TopologyCanvas() {
   }, [liveContainers]);
 
   const selectedContainer = selectedContainerName ? containerMap.get(selectedContainerName) ?? null : null;
+
+  const showLogsMap = useMemo(() => {
+    const map = new Map<string, boolean>();
+    for (const server of servers) {
+      for (const node of server.nodes) {
+        map.set(node.containerName, node.showLogs);
+      }
+    }
+    return map;
+  }, [servers]);
 
   // Build flow
   useEffect(() => {
@@ -567,6 +590,7 @@ function TopologyCanvas() {
         <DetailPanel
           container={selectedContainer}
           onClose={() => setSelectedContainerName(null)}
+          showLogs={isAdmin || (showLogsMap.get(selectedContainerName!) ?? true)}
           t={(key: string) => t(key)}
         />
       )}

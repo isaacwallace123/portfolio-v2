@@ -218,6 +218,7 @@ model TopologyNode {
   positionX     Float                @default(0)
   positionY     Float                @default(0)
   visible            Boolean              @default(true)
+  showLogs           Boolean              @default(true)
   order              Int                  @default(0)
   nodeType           String               @default("container")
   infrastructureType String?

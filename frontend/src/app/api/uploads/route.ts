@@ -126,7 +126,11 @@ export async function POST(request: NextRequest) {
     await mkdir(targetDir, { recursive: true });
 
     const ext = extname(file.name) || getExtension(file.type);
-    const filename = `${randomUUID()}${ext}`;
+    // For icons folder, use sanitized original name; UUID for everything else
+    const baseName = folder === 'icons'
+      ? file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase()
+      : randomUUID();
+    const filename = `${baseName}${ext}`;
     const filepath = join(targetDir, filename);
 
     const buffer = Buffer.from(await file.arrayBuffer());

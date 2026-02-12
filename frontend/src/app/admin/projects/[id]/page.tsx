@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { ProjectFlowchart } from '@/features/projects/ui/ProjectFlowchart';
 import { PageEditorDialog } from '@/features/projects/ui/PageEditorDialog';
 import { TagInput } from '@/components/ui/taginput';
+import { SkillTagInput } from '@/components/ui/skill-tag-input';
 import { useProjectPages } from '@/features/projects/hooks/useProjectPages';
 import { useProject } from '@/features/projects/hooks/useProject';
 import { useProjectForm } from '@/features/projects/hooks';
@@ -464,10 +465,10 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
 
                 <div className="space-y-2">
                   <Label className="text-base">Technologies</Label>
-                  <TagInput
+                  <SkillTagInput
                     value={formData.technologies}
                     onChange={(technologies) => setFormData({ ...formData, technologies })}
-                    placeholder="Type a technology and press Enter"
+                    placeholder="Search skills or type to add..."
                   />
                   <p className="text-xs text-muted-foreground">
                     Technologies and tools used in this project

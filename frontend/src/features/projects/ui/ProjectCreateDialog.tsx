@@ -28,6 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ArrowRight, ArrowLeft, Github, Check, Star, GitFork } from 'lucide-react';
 import { TagInput } from '@/components/ui/taginput';
+import { SkillTagInput } from '@/components/ui/skill-tag-input';
 import { RichTextEditor } from '@/features/projects/ui/RichTextEditor';
 import { ImageUploadField } from '@/features/uploads/ui/ImageUploadField';
 import { Badge } from '@/components/ui/badge';
@@ -460,10 +461,10 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
 
                   <div className="space-y-2">
                     <Label>Technologies</Label>
-                    <TagInput
+                    <SkillTagInput
                       value={formData.technologies}
                       onChange={(technologies) => setFormData({ ...formData, technologies })}
-                      placeholder="Type a technology and press Enter"
+                      placeholder="Search skills or type to add..."
                     />
                   </div>
 

@@ -4,6 +4,7 @@ import { ArrowRight, Github, Linkedin, Mail } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { ProjectCard } from "@/features/projects/ui/ProjectCard";
 import { TestimonialsSection } from "@/features/testimonials/ui/TestimonialsSection";
+import { CVDownloadButton } from "@/features/cv/ui/CVDownloadButton";
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { localizeProject } from '@/lib/localize';
 
@@ -85,6 +86,7 @@ export default async function HomePage({ params }: Props) {
                     {t('viewWork')} <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
+                <CVDownloadButton variant="outline" size="lg" className="rounded-2xl" />
                 <Button asChild size="lg" variant="outline" className="rounded-2xl">
                   <Link href="/contact">{t('getInTouch')}</Link>
                 </Button>

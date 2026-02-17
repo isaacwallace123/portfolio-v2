@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LayoutDashboard } from "lucide-react";
 import { GitHubSettingsCard } from "@/features/settings/ui/GitHubSettingsCard";
+import { CVSettingsCard } from "@/features/cv/ui/CVSettingsCard";
 
 async function getStats() {
   const [projectTotal, projectPublished, testimonialTotal, testimonialPending, skillCount, contactTotal, contactUnread, experienceCount] =
@@ -120,6 +121,9 @@ export default async function AdminDashboard() {
 
       {/* GitHub Settings */}
       <GitHubSettingsCard />
+
+      {/* CV Management */}
+      <CVSettingsCard />
     </div>
   );
 }

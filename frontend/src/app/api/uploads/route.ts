@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
 }
 
 // Allowed subfolders for uploads
-const ALLOWED_FOLDERS = ['icons'];
+const ALLOWED_FOLDERS = ['icons', 'cv_en', 'cv_fr'];
 
 // POST — upload a file (admin only)
 export async function POST(request: NextRequest) {

@@ -18,6 +18,8 @@ export type CreateTestimonialDto = {
   linkedin?: string;
   message: string;
   rating: number;
+  _hp_field?: string;
+  _timestamp?: number;
 };
 
 export type UpdateTestimonialDto = Partial<CreateTestimonialDto> & {

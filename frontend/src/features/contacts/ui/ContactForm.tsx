@@ -12,6 +12,7 @@ import { useTranslations } from 'next-intl';
 
 export function ContactForm() {
   const t = useTranslations('contact');
+  const [formLoadTime] = useState(() => Date.now());
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
@@ -39,6 +40,8 @@ export function ContactForm() {
         email: email.trim(),
         subject: subject.trim(),
         message: message.trim(),
+        _hp_field: '',
+        _timestamp: formLoadTime,
       });
       toast.success(t('success'));
       setSent(true);
@@ -136,6 +139,26 @@ export function ContactForm() {
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
             />
           </div>
+
+          {/* Honeypot field (hidden from humans, bots fill it) */}
+          <input
+            type="text"
+            name="_hp_field"
+            defaultValue=""
+            style={{
+              position: 'absolute',
+              left: '-9999px',
+              opacity: 0,
+              height: 0,
+              width: 0,
+            }}
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+          />
+
+          {/* Timestamp field */}
+          <input type="hidden" name="_timestamp" value={formLoadTime} />
 
           <Button type="submit" disabled={sending} className="gap-2">
             <Send className="h-4 w-4" />

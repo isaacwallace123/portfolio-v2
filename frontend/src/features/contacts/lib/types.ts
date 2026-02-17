@@ -14,6 +14,8 @@ export type CreateContactDto = {
   email: string;
   subject: string;
   message: string;
+  _hp_field?: string;
+  _timestamp?: number;
 };
 
 export type UpdateContactDto = {

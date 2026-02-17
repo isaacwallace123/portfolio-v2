@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/features/auth/model/session';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { checkRateLimit, RATE_LIMITS } from '@/shared/lib/rate-limiter';
+import { checkSpam, stripSpamFields } from '@/shared/lib/spam-prevention';
 
 const contactSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -61,8 +63,20 @@ export async function GET() {
 // POST is public — anyone can submit a contact message
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimit = await checkRateLimit(request, RATE_LIMITS.CONTACT_FORM, 'contact');
+    if (rateLimit.limited) return rateLimit.response;
+
     const body = await request.json();
-    const data = contactSchema.parse(body);
+
+    // Spam checks
+    const spamCheck = checkSpam(body);
+    if (spamCheck.isSpam) return spamCheck.response;
+
+    // Clean spam fields
+    const cleanedBody = stripSpamFields(body);
+
+    const data = contactSchema.parse(cleanedBody);
 
     const contact = await prisma.contactMessage.create({
       data: {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join, extname } from 'path';
 import { randomUUID } from 'crypto';
+import { checkRateLimit, RATE_LIMITS } from '@/shared/lib/rate-limiter';
 
 const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads');
 
@@ -27,6 +28,10 @@ function getExtension(mimeType: string): string {
 // POST — public image upload (for testimonial avatars)
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimit = await checkRateLimit(request, RATE_LIMITS.IMAGE_UPLOAD, 'upload');
+    if (rateLimit.limited) return rateLimit.response;
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 

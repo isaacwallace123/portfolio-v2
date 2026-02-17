@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/features/auth/model/session';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { checkRateLimit, RATE_LIMITS } from '@/shared/lib/rate-limiter';
+import { checkSpam, stripSpamFields } from '@/shared/lib/spam-prevention';
 
 const testimonialSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -57,8 +59,20 @@ export async function GET(request: NextRequest) {
 // POST is public — anyone can submit a testimonial
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimit = await checkRateLimit(request, RATE_LIMITS.TESTIMONIAL, 'testimonial');
+    if (rateLimit.limited) return rateLimit.response;
+
     const body = await request.json();
-    const data = testimonialSchema.parse(body);
+
+    // Spam checks
+    const spamCheck = checkSpam(body);
+    if (spamCheck.isSpam) return spamCheck.response;
+
+    // Clean spam fields
+    const cleanedBody = stripSpamFields(body);
+
+    const data = testimonialSchema.parse(cleanedBody);
 
     const testimonial = await prisma.testimonial.create({
       data: {

@@ -18,6 +18,7 @@ type TestimonialFormProps = {
 
 export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
   const t = useTranslations('testimonials');
+  const [formLoadTime] = useState(() => Date.now());
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -95,6 +96,8 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
         linkedin: linkedin.trim() || undefined,
         message: message.trim(),
         rating,
+        _hp_field: '',
+        _timestamp: formLoadTime,
       });
       toast.success(t('submitted'));
       setName('');
@@ -211,6 +214,26 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
           minLength={10}
         />
       </div>
+
+      {/* Honeypot field (hidden from humans, bots fill it) */}
+      <input
+        type="text"
+        name="_hp_field"
+        defaultValue=""
+        style={{
+          position: 'absolute',
+          left: '-9999px',
+          opacity: 0,
+          height: 0,
+          width: 0,
+        }}
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+      />
+
+      {/* Timestamp field */}
+      <input type="hidden" name="_timestamp" value={formLoadTime} />
 
       <Button type="submit" className="w-full" disabled={submitting}>
         {submitting ? t('submitting') : t('submit')}

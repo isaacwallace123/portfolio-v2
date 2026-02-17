@@ -12,6 +12,7 @@ import { useTheme } from "@/shared/providers/ThemeProvider";
 import Image from "next/image";
 import type { Skill } from "@/features/skills/lib/types";
 import { GitHubSection } from "@/features/github/ui/GitHubSection";
+import { HobbiesSection } from "@/features/hobbies/ui/HobbiesSection";
 import { useTranslations, useLocale } from "next-intl";
 import type { Experience, ExperienceMedia } from "@/features/experience/lib/types";
 import { localizeExperience } from "@/lib/localize";
@@ -434,6 +435,9 @@ export default function AboutPage() {
                 </div>
               </div>
             </div>
+
+            {/* Hobbies & Interests */}
+            <HobbiesSection />
 
             {/* GitHub — repos, languages, radar chart */}
             <GitHubSection />

@@ -15,6 +15,9 @@ import {
   User,
   Briefcase,
   Network,
+  Heart,
+  Phone,
+  Server,
 } from 'lucide-react';
 
 const adminItems = [
@@ -22,6 +25,7 @@ const adminItems = [
   { href: '/admin/projects', icon: FolderOpen, label: 'Projects' },
   { href: '/admin/skills', icon: FileText, label: 'Skills' },
   { href: '/admin/experience', icon: Briefcase, label: 'Experience' },
+  { href: '/admin/hobbies', icon: Heart, label: 'Hobbies' },
   { href: '/admin/testimonials', icon: MessageSquare, label: 'Testimonials' },
   { href: '/admin/contacts', icon: Mail, label: 'Contacts' },
   { href: '/admin/uploads', icon: HardDrive, label: 'Uploads' },
@@ -32,6 +36,8 @@ const siteItems = [
   { href: '/', icon: Home, label: 'Home' },
   { href: '/about', icon: User, label: 'About' },
   { href: '/projects', icon: FolderOpen, label: 'Projects' },
+  { href: '/contact', icon: Phone, label: 'Contact' },
+  { href: '/homelab', icon: Server, label: 'Homelab' },
 ];
 
 export function AdminSidebar() {

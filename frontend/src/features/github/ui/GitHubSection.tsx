@@ -1,7 +1,6 @@
 'use client';
 
-import { Github, Star, GitFork, ExternalLink } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Github, Star, GitFork, ExternalLink, ArrowUpRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useGithubStats } from '../hooks/useGithubStats';
 import { LanguageRadarChart } from './LanguageRadarChart';
@@ -14,137 +13,104 @@ export function GitHubSection() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold tracking-tight">{t('title')}</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="h-24 animate-pulse bg-muted" />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="h-72 animate-pulse rounded-xl bg-muted/40" />
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-14 animate-pulse rounded-lg bg-muted/40" />
           ))}
         </div>
       </div>
     );
   }
 
-  if (!stats || stats.repos.length === 0) {
-    return null;
-  }
+  if (!stats || stats.repos.length === 0) return null;
 
-  const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+  const topRepos = stats.repos.slice(0, 5);
+
+  const profileUrl = `https://github.com/isaacwallace123`;
 
   return (
-    <div className="space-y-6 min-w-0 overflow-hidden">
-      <div className="flex items-center gap-2">
-        <Github className="h-6 w-6" />
-        <h2 className="text-2xl font-bold tracking-tight">{t('title')}</h2>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t('repositories')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.repos.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">{t('publicRepos')}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t('languages')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.languages.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">{t('uniqueLanguages')}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t('topLanguage')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.languages[0]?.language || '—'}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.languages[0] ? t('percentOfTotal', { percentage: stats.languages[0].percentage }) : t('noData')}
-            </p>
-          </CardContent>
-        </Card>
+    <div className="space-y-8 min-w-0 overflow-hidden">
+      {/* Inline stats strip */}
+      <div className="flex flex-wrap gap-6">
+        <div className="flex flex-col">
+          <span className="text-2xl font-bold">{stats.repos.length}</span>
+          <span className="text-xs text-muted-foreground uppercase tracking-wider">{t('publicRepos')}</span>
+        </div>
+        <div className="w-px bg-border/50 self-stretch" />
+        <div className="flex flex-col">
+          <span className="text-2xl font-bold">{stats.languages.length}</span>
+          <span className="text-xs text-muted-foreground uppercase tracking-wider">{t('uniqueLanguages')}</span>
+        </div>
+        <div className="w-px bg-border/50 self-stretch" />
+        <div className="flex flex-col">
+          <span className="text-2xl font-bold">{stats.languages[0]?.language || '—'}</span>
+          <span className="text-xs text-muted-foreground uppercase tracking-wider">{t('topLanguage')}</span>
+        </div>
       </div>
 
       {/* Chart + Repos */}
-      <div className="grid gap-6 lg:grid-cols-2 min-w-0">
+      <div className="grid gap-8 lg:grid-cols-2 min-w-0">
         <LanguageRadarChart />
 
-        <Card className="bg-background/80 backdrop-blur dark:bg-background/60 min-w-0">
-          <CardHeader>
-            <CardTitle>{t('repositories')}</CardTitle>
-            <CardDescription>{t('publicGithubRepos')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 max-h-100 overflow-y-auto min-w-0">
-            {stats.repos.map((repo) => (
-              <div
-                key={repo.name}
-                className="flex items-center justify-between rounded-lg border p-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate font-medium text-sm">{repo.name}</p>
-                    {repo.language && (
-                      <Badge variant="secondary" className="text-[10px] shrink-0">
-                        {repo.language}
-                      </Badge>
-                    )}
-                  </div>
-                  {repo.description && (
-                    <p className="truncate text-xs text-muted-foreground mt-0.5">
-                      {repo.description}
-                    </p>
+        <div className="space-y-1 min-w-0">
+          {topRepos.map((repo) => (
+            <a
+              key={repo.name}
+              href={repo.html_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center justify-between gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-muted/40"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-sm font-medium group-hover:text-foreground">
+                    {repo.name}
+                  </span>
+                  {repo.language && (
+                    <Badge variant="secondary" className="text-[10px] shrink-0 px-1.5 py-0">
+                      {repo.language}
+                    </Badge>
                   )}
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {t('updated', { date: formatDate(repo.updated_at) })}
+                </div>
+                {repo.description && (
+                  <p className="truncate text-xs text-muted-foreground mt-0.5">
+                    {repo.description}
                   </p>
-                </div>
-                <div className="flex items-center gap-3 ml-3">
-                  {repo.stars > 0 && (
-                    <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                      <Star className="h-3 w-3" />
-                      {repo.stars}
-                    </span>
-                  )}
-                  {repo.forks > 0 && (
-                    <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                      <GitFork className="h-3 w-3" />
-                      {repo.forks}
-                    </span>
-                  )}
-                  <a
-                    href={repo.html_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                </div>
+                )}
               </div>
-            ))}
-          </CardContent>
-        </Card>
+              <div className="flex items-center gap-3 shrink-0 text-muted-foreground">
+                {repo.stars > 0 && (
+                  <span className="flex items-center gap-0.5 text-xs">
+                    <Star className="h-3 w-3" />
+                    {repo.stars}
+                  </span>
+                )}
+                {repo.forks > 0 && (
+                  <span className="flex items-center gap-0.5 text-xs">
+                    <GitFork className="h-3 w-3" />
+                    {repo.forks}
+                  </span>
+                )}
+                <ArrowUpRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </a>
+          ))}
+
+          <div className="pt-3 pl-4">
+            <a
+              href={profileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Github className="h-3.5 w-3.5" />
+              {locale === 'fr' ? 'Voir le profil GitHub' : 'View GitHub Profile'}
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );

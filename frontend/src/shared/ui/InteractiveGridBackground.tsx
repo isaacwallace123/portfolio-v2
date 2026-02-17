@@ -122,17 +122,16 @@ export function InteractiveGridBackground() {
         ctx.beginPath();
         ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2);
         ctx.fillStyle = `hsl(${border})`;
-        ctx.globalAlpha = idleAlpha;
+        ctx.globalAlpha = idleAlpha + closeness * (isDark ? 0.2 : 0.15);
         ctx.fill();
 
-        // // Primary overlay (COMMENTED OUT)
-        // if (closeness > 0) {
-        //   ctx.beginPath();
-        //   ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2);
-        //   ctx.fillStyle = `hsl(${primary})`;
-        //   ctx.globalAlpha = (isDark ? 0.45 : 0.30) * Math.pow(closeness, 1.8);
-        //   ctx.fill();
-        // }
+        if (closeness > 0) {
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2);
+          ctx.fillStyle = `hsl(${primary})`;
+          ctx.globalAlpha = (isDark ? 0.55 : 0.40) * Math.pow(closeness, 1.5);
+          ctx.fill();
+        }
       }
 
       ctx.globalAlpha = 1;

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/shared/providers/ThemeProvider";
-import { InteractiveGridBackground } from "@/shared/ui/InteractiveGridBackground";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
@@ -30,7 +29,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="antialiased">
         <ThemeProvider>
-          <InteractiveGridBackground />
           {children}
           <Toaster />
         </ThemeProvider>

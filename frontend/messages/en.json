@@ -8,7 +8,9 @@
     "logout": "Logout",
     "adminPanel": "Admin Panel",
     "adminDashboard": "Admin Dashboard",
-    "homelab": "Homelab"
+    "homelab": "Homelab",
+    "experience": "Experience",
+    "skills": "Skills"
   },
   "home": {
     "available": "Available for opportunities",

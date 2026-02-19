@@ -95,9 +95,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
   const gridClass = cn(
     'grid gap-10',
-    hasSubPages && hasToc ? 'lg:grid-cols-[180px_1fr_160px]' :
+    hasSubPages && hasToc ? 'lg:grid-cols-[180px_1fr_220px]' :
     hasSubPages           ? 'lg:grid-cols-[180px_1fr]' :
-    hasToc                ? 'lg:grid-cols-[1fr_160px]' : ''
+    hasToc                ? 'lg:grid-cols-[1fr_220px]' : ''
   );
 
   return (

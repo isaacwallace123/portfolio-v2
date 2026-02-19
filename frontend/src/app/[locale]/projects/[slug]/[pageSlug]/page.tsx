@@ -105,9 +105,9 @@ export default async function PageView({ params }: PageViewProps) {
 
   const gridClass = cn(
     'grid gap-10',
-    hasPageTree && hasToc ? 'lg:grid-cols-[180px_1fr_160px]' :
+    hasPageTree && hasToc ? 'lg:grid-cols-[180px_1fr_220px]' :
     hasPageTree           ? 'lg:grid-cols-[180px_1fr]' :
-    hasToc                ? 'lg:grid-cols-[1fr_160px]' : ''
+    hasToc                ? 'lg:grid-cols-[1fr_220px]' : ''
   );
 
   return (

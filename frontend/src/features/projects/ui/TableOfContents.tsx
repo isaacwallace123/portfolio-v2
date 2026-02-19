@@ -3,6 +3,10 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import type { TocItem } from '../lib/toc';
+
+function stripEmojis(text: string): string {
+  return text.replace(/\p{Emoji}/gu, '').replace(/\s+/g, ' ').trim();
+}
 // TocItem is a plain interface — safe to import from lib
 
 export type { TocItem } from '../lib/toc';
@@ -45,13 +49,13 @@ export function TableOfContents({ items }: { items: TocItem[] }) {
             href={`#${item.id}`}
             className={cn(
               'block py-1.5 text-sm border-l-2 transition-colors',
-              item.level === 3 ? 'pl-6' : 'pl-3',
+              item.level === 1 ? 'pl-3' : item.level === 2 ? 'pl-6' : 'pl-9',
               activeId === item.id
                 ? 'border-primary text-foreground font-medium'
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
             )}
           >
-            {item.text}
+            {stripEmojis(item.text)}
           </a>
         ))}
       </div>

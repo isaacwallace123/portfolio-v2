@@ -247,7 +247,7 @@ export function PageBuilder({ projectId, pageId }: PageBuilderProps) {
         />
 
         {!previewMode && (
-          <div className="w-72 shrink-0">
+          <div className="w-96 shrink-0">
             <PropertiesPanel
               selectedBlock={selectedBlock}
               pageSettings={{ title, slug, isStartPage, hasOtherStartPage }}

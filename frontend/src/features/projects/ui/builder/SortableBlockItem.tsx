@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Block, BlockProps, HeadingProps, ParagraphProps, ImageProps, DividerProps, CodeProps, CalloutProps, StatsProps, FeaturesProps } from '../../lib/blocks';
 import { HeadingBlockPreview } from './blocks/HeadingBlock';
-import { ParagraphBlockPreview } from './blocks/ParagraphBlock';
+import { ParagraphBlockPreview, ParagraphInlineEditor } from './blocks/ParagraphBlock';
 import { ImageBlockPreview } from './blocks/ImageBlock';
 import { DividerBlockPreview } from './blocks/DividerBlock';
 import { CodeBlockPreview } from './blocks/CodeBlock';
@@ -21,10 +21,13 @@ interface SortableBlockItemProps {
   onSelect: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  onBlockChange: (id: string, props: BlockProps) => void;
 }
 
-export function SortableBlockItem({ block, isSelected, onSelect, onDelete, onDuplicate }: SortableBlockItemProps) {
+export function SortableBlockItem({ block, isSelected, onSelect, onDelete, onDuplicate, onBlockChange }: SortableBlockItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+
+  const isInlineEditing = block.type === 'paragraph' && isSelected;
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -43,19 +46,29 @@ export function SortableBlockItem({ block, isSelected, onSelect, onDelete, onDup
       )}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
     >
-      {/* Drag handle */}
-      <div
-        {...attributes}
-        {...listeners}
-        className="absolute left-0 top-0 bottom-0 flex items-center justify-center w-8 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <GripVertical className="h-4 w-4" />
-      </div>
+      {/* Drag handle — hidden while inline editing to avoid conflicts */}
+      {!isInlineEditing && (
+        <div
+          {...attributes}
+          {...listeners}
+          className="absolute left-0 top-0 bottom-0 flex items-center justify-center w-8 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="h-4 w-4" />
+        </div>
+      )}
 
       {/* Block content */}
-      <div className="px-10 py-3">
-        <BlockPreviewSwitch block={block} />
+      <div className={cn('py-3', isInlineEditing ? 'px-4' : 'px-10')}>
+        {isInlineEditing ? (
+          <ParagraphInlineEditor
+            key={block.id}
+            props={block.props as ParagraphProps}
+            onChange={(newProps) => onBlockChange(block.id, newProps)}
+          />
+        ) : (
+          <BlockPreviewSwitch block={block} />
+        )}
       </div>
 
       {/* Action buttons */}

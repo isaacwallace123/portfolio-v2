@@ -90,6 +90,7 @@ export function BlockCanvas({
                     onSelect={() => onSelect(block.id)}
                     onDelete={() => onDelete(block.id)}
                     onDuplicate={() => onDuplicate(block.id)}
+                    onBlockChange={onBlockChange}
                   />
                 ))}
               </div>

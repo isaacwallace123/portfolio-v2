@@ -4,10 +4,9 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Star } from 'lucide-react';
-import type { Block, BlockProps, HeadingProps, ParagraphProps, ImageProps, DividerProps, CodeProps, CalloutProps, StatsProps, FeaturesProps } from '../../lib/blocks';
+import type { Block, BlockProps, HeadingProps, ImageProps, DividerProps, CodeProps, CalloutProps, StatsProps, FeaturesProps } from '../../lib/blocks';
 import { BLOCK_LABELS } from '../../lib/blocks';
 import { HeadingBlockProperties } from './blocks/HeadingBlock';
-import { ParagraphBlockProperties } from './blocks/ParagraphBlock';
 import { ImageBlockProperties } from './blocks/ImageBlock';
 import { DividerBlockProperties } from './blocks/DividerBlock';
 import { CodeBlockProperties } from './blocks/CodeBlock';
@@ -45,7 +44,13 @@ export function PropertiesPanel({
 
       <div className="flex-1 overflow-y-auto p-4">
         {selectedBlock ? (
-          <BlockProperties block={selectedBlock} onChange={(props) => onBlockChange(selectedBlock.id, props)} />
+          selectedBlock.type === 'paragraph' ? (
+            <p className="text-sm text-muted-foreground italic">
+              Click the block in the canvas to edit.
+            </p>
+          ) : (
+            <BlockProperties key={selectedBlock.id} block={selectedBlock} onChange={(props) => onBlockChange(selectedBlock.id, props)} />
+          )
         ) : (
           <PageSettingsForm settings={pageSettings} onChange={onPageSettingsChange} />
         )}
@@ -58,8 +63,6 @@ function BlockProperties({ block, onChange }: { block: Block; onChange: (props: 
   switch (block.type) {
     case 'heading':
       return <HeadingBlockProperties props={block.props as HeadingProps} onChange={onChange as (p: HeadingProps) => void} />;
-    case 'paragraph':
-      return <ParagraphBlockProperties props={block.props as ParagraphProps} onChange={onChange as (p: ParagraphProps) => void} />;
     case 'image':
       return <ImageBlockProperties props={block.props as ImageProps} onChange={onChange as (p: ImageProps) => void} />;
     case 'divider':

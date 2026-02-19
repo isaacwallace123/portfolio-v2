@@ -168,14 +168,14 @@ export function PageBuilder({ projectId, pageId }: PageBuilderProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-full">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background">
+    <div className="flex flex-col h-full overflow-hidden bg-background">
       {/* Top bar */}
       <header className="flex items-center gap-3 px-4 py-2.5 border-b bg-background/95 backdrop-blur shrink-0">
         <Button

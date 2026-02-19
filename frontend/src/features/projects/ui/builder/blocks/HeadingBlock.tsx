@@ -19,7 +19,7 @@ const TAG_CLASS: Record<number, string> = {
 export function HeadingBlockPreview({ props }: PreviewProps) {
   const Tag = `h${props.level}` as 'h1' | 'h2' | 'h3';
   return (
-    <Tag id={props.text ? headingId(props.text) : undefined} className={TAG_CLASS[props.level] + ' py-1 scroll-mt-20'}>
+    <Tag id={props.text ? headingId(props.text) : undefined} className={TAG_CLASS[props.level] + ' pb-1 scroll-mt-20'}>
       {props.text || <span className="text-muted-foreground/40 italic">Heading text...</span>}
     </Tag>
   );

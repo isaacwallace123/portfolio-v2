@@ -1,7 +1,7 @@
 'use client';
 
 import type { ComponentType } from 'react';
-import { Heading2, AlignLeft, ImageIcon, Minus, Code2, AlertCircle, BarChart3, Layers } from 'lucide-react';
+import { Heading2, AlignLeft, List, ImageIcon, Minus, Code2, AlertCircle, BarChart3, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { BlockType } from '../../lib/blocks';
 
@@ -16,6 +16,7 @@ const SECTIONS: Section[] = [
     blocks: [
       { type: 'heading',   label: 'Heading',    icon: Heading2,   description: 'H1, H2, or H3 section title' },
       { type: 'paragraph', label: 'Paragraph',  icon: AlignLeft,  description: 'Rich text with formatting' },
+      { type: 'list',      label: 'List',       icon: List,       description: 'Bullet, numbered, dash, or checklist' },
       { type: 'divider',   label: 'Divider',    icon: Minus,      description: 'Horizontal separator line' },
     ],
   },

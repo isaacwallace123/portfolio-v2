@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 export type BlockType =
   | 'heading'
   | 'paragraph'
+  | 'list'
   | 'image'
   | 'divider'
   | 'code'
@@ -26,6 +27,11 @@ export interface ImageProps {
   alt: string;
   caption: string;
   size: 'full' | 'medium' | 'small';
+}
+
+export interface ListProps {
+  style: 'bullet' | 'numbered' | 'dash' | 'check';
+  items: string[];
 }
 
 export interface DividerProps {
@@ -65,6 +71,7 @@ export interface FeaturesProps {
 export type BlockProps =
   | HeadingProps
   | ParagraphProps
+  | ListProps
   | ImageProps
   | DividerProps
   | CodeProps
@@ -83,6 +90,7 @@ export interface Block {
 const BLOCK_DEFAULTS: Record<BlockType, BlockProps> = {
   heading: { level: 2, text: 'Section Heading' } as HeadingProps,
   paragraph: { html: '<p>Write something here...</p>' } as ParagraphProps,
+  list: { style: 'bullet', items: [''] } as ListProps,
   image: { src: '', alt: '', caption: '', size: 'full' } as ImageProps,
   divider: { style: 'solid' } as DividerProps,
   code: { language: 'typescript', code: '// Your code here' } as CodeProps,
@@ -138,6 +146,7 @@ function generateId(): string {
 export const BLOCK_LABELS: Record<BlockType, string> = {
   heading: 'Heading',
   paragraph: 'Paragraph',
+  list: 'List',
   image: 'Image',
   divider: 'Divider',
   code: 'Code Block',

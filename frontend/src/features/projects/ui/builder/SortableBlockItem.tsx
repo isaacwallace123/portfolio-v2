@@ -5,9 +5,10 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Trash2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { Block, BlockProps, HeadingProps, ParagraphProps, ImageProps, DividerProps, CodeProps, CalloutProps, StatsProps, FeaturesProps } from '../../lib/blocks';
+import type { Block, BlockProps, HeadingProps, ParagraphProps, ListProps, ImageProps, DividerProps, CodeProps, CalloutProps, StatsProps, FeaturesProps } from '../../lib/blocks';
 import { HeadingBlockPreview } from './blocks/HeadingBlock';
 import { ParagraphBlockPreview, ParagraphInlineEditor } from './blocks/ParagraphBlock';
+import { ListBlockPreview, ListInlineEditor } from './blocks/ListBlock';
 import { ImageBlockPreview } from './blocks/ImageBlock';
 import { DividerBlockPreview } from './blocks/DividerBlock';
 import { CodeBlockPreview } from './blocks/CodeBlock';
@@ -27,7 +28,7 @@ interface SortableBlockItemProps {
 export function SortableBlockItem({ block, isSelected, onSelect, onDelete, onDuplicate, onBlockChange }: SortableBlockItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
 
-  const isInlineEditing = block.type === 'paragraph' && isSelected;
+  const isInlineEditing = (block.type === 'paragraph' || block.type === 'list') && isSelected;
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -60,10 +61,16 @@ export function SortableBlockItem({ block, isSelected, onSelect, onDelete, onDup
 
       {/* Block content */}
       <div className={cn('py-3', isInlineEditing ? 'px-4' : 'px-10')}>
-        {isInlineEditing ? (
+        {isInlineEditing && block.type === 'paragraph' ? (
           <ParagraphInlineEditor
             key={block.id}
             props={block.props as ParagraphProps}
+            onChange={(newProps) => onBlockChange(block.id, newProps)}
+          />
+        ) : isInlineEditing && block.type === 'list' ? (
+          <ListInlineEditor
+            key={block.id}
+            props={block.props as ListProps}
             onChange={(newProps) => onBlockChange(block.id, newProps)}
           />
         ) : (
@@ -103,6 +110,7 @@ function BlockPreviewSwitch({ block }: { block: Block }) {
   switch (block.type) {
     case 'heading':   return <HeadingBlockPreview   props={block.props as HeadingProps} />;
     case 'paragraph': return <ParagraphBlockPreview props={block.props as ParagraphProps} />;
+    case 'list':      return <ListBlockPreview      props={block.props as ListProps} />;
     case 'image':     return <ImageBlockPreview     props={block.props as ImageProps} />;
     case 'divider':   return <DividerBlockPreview   props={block.props as DividerProps} />;
     case 'code':      return <CodeBlockPreview      props={block.props as CodeProps} />;

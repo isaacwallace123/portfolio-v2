@@ -3,6 +3,7 @@
 import type { Block } from '../lib/blocks';
 import { HeadingBlockPreview } from './builder/blocks/HeadingBlock';
 import { ParagraphBlockPreview } from './builder/blocks/ParagraphBlock';
+import { ListBlockPreview } from './builder/blocks/ListBlock';
 import { ImageBlockPreview } from './builder/blocks/ImageBlock';
 import { DividerBlockPreview } from './builder/blocks/DividerBlock';
 import { CodeBlockPreview } from './builder/blocks/CodeBlock';
@@ -12,6 +13,7 @@ import { FeaturesBlockPreview } from './builder/blocks/FeaturesBlock';
 import type {
   HeadingProps,
   ParagraphProps,
+  ListProps,
   ImageProps,
   DividerProps,
   CodeProps,
@@ -26,11 +28,12 @@ interface BlockRendererProps {
 
 export function BlockRenderer({ blocks }: BlockRendererProps) {
   return (
-    <div className="space-y-6">
-      {blocks.map((block) => (
-        <div key={block.id}>
+    <div className="space-y-2">
+      {blocks.map((block, index) => (
+        <div key={block.id} className={block.type === 'heading' && index > 0 ? 'mt-8' : undefined}>
           {block.type === 'heading' && <HeadingBlockPreview props={block.props as HeadingProps} />}
           {block.type === 'paragraph' && <ParagraphBlockPreview props={block.props as ParagraphProps} />}
+          {block.type === 'list'      && <ListBlockPreview      props={block.props as ListProps} />}
           {block.type === 'image' && <ImageBlockPreview props={block.props as ImageProps} />}
           {block.type === 'divider' && <DividerBlockPreview props={block.props as DividerProps} />}
           {block.type === 'code' && <CodeBlockPreview props={block.props as CodeProps} />}

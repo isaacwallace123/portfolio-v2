@@ -4,9 +4,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Star } from 'lucide-react';
-import type { Block, BlockProps, HeadingProps, ImageProps, DividerProps, CodeProps, CalloutProps, StatsProps, FeaturesProps } from '../../lib/blocks';
+import type { Block, BlockProps, HeadingProps, ListProps, ImageProps, DividerProps, CodeProps, CalloutProps, StatsProps, FeaturesProps } from '../../lib/blocks';
 import { BLOCK_LABELS } from '../../lib/blocks';
 import { HeadingBlockProperties } from './blocks/HeadingBlock';
+import { ListBlockProperties } from './blocks/ListBlock';
 import { ImageBlockProperties } from './blocks/ImageBlock';
 import { DividerBlockProperties } from './blocks/DividerBlock';
 import { CodeBlockProperties } from './blocks/CodeBlock';
@@ -63,6 +64,8 @@ function BlockProperties({ block, onChange }: { block: Block; onChange: (props: 
   switch (block.type) {
     case 'heading':
       return <HeadingBlockProperties props={block.props as HeadingProps} onChange={onChange as (p: HeadingProps) => void} />;
+    case 'list':
+      return <ListBlockProperties props={block.props as ListProps} onChange={onChange as (p: ListProps) => void} />;
     case 'image':
       return <ImageBlockProperties props={block.props as ImageProps} onChange={onChange as (p: ImageProps) => void} />;
     case 'divider':

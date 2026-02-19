@@ -3,7 +3,7 @@ import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Github, ExternalLink, Calendar, Clock, FileText } from 'lucide-react';
+import { ArrowLeft, FileText } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { ProjectContent } from '@/features/projects/ui/ProjectContent';
 import { PageTreeNavigation } from '@/features/projects/ui/PageTreeNavigation';
@@ -100,122 +100,53 @@ export default async function PageView({ params }: PageViewProps) {
     ? page.outgoingConnections.map(connection => connection.targetPage).filter(Boolean)
     : [];
   const pageTree = buildPageTree(allPages);
-  const dateFmtLocale = locale === 'fr' ? 'fr-CA' : 'en-US';
+  const hasPageTree = pageTree.length > 1;
 
   return (
     <main className="relative flex-1">
-      <div className="mx-auto w-full max-w-7xl px-4 py-8">
-        <div className="mb-6">
+      <div className="mx-auto w-full max-w-5xl px-4 py-8">
+
+        {/* Back to overview */}
+        <div className="mb-8">
           <Button asChild variant="ghost" className="rounded-2xl -ml-4">
-            <Link href="/projects">
+            <Link href={`/projects/${project.slug}`}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              {t('backToProjects')}
+              {project.title}
             </Link>
           </Button>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-          <aside className="space-y-6">
-            <Card className="bg-background/80 backdrop-blur dark:bg-background/60 sticky top-8">
-              <CardContent className="p-6 space-y-6">
-                <div>
-                  <Link href={`/projects/${project.slug}`} className="hover:underline">
-                    <h2 className="text-xl font-bold mb-2">{project.title}</h2>
-                  </Link>
-                  {project.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-3">{project.description}</p>
-                  )}
-                </div>
+        {/* Page title */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{page.title}</h1>
+        </div>
 
-                {project.technologies && project.technologies.length > 0 && (
-                  <div className="space-y-2">
-                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      {t('techStack')}
-                    </h3>
-                    <div className="flex flex-wrap gap-1.5">
-                      {project.technologies.map((tech) => (
-                        <Badge key={tech} variant="outline" className="text-xs">{tech}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {(project.liveUrl || project.githubUrl) && (
-                  <div className="flex flex-col gap-2 pt-2 border-t">
-                    {project.liveUrl && (
-                      <Button asChild size="sm" className="w-full rounded-2xl">
-                        <a href={project.liveUrl} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="mr-2 h-3 w-3" />
-                          {t('viewLive')}
-                        </a>
-                      </Button>
-                    )}
-                    {project.githubUrl && (
-                      <Button asChild variant="outline" size="sm" className="w-full rounded-2xl">
-                        <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
-                          <Github className="mr-2 h-3 w-3" />
-                          {t('viewCode')}
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {pageTree.length > 0 && (
-                  <div className="border-t pt-6">
-                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      {t('pages')}
-                    </h3>
-                    <PageTreeNavigation pageTree={pageTree} currentPageId={page.id} projectSlug={project.slug} />
-                  </div>
-                )}
-
-                <div className="border-t pt-6 space-y-3 text-xs text-muted-foreground">
-                  {project.startDate && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-3 w-3" />
-                      <span>
-                        {new Date(project.startDate).toLocaleDateString(dateFmtLocale, { month: 'short', year: 'numeric' })}
-                        {project.endDate ? (
-                          <> - {new Date(project.endDate).toLocaleDateString(dateFmtLocale, { month: 'short', year: 'numeric' })}</>
-                        ) : (
-                          <> - {t('present')}</>
-                        )}
-                      </span>
-                    </div>
-                  )}
-                  {project.publishedAt && (
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-3 w-3" />
-                      <span>
-                        {t('published', {
-                          date: new Date(project.publishedAt).toLocaleDateString(dateFmtLocale, { month: 'short', day: 'numeric', year: 'numeric' }),
-                        })}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </aside>
-
+        {/* Main content + optional page tree sidebar */}
+        <div className={hasPageTree ? 'grid gap-8 lg:grid-cols-[1fr_220px]' : 'space-y-8'}>
           <div className="space-y-8 min-w-0">
-            <div className="space-y-4">
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight sm:text-4xl mb-2">{page.title}</h1>
-              </div>
-            </div>
-
             <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
-              <CardContent className="pt-8">
+              <CardContent className="p-8">
                 <ProjectContent content={page.content} />
               </CardContent>
             </Card>
 
+            {/* Page tree nav on mobile */}
+            {hasPageTree && (
+              <Card className="bg-background/80 backdrop-blur dark:bg-background/60 lg:hidden">
+                <CardContent className="pt-6 pb-6">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    {t('pages')}
+                  </h3>
+                  <PageTreeNavigation pageTree={pageTree} currentPageId={page.id} projectSlug={project.slug} />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Continue reading */}
             {connectedPages.length > 0 && (
               <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
-                <CardContent className="pt-6">
+                <CardContent className="pt-6 pb-6">
                   <h3 className="font-semibold mb-4">{t('continueReading')}</h3>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {connectedPages.map((connectedPage) => (
@@ -237,17 +168,22 @@ export default async function PageView({ params }: PageViewProps) {
                 </CardContent>
               </Card>
             )}
-
-            <div className="flex justify-center pt-4">
-              <Button asChild variant="outline" className="rounded-2xl">
-                <Link href={`/projects/${project.slug}`}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  {t('backToOverview')}
-                </Link>
-              </Button>
-            </div>
           </div>
+
+          {/* Page tree sidebar on desktop */}
+          {hasPageTree && (
+            <aside className="hidden lg:block">
+              <div className="sticky top-8 space-y-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
+                  <FileText className="h-4 w-4" />
+                  {t('pages')}
+                </h3>
+                <PageTreeNavigation pageTree={pageTree} currentPageId={page.id} projectSlug={project.slug} />
+              </div>
+            </aside>
+          )}
         </div>
+
       </div>
     </main>
   );

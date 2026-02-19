@@ -22,6 +22,40 @@ export function GlobalBreadcrumbs() {
     return null;
   }
 
+  // On project detail pages, show only project-relative crumbs (no Home > Projects prefix)
+  if (segments[0] === 'projects' && segments.length >= 2) {
+    const projectSegments = segments.slice(1); // e.g. ['kleff'] or ['kleff', 'website']
+    return (
+      <div className="border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+        <div className="mx-auto w-full max-w-7xl px-4 py-3">
+          <nav className="flex items-center gap-2 text-sm">
+            {projectSegments.map((segment, index) => {
+              const href = '/projects/' + projectSegments.slice(0, index + 1).join('/');
+              const isLast = index === projectSegments.length - 1;
+              const label = decodeURIComponent(segment)
+                .split('-')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+
+              return (
+                <div key={href} className="flex items-center gap-2">
+                  {index > 0 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                  {isLast ? (
+                    <span className="text-foreground font-medium truncate max-w-50">{label}</span>
+                  ) : (
+                    <Link href={href} className="text-muted-foreground hover:text-foreground transition-colors truncate max-w-50">
+                      {label}
+                    </Link>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+        </div>
+      </div>
+    );
+  }
+
   const routeLabels: Record<string, string> = {
     'projects': t('projects'),
     'about': t('about'),

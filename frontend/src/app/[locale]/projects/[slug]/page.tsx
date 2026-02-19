@@ -3,7 +3,7 @@ import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Github, ExternalLink, Calendar, Clock, FileText } from 'lucide-react';
+import { ArrowLeft, Github, ExternalLink, Calendar, FileText } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { ProjectContent } from '@/features/projects/ui/ProjectContent';
 import { PageTreeNavigation } from '@/features/projects/ui/PageTreeNavigation';
@@ -82,12 +82,15 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const content = startPage?.content || project.content || '';
   const pageTree = buildPageTree(allPages);
   const otherPages = pageTree.filter(node => !node.page.isStartPage);
+  const hasSubPages = otherPages.length > 0;
   const dateFmtLocale = locale === 'fr' ? 'fr-CA' : 'en-US';
 
   return (
     <main className="relative flex-1">
-      <div className="mx-auto w-full max-w-7xl px-4 py-8">
-        <div className="mb-6">
+      <div className="mx-auto w-full max-w-5xl px-4 py-8">
+
+        {/* Back button */}
+        <div className="mb-8">
           <Button asChild variant="ghost" className="rounded-2xl -ml-4">
             <Link href="/projects">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -96,119 +99,108 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           </Button>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-          <aside className="space-y-6">
-            <Card className="bg-background/80 backdrop-blur dark:bg-background/60 sticky top-8">
-              <CardContent className="p-6 space-y-6">
-                <div>
-                  <h2 className="text-xl font-bold mb-2">{project.title}</h2>
-                  {project.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-3">{project.description}</p>
-                  )}
-                </div>
+        {/* Hero thumbnail */}
+        {project.thumbnail && (
+          <div className="aspect-video w-full overflow-hidden rounded-3xl border bg-muted mb-8">
+            <img src={project.thumbnail} alt={project.title} className="h-full w-full object-cover" />
+          </div>
+        )}
 
-                {project.technologies && project.technologies.length > 0 && (
-                  <div className="space-y-2">
-                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      {t('techStack')}
-                    </h3>
-                    <div className="flex flex-wrap gap-1.5">
-                      {project.technologies.map((tech) => (
-                        <Badge key={tech} variant="outline" className="text-xs">{tech}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {(project.liveUrl || project.githubUrl) && (
-                  <div className="flex flex-col gap-2 pt-2 border-t">
-                    {project.liveUrl && (
-                      <Button asChild size="sm" className="w-full rounded-2xl">
-                        <a href={project.liveUrl} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="mr-2 h-3 w-3" />
-                          {t('viewLive')}
-                        </a>
-                      </Button>
-                    )}
-                    {project.githubUrl && (
-                      <Button asChild variant="outline" size="sm" className="w-full rounded-2xl">
-                        <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
-                          <Github className="mr-2 h-3 w-3" />
-                          {t('viewCode')}
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {otherPages.length > 0 && (
-                  <div className="border-t pt-6">
-                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      {t('pages')}
-                    </h3>
-                    <PageTreeNavigation pageTree={pageTree} currentPageId={startPage?.id} projectSlug={project.slug} />
-                  </div>
-                )}
-
-                <div className="border-t pt-6 space-y-3 text-xs text-muted-foreground">
-                  {project.startDate && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-3 w-3" />
-                      <span>
-                        {new Date(project.startDate).toLocaleDateString(dateFmtLocale, { month: 'short', year: 'numeric' })}
-                        {project.endDate ? (
-                          <> - {new Date(project.endDate).toLocaleDateString(dateFmtLocale, { month: 'short', year: 'numeric' })}</>
-                        ) : (
-                          <> - {t('present')}</>
-                        )}
-                      </span>
-                    </div>
-                  )}
-                  {project.publishedAt && (
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-3 w-3" />
-                      <span>
-                        {t('published', {
-                          date: new Date(project.publishedAt).toLocaleDateString(dateFmtLocale, { month: 'short', day: 'numeric', year: 'numeric' }),
-                        })}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </aside>
-
-          <div className="space-y-8 min-w-0">
-            <div className="space-y-4">
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight sm:text-4xl mb-3">{project.title}</h1>
-                {project.tags && project.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {project.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary">{tag}</Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
+        {/* Project header */}
+        <div className="mb-8 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="space-y-2 flex-1 min-w-0">
+              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{project.title}</h1>
+              {project.description && (
+                <p className="text-muted-foreground leading-relaxed">{project.description}</p>
+              )}
             </div>
-
-            {project.thumbnail && (
-              <div className="aspect-video w-full overflow-hidden rounded-3xl border bg-muted">
-                <img src={project.thumbnail} alt={project.title} className="h-full w-full object-cover" />
+            {(project.liveUrl || project.githubUrl) && (
+              <div className="flex items-center gap-2 shrink-0">
+                {project.liveUrl && (
+                  <Button asChild size="sm" className="rounded-2xl">
+                    <a href={project.liveUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="mr-2 h-3 w-3" />
+                      {t('viewLive')}
+                    </a>
+                  </Button>
+                )}
+                {project.githubUrl && (
+                  <Button asChild variant="outline" size="sm" className="rounded-2xl">
+                    <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
+                      <Github className="mr-2 h-3 w-3" />
+                      {t('viewCode')}
+                    </a>
+                  </Button>
+                )}
               </div>
             )}
+          </div>
 
-            <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
-              <CardContent className="pt-8">
-                <ProjectContent content={content} />
-              </CardContent>
-            </Card>
+          {/* Tags + date */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {project.tags && project.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {project.tags.map((tag) => (
+                  <Badge key={tag} variant="secondary">{tag}</Badge>
+                ))}
+              </div>
+            )}
+            {project.startDate && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Calendar className="h-3 w-3" />
+                <span>
+                  {new Date(project.startDate).toLocaleDateString(dateFmtLocale, { month: 'short', year: 'numeric' })}
+                  {project.endDate
+                    ? ` – ${new Date(project.endDate).toLocaleDateString(dateFmtLocale, { month: 'short', year: 'numeric' })}`
+                    : ` – ${t('present')}`
+                  }
+                </span>
+              </div>
+            )}
+          </div>
 
-            {otherPages.length > 0 && (
+          {/* Tech stack */}
+          {project.technologies && project.technologies.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-1">
+                {t('techStack')}
+              </span>
+              {project.technologies.map((tech) => (
+                <Badge key={tech} variant="outline" className="text-xs">{tech}</Badge>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Main content + optional sub-page sidebar */}
+        <div className={hasSubPages ? 'grid gap-8 lg:grid-cols-[1fr_220px]' : 'space-y-8'}>
+          <div className="space-y-8 min-w-0">
+            {content && (
               <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
-                <CardContent className="pt-6">
+                <CardContent className="p-8">
+                  <ProjectContent content={content} />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Sub-page nav on mobile */}
+            {hasSubPages && (
+              <Card className="bg-background/80 backdrop-blur dark:bg-background/60 lg:hidden">
+                <CardContent className="pt-6 pb-6">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    {t('pages')}
+                  </h3>
+                  <PageTreeNavigation pageTree={pageTree} currentPageId={startPage?.id} projectSlug={project.slug} />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Explore more pages */}
+            {hasSubPages && (
+              <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
+                <CardContent className="pt-6 pb-6">
                   <h3 className="font-semibold mb-4">{t('exploreMore')}</h3>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {otherPages.slice(0, 6).map((node) => (
@@ -231,7 +223,21 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
               </Card>
             )}
           </div>
+
+          {/* Sub-page nav on desktop */}
+          {hasSubPages && (
+            <aside className="hidden lg:block">
+              <div className="sticky top-8 space-y-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
+                  <FileText className="h-4 w-4" />
+                  {t('pages')}
+                </h3>
+                <PageTreeNavigation pageTree={pageTree} currentPageId={startPage?.id} projectSlug={project.slug} />
+              </div>
+            </aside>
+          )}
         </div>
+
       </div>
     </main>
   );

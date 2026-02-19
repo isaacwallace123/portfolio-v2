@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, use, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UrlInput } from '@/components/ui/url-input';
@@ -8,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Network, FileText, Settings as SettingsIcon, Save } from 'lucide-react';
+import { ArrowLeft, Network, FileText, Settings as SettingsIcon, Save, Languages } from 'lucide-react';
 import Link from 'next/link';
 import { ProjectFlowchart } from '@/features/projects/ui/ProjectFlowchart';
 import { PageEditorDialog } from '@/features/projects/ui/PageEditorDialog';
@@ -36,6 +37,7 @@ const CHAR_LIMITS = {
 
 export default function AdminProjectEditPage({ params }: AdminProjectEditPageProps) {
   const { id } = use(params);
+  const router = useRouter();
   const { project, loading: projectLoading, refetch } = useProject(id);
   const { saving, updateProject } = useProjectForm();
   const {
@@ -50,6 +52,7 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
     deleteConnection,
   } = useProjectPages({ projectId: id });
 
+  const [translating, setTranslating] = useState(false);
   const [pageDialogOpen, setPageDialogOpen] = useState(false);
   const [editingPage, setEditingPage] = useState<ProjectPage | undefined>();
   const [activeTab, setActiveTab] = useState('pages');
@@ -110,19 +113,18 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
     setPageDialogOpen(true);
   };
 
+  // Edit navigates directly to the full-page builder
   const handlePageEdit = (pageId: string) => {
-    const page = pages.find((p) => p.id === pageId);
-    setEditingPage(page);
-    setPageDialogOpen(true);
+    router.push(`/admin/projects/${id}/pages/${pageId}`);
   };
 
   const handlePageSave = async (data: Partial<ProjectPage>) => {
-    if (editingPage) {
-      await updatePage(editingPage.id, data);
-    } else {
-      await createPage(data);
-    }
+    // CREATE only — after creating, navigate to the builder for content editing
+    const newPage = await createPage(data);
     setPageDialogOpen(false);
+    if (newPage?.id) {
+      router.push(`/admin/projects/${id}/pages/${newPage.id}`);
+    }
   };
 
   const handleSave = async () => {
@@ -190,6 +192,29 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
     }
   };
 
+  const handleTranslate = async () => {
+    setTranslating(true);
+    try {
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Translation failed');
+      const { fieldsTranslated, pagesTranslated } = data;
+      if (fieldsTranslated === 0 && pagesTranslated === 0) {
+        toast.info('Everything is already translated.');
+      } else {
+        toast.success(`Translated ${fieldsTranslated} field(s) and ${pagesTranslated} page(s).`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Translation failed');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   if (projectLoading || !project) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -216,7 +241,18 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
               </div>
             </div>
 
-            <div className="ml-auto shrink-0 sm:order-last">
+            <div className="ml-auto flex items-center gap-2 shrink-0 sm:order-last">
+              <Button
+                onClick={handleTranslate}
+                disabled={translating}
+                variant="outline"
+                size="sm"
+                className="rounded-2xl"
+                title="Translate missing French content with DeepL"
+              >
+                <Languages className="mr-2 h-4 w-4" />
+                {translating ? 'Translating...' : 'Translate FR'}
+              </Button>
               {hasChanges && (
                 <Button
                   onClick={handleSave}

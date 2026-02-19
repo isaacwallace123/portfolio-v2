@@ -1,10 +1,18 @@
 'use client';
 
+import { parseBlocks } from '../lib/blocks';
+import { BlockRenderer } from './BlockRenderer';
+
 interface ProjectContentProps {
   content: string;
 }
 
 export function ProjectContent({ content }: ProjectContentProps) {
+  const blocks = parseBlocks(content);
+  if (blocks) {
+    return <BlockRenderer blocks={blocks} />;
+  }
+
   return (
     <>
       <style jsx global>{`

@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Star } from 'lucide-react';
-import { RichTextEditor } from './RichTextEditor';
 import { generateSlug } from '../lib/utils';
 import type { ProjectPage } from '../lib/types';
 
@@ -29,7 +28,6 @@ interface PageEditorDialogProps {
 export function PageEditorDialog({ open, onOpenChange, page, pages = [], onSave }: PageEditorDialogProps) {
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
-  const [content, setContent] = useState('');
   const [isStartPage, setIsStartPage] = useState(false);
   const [slugEdited, setSlugEdited] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -41,13 +39,11 @@ export function PageEditorDialog({ open, onOpenChange, page, pages = [], onSave 
     if (page) {
       setTitle(page.title);
       setSlug(page.slug);
-      setContent(page.content);
       setIsStartPage(page.isStartPage);
       setSlugEdited(true);
     } else {
       setTitle('');
       setSlug('');
-      setContent('');
       // Auto-set as start page if this is the first page
       setIsStartPage(!hasStartPage);
       setSlugEdited(false);
@@ -67,7 +63,7 @@ export function PageEditorDialog({ open, onOpenChange, page, pages = [], onSave 
   };
 
   const handleSave = async () => {
-    if (!title.trim() || !slug.trim() || !content.trim()) {
+    if (!title.trim() || !slug.trim()) {
       return;
     }
 
@@ -76,7 +72,7 @@ export function PageEditorDialog({ open, onOpenChange, page, pages = [], onSave 
       await onSave({
         title,
         slug,
-        content,
+        content: '<p></p>', // placeholder — builder sets real content
         isStartPage,
       });
       onOpenChange(false);
@@ -89,10 +85,7 @@ export function PageEditorDialog({ open, onOpenChange, page, pages = [], onSave 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-h-[90vh] overflow-hidden flex flex-col"
-        style={{ width: '95vw', maxWidth: '1400px' }}
-      >
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader className="shrink-0">
           <DialogTitle className="text-xl">{page ? 'Edit Page' : 'Create New Page'}</DialogTitle>
           <DialogDescription>
@@ -102,92 +95,67 @@ export function PageEditorDialog({ open, onOpenChange, page, pages = [], onSave 
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto pr-2">
-          <div className="space-y-6 py-4">
-            {/* Page Info Section */}
-            <div className="space-y-4 pb-6 border-b">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Page Information</h3>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="title" className="text-base">Page Title</Label>
-                  <Input
-                    id="title"
-                    value={title}
-                    onChange={(e) => handleTitleChange(e.target.value)}
-                    placeholder="My Page Title"
-                    className="h-11"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="slug" className="text-base">URL Slug</Label>
-                  <Input
-                    id="slug"
-                    value={slug}
-                    onChange={(e) => handleSlugChange(e.target.value)}
-                    placeholder="my-page-slug"
-                    className="h-11"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    URL: /projects/[project-slug]/{slug || 'page-slug'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Show start page controls */}
-              {page?.isStartPage ? (
-                <div className="flex items-center space-x-2 p-4 rounded-xl border bg-muted/30">
-                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0" />
-                  <span className="text-sm font-medium">This is the start page (cannot be changed)</span>
-                </div>
-              ) : !hasStartPage && !page ? (
-                <div className="flex items-center space-x-2 p-4 rounded-xl border bg-muted/30">
-                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0" />
-                  <span className="text-sm font-medium">This will be the start page (first page in project)</span>
-                </div>
-              ) : hasStartPage ? (
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2 opacity-50 p-4 rounded-xl border">
-                    <Checkbox
-                      id="isStartPage"
-                      checked={false}
-                      disabled={true}
-                    />
-                    <Label htmlFor="isStartPage" className="cursor-not-allowed text-sm">
-                      Set as start page (already have a start page)
-                    </Label>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2 p-4 rounded-xl border hover:bg-muted/50 transition-colors">
-                  <Checkbox
-                    id="isStartPage"
-                    checked={isStartPage}
-                    onCheckedChange={(checked) => setIsStartPage(checked as boolean)}
-                  />
-                  <Label htmlFor="isStartPage" className="cursor-pointer text-sm">
-                    Set as start page (default entry point)
-                  </Label>
-                </div>
-              )}
+        <div className="space-y-4 py-2">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="title" className="text-base">Page Title</Label>
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                placeholder="My Page Title"
+                className="h-11"
+              />
             </div>
 
-            {/* Content Section */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Page Content</h3>
-              <div className="space-y-2">
-                <RichTextEditor
-                  content={content}
-                  onChange={setContent}
-                  placeholder="Write your page content here..."
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="slug" className="text-base">URL Slug</Label>
+              <Input
+                id="slug"
+                value={slug}
+                onChange={(e) => handleSlugChange(e.target.value)}
+                placeholder="my-page-slug"
+                className="h-11"
+              />
+              <p className="text-xs text-muted-foreground">
+                URL: /projects/[project-slug]/{slug || 'page-slug'}
+              </p>
             </div>
           </div>
+
+          {/* Start page controls */}
+          {page?.isStartPage ? (
+            <div className="flex items-center space-x-2 p-4 rounded-xl border bg-muted/30">
+              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0" />
+              <span className="text-sm font-medium">This is the start page (cannot be changed)</span>
+            </div>
+          ) : !hasStartPage && !page ? (
+            <div className="flex items-center space-x-2 p-4 rounded-xl border bg-muted/30">
+              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0" />
+              <span className="text-sm font-medium">This will be the start page (first page in project)</span>
+            </div>
+          ) : hasStartPage ? (
+            <div className="flex items-center space-x-2 opacity-50 p-4 rounded-xl border">
+              <Checkbox id="isStartPage" checked={false} disabled={true} />
+              <Label htmlFor="isStartPage" className="cursor-not-allowed text-sm">
+                Set as start page (already have a start page)
+              </Label>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-2 p-4 rounded-xl border hover:bg-muted/50 transition-colors">
+              <Checkbox
+                id="isStartPage"
+                checked={isStartPage}
+                onCheckedChange={(checked) => setIsStartPage(checked as boolean)}
+              />
+              <Label htmlFor="isStartPage" className="cursor-pointer text-sm">
+                Set as start page (default entry point)
+              </Label>
+            </div>
+          )}
         </div>
 
-        <DialogFooter className="shrink-0 mt-4 pt-4 border-t">
+        <DialogFooter>
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
@@ -198,7 +166,7 @@ export function PageEditorDialog({ open, onOpenChange, page, pages = [], onSave 
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!title.trim() || !slug.trim() || !content.trim() || saving}
+            disabled={!title.trim() || !slug.trim() || saving}
             className="rounded-2xl"
           >
             {saving ? 'Saving...' : page ? 'Update Page' : 'Create Page'}

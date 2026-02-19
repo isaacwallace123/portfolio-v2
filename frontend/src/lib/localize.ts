@@ -35,12 +35,34 @@ export function localizeProject<T extends LocalizableProject>(project: T, locale
   };
 }
 
+function decodeEntities(str: string): string {
+  return str
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
 export function localizeProjectPage<T extends LocalizableProjectPage>(page: T, locale: string): T {
   if (locale !== 'fr') return page;
+  const englishIsBlocks = page.content.trimStart().startsWith('[');
+  // contentFr may be HTML-entity-encoded (stored by old editor) — decode it first
+  const rawFr = page.contentFr ?? null;
+  const frContent = rawFr ? decodeEntities(rawFr) : null;
+  const frIsBlocks = frContent ? frContent.trimStart().startsWith('[') : false;
+
+  // For block content: use French blocks if available, otherwise fall back to English blocks
+  // For legacy HTML content: use French if available
+  const content = englishIsBlocks
+    ? (frIsBlocks && frContent ? frContent : page.content)
+    : (frContent || page.content);
+
   return {
     ...page,
     title: page.titleFr || page.title,
-    content: page.contentFr || page.content,
+    content,
   };
 }
 

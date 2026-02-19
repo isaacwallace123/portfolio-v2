@@ -17,22 +17,29 @@ export function TableOfContents({ items }: { items: TocItem[] }) {
   useEffect(() => {
     if (items.length === 0) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting);
-        if (visible.length > 0) {
-          setActiveId(visible[0].target.id);
-        }
-      },
-      { rootMargin: '-80px 0% -60% 0%' }
-    );
+    const OFFSET = 96; // just below the sticky navbar
 
-    items.forEach(({ id }) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
+    const handleScroll = () => {
+      const positions = items
+        .map(({ id }) => {
+          const el = document.getElementById(id);
+          if (!el) return null;
+          return { id, top: el.getBoundingClientRect().top };
+        })
+        .filter((x): x is { id: string; top: number } => x !== null);
 
-    return () => observer.disconnect();
+      // Last heading whose top is at or above the offset threshold
+      const passed = positions.filter((h) => h.top <= OFFSET);
+      if (passed.length > 0) {
+        setActiveId(passed[passed.length - 1].id);
+      } else {
+        setActiveId('');
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [items]);
 
   if (items.length === 0) return null;

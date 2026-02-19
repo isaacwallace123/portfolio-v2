@@ -13,7 +13,6 @@ import { ArrowLeft, Network, FileText, Settings as SettingsIcon, Save, Languages
 import Link from 'next/link';
 import { ProjectFlowchart } from '@/features/projects/ui/ProjectFlowchart';
 import { PageEditorDialog } from '@/features/projects/ui/PageEditorDialog';
-import { TagInput } from '@/components/ui/taginput';
 import { SkillTagInput } from '@/components/ui/skill-tag-input';
 import { useProjectPages } from '@/features/projects/hooks/useProjectPages';
 import { useProject } from '@/features/projects/hooks/useProject';
@@ -486,30 +485,16 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
             <div className="space-y-6 pb-8 border-b">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Categorization</h3>
 
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label className="text-base">Tags</Label>
-                  <TagInput
-                    value={formData.tags}
-                    onChange={(tags) => setFormData({ ...formData, tags })}
-                    placeholder="Type a tag and press Enter"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Add tags to categorize your project
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-base">Technologies</Label>
-                  <SkillTagInput
-                    value={formData.technologies}
-                    onChange={(technologies) => setFormData({ ...formData, technologies })}
-                    placeholder="Search skills or type to add..."
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Technologies and tools used in this project
-                  </p>
-                </div>
+              <div className="space-y-2">
+                <Label className="text-base">Technologies</Label>
+                <SkillTagInput
+                  value={formData.technologies}
+                  onChange={(technologies) => setFormData({ ...formData, technologies })}
+                  placeholder="Search skills or type to add..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Technologies and tools used in this project
+                </p>
               </div>
             </div>
 

@@ -2,14 +2,18 @@ import { notFound } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Github, ExternalLink, Calendar, FileText } from 'lucide-react';
+import { ArrowLeft, Github, ExternalLink, Calendar } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { ProjectContent } from '@/features/projects/ui/ProjectContent';
 import { PageTreeNavigation } from '@/features/projects/ui/PageTreeNavigation';
+import { TableOfContents } from '@/features/projects/ui/TableOfContents';
+import { PagePagination } from '@/features/projects/ui/PagePagination';
 import { buildPageTree } from '@/features/projects/lib/buildPageTree';
+import { parseBlocks } from '@/features/projects/lib/blocks';
+import { extractTocItems } from '@/features/projects/lib/toc';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { localizeProject, localizeProjectPage } from '@/lib/localize';
+import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -81,163 +85,153 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const allPages = data.allPages.map((p) => localizeProjectPage(p, locale));
   const content = startPage?.content || project.content || '';
   const pageTree = buildPageTree(allPages);
-  const otherPages = pageTree.filter(node => !node.page.isStartPage);
-  const hasSubPages = otherPages.length > 0;
+  const hasSubPages = pageTree.length > 1;
   const dateFmtLocale = locale === 'fr' ? 'fr-CA' : 'en-US';
+
+  // Extract TOC items from page content
+  const blocks = parseBlocks(content);
+  const tocItems = blocks ? extractTocItems(blocks) : [];
+  const hasToc = tocItems.length > 0;
+
+  const gridClass = cn(
+    'grid gap-10',
+    hasSubPages && hasToc ? 'lg:grid-cols-[180px_1fr_160px]' :
+    hasSubPages           ? 'lg:grid-cols-[180px_1fr]' :
+    hasToc                ? 'lg:grid-cols-[1fr_160px]' : ''
+  );
 
   return (
     <main className="relative flex-1">
-      <div className="mx-auto w-full max-w-5xl px-4 py-8">
+      <div className="mx-auto w-full max-w-7xl px-4 py-8">
 
-        {/* Back button */}
+        {/* Back to projects */}
         <div className="mb-8">
-          <Button asChild variant="ghost" className="rounded-2xl -ml-4">
+          <Button asChild variant="ghost" size="sm" className="-ml-3 text-muted-foreground hover:text-foreground">
             <Link href="/projects">
-              <ArrowLeft className="mr-2 h-4 w-4" />
+              <ArrowLeft className="mr-1.5 h-4 w-4" />
               {t('backToProjects')}
             </Link>
           </Button>
         </div>
 
-        {/* Hero thumbnail */}
-        {project.thumbnail && (
-          <div className="aspect-video w-full overflow-hidden rounded-3xl border bg-muted mb-8">
-            <img src={project.thumbnail} alt={project.title} className="h-full w-full object-cover" />
-          </div>
-        )}
+        <div className={gridClass}>
 
-        {/* Project header */}
-        <div className="mb-8 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div className="space-y-2 flex-1 min-w-0">
-              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{project.title}</h1>
-              {project.description && (
-                <p className="text-muted-foreground leading-relaxed">{project.description}</p>
-              )}
-            </div>
-            {(project.liveUrl || project.githubUrl) && (
-              <div className="flex items-center gap-2 shrink-0">
-                {project.liveUrl && (
-                  <Button asChild size="sm" className="rounded-2xl">
-                    <a href={project.liveUrl} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="mr-2 h-3 w-3" />
-                      {t('viewLive')}
-                    </a>
-                  </Button>
-                )}
-                {project.githubUrl && (
-                  <Button asChild variant="outline" size="sm" className="rounded-2xl">
-                    <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
-                      <Github className="mr-2 h-3 w-3" />
-                      {t('viewCode')}
-                    </a>
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Tags + date */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            {project.tags && project.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {project.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary">{tag}</Badge>
-                ))}
-              </div>
-            )}
-            {project.startDate && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Calendar className="h-3 w-3" />
-                <span>
-                  {new Date(project.startDate).toLocaleDateString(dateFmtLocale, { month: 'short', year: 'numeric' })}
-                  {project.endDate
-                    ? ` – ${new Date(project.endDate).toLocaleDateString(dateFmtLocale, { month: 'short', year: 'numeric' })}`
-                    : ` – ${t('present')}`
-                  }
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Tech stack */}
-          {project.technologies && project.technologies.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-1">
-                {t('techStack')}
-              </span>
-              {project.technologies.map((tech) => (
-                <Badge key={tech} variant="outline" className="text-xs">{tech}</Badge>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Main content + optional sub-page sidebar */}
-        <div className={hasSubPages ? 'grid gap-8 lg:grid-cols-[1fr_220px]' : 'space-y-8'}>
-          <div className="space-y-8 min-w-0">
-            {content && (
-              <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
-                <CardContent className="p-8">
-                  <ProjectContent content={content} />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Sub-page nav on mobile */}
-            {hasSubPages && (
-              <Card className="bg-background/80 backdrop-blur dark:bg-background/60 lg:hidden">
-                <CardContent className="pt-6 pb-6">
-                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    {t('pages')}
-                  </h3>
-                  <PageTreeNavigation pageTree={pageTree} currentPageId={startPage?.id} projectSlug={project.slug} />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Explore more pages */}
-            {hasSubPages && (
-              <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
-                <CardContent className="pt-6 pb-6">
-                  <h3 className="font-semibold mb-4">{t('exploreMore')}</h3>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {otherPages.slice(0, 6).map((node) => (
-                      <Link key={node.page.id} href={`/projects/${project.slug}/${node.page.slug}`} className="group">
-                        <Card className="transition-all hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-medium line-clamp-2 group-hover:text-primary transition-colors">{node.page.title}</h4>
-                                <Badge variant="outline" className="mt-2 text-xs">/{node.page.slug}</Badge>
-                              </div>
-                              <ArrowLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0 mt-1 rotate-180" />
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Sub-page nav on desktop */}
+          {/* LEFT — page navigation */}
           {hasSubPages && (
             <aside className="hidden lg:block">
-              <div className="sticky top-8 space-y-3">
-                <h3 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
-                  <FileText className="h-4 w-4" />
-                  {t('pages')}
-                </h3>
-                <PageTreeNavigation pageTree={pageTree} currentPageId={startPage?.id} projectSlug={project.slug} />
+              <div className="sticky top-18">
+                <PageTreeNavigation
+                  pageTree={pageTree}
+                  currentPageId={startPage?.id}
+                  projectSlug={project.slug}
+                  projectTitle={project.title}
+                />
               </div>
             </aside>
           )}
-        </div>
 
+          {/* CENTER — project metadata + content */}
+          <div className="min-w-0 space-y-8">
+
+            {/* Hero thumbnail */}
+            {project.thumbnail && (
+              <div className="aspect-video w-full overflow-hidden rounded-2xl border bg-muted">
+                <img src={project.thumbnail} alt={project.title} className="h-full w-full object-cover" />
+              </div>
+            )}
+
+            {/* Project header */}
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{project.title}</h1>
+                {(project.liveUrl || project.githubUrl) && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    {project.liveUrl && (
+                      <Button asChild size="sm" className="rounded-2xl">
+                        <a href={project.liveUrl} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="mr-2 h-3 w-3" />
+                          {t('viewLive')}
+                        </a>
+                      </Button>
+                    )}
+                    {project.githubUrl && (
+                      <Button asChild variant="outline" size="sm" className="rounded-2xl">
+                        <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
+                          <Github className="mr-2 h-3 w-3" />
+                          {t('viewCode')}
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {project.description && (
+                <p className="text-muted-foreground leading-relaxed">{project.description}</p>
+              )}
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  {project.startDate && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Calendar className="h-3 w-3" />
+                    <span>
+                      {new Date(project.startDate).toLocaleDateString(dateFmtLocale, { month: 'short', year: 'numeric' })}
+                      {project.endDate
+                        ? ` – ${new Date(project.endDate).toLocaleDateString(dateFmtLocale, { month: 'short', year: 'numeric' })}`
+                        : ` – ${t('present')}`
+                      }
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {project.technologies && project.technologies.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-1">
+                    {t('techStack')}
+                  </span>
+                  {project.technologies.map((tech) => (
+                    <Badge key={tech} variant="outline" className="text-xs">{tech}</Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Page content */}
+            {content && <ProjectContent content={content} />}
+
+            {/* Bottom pagination */}
+            {hasSubPages && (
+              <PagePagination
+                pageTree={pageTree}
+                currentPageId={startPage?.id}
+                projectSlug={project.slug}
+              />
+            )}
+
+            {/* Mobile page nav */}
+            {hasSubPages && (
+              <div className="lg:hidden border-t pt-6">
+                <PageTreeNavigation
+                  pageTree={pageTree}
+                  currentPageId={startPage?.id}
+                  projectSlug={project.slug}
+                  projectTitle={project.title}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT — table of contents */}
+          {hasToc && (
+            <aside className="hidden lg:block">
+              <div className="sticky top-18">
+                <TableOfContents items={tocItems} />
+              </div>
+            </aside>
+          )}
+
+        </div>
       </div>
     </main>
   );

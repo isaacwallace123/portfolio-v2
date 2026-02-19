@@ -4,6 +4,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { HeadingProps } from '../../../lib/blocks';
+import { headingId } from '../../../lib/toc';
+export { headingId } from '../../../lib/toc';
 
 interface PreviewProps { props: HeadingProps }
 interface PropertiesProps { props: HeadingProps; onChange: (props: HeadingProps) => void }
@@ -17,7 +19,7 @@ const TAG_CLASS: Record<number, string> = {
 export function HeadingBlockPreview({ props }: PreviewProps) {
   const Tag = `h${props.level}` as 'h1' | 'h2' | 'h3';
   return (
-    <Tag className={TAG_CLASS[props.level] + ' py-1'}>
+    <Tag id={props.text ? headingId(props.text) : undefined} className={TAG_CLASS[props.level] + ' py-1'}>
       {props.text || <span className="text-muted-foreground/40 italic">Heading text...</span>}
     </Tag>
   );

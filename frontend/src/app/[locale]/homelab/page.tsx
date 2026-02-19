@@ -185,7 +185,7 @@ function DetailPanel({
           <div className="p-5 space-y-5">
             {/* Live gauges */}
             {stats && (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Card>
                   <CardContent className="pt-4 pb-3">
                     <div className="flex items-center gap-2 mb-1.5">
@@ -569,16 +569,14 @@ function TopologyCanvas() {
 
           {/* Server badge */}
           {servers.length > 0 && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
-              <div className="bg-background/80 backdrop-blur border border-border/60 rounded-lg px-4 py-2 shadow-sm flex items-center gap-2">
-                <ServerIcon className="h-4 w-4 text-primary" />
-                <div>
-                  <p className="text-sm font-semibold">{servers[0].name}</p>
-                  {servers[0].description && (
-                    <p className="text-[10px] text-muted-foreground">{servers[0].description}</p>
-                  )}
-                </div>
-                <Badge variant="outline" className="text-[10px] ml-2">{servers[0].type}</Badge>
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 max-w-[calc(100vw-2rem)]">
+              <div className="bg-background/80 backdrop-blur border border-border/60 rounded-lg px-3 py-2 shadow-sm flex items-center gap-2 whitespace-nowrap">
+                <ServerIcon className="h-4 w-4 text-primary shrink-0" />
+                <p className="text-sm font-semibold">{servers[0].name}</p>
+                {servers[0].description && (
+                  <p className="hidden sm:block text-[10px] text-muted-foreground">{servers[0].description}</p>
+                )}
+                <Badge variant="outline" className="text-[10px]">{servers[0].type}</Badge>
               </div>
             </div>
           )}

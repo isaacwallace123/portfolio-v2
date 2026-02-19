@@ -74,7 +74,7 @@ function CVSection({ locale, label }: { locale: CVLocale; label: string }) {
                 {formatFileSize(cv.fileSize)} MB • Uploaded {formatDate(cv.uploadDate)}
               </p>
 
-              <div className="flex items-center gap-2 mt-3">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-y-2">
                 <div className="flex items-center gap-2">
                   <Switch
                     id={`${locale}-visible`}
@@ -96,7 +96,7 @@ function CVSection({ locale, label }: { locale: CVLocale; label: string }) {
                   </Label>
                 </div>
 
-                <div className="flex items-center gap-1 ml-auto">
+                <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="sm"

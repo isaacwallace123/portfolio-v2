@@ -112,7 +112,7 @@ export default function AdminTestimonialsPage() {
                 {t.message}
               </p>
 
-              <div className="flex items-center justify-between pt-1">
+              <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-muted-foreground">
                   {new Date(t.createdAt).toLocaleDateString("en-US", {
                     month: "short",
@@ -121,7 +121,7 @@ export default function AdminTestimonialsPage() {
                   })}
                 </p>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 flex-wrap">
                   {t.status !== "approved" && (
                     <Button
                       variant="ghost"

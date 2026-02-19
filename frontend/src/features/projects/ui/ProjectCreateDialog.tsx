@@ -29,7 +29,6 @@ import { Switch } from '@/components/ui/switch';
 import { ArrowRight, ArrowLeft, Github, Check, Star, GitFork } from 'lucide-react';
 import { TagInput } from '@/components/ui/taginput';
 import { SkillTagInput } from '@/components/ui/skill-tag-input';
-import { RichTextEditor } from '@/features/projects/ui/RichTextEditor';
 import { ImageUploadField } from '@/features/uploads/ui/ImageUploadField';
 import { Badge } from '@/components/ui/badge';
 import { githubApi } from '@/features/github/api/githubApi';
@@ -50,10 +49,9 @@ const CHAR_LIMITS = {
 
 const STEPS = [
   { id: 1, name: 'Basic Info', description: 'Enter the basic information for your project' },
-  { id: 2, name: 'Content', description: 'Add the main content for your project' },
-  { id: 3, name: 'Images & Links', description: 'Add project images and links' },
-  { id: 4, name: 'Details', description: 'Add tags, technologies, and dates' },
-  { id: 5, name: 'Settings', description: 'Configure project visibility' },
+  { id: 2, name: 'Images & Links', description: 'Add project images and links' },
+  { id: 3, name: 'Details', description: 'Add tags, technologies, and dates' },
+  { id: 4, name: 'Settings', description: 'Configure project visibility' },
 ];
 
 export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogProps) {
@@ -158,12 +156,6 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
         return;
       }
     }
-    if (currentStep === 2) {
-      if (!formData.content) {
-        toast.error('Content is required');
-        return;
-      }
-    }
     if (currentStep < STEPS.length) {
       setCurrentStep(currentStep + 1);
     }
@@ -176,19 +168,25 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
   };
 
   const handleSubmit = async () => {
-    if (!formData.title || !formData.slug || !formData.content) {
-      toast.error('Title, slug, and content are required');
+    if (!formData.title || !formData.slug) {
+      toast.error('Title and slug are required');
       return;
     }
 
     setLoading(true);
+
+    // Generate default overview content using the block system
+    const defaultContent = JSON.stringify([
+      { id: crypto.randomUUID(), type: 'heading', props: { level: 2, text: formData.title } },
+      { id: crypto.randomUUID(), type: 'paragraph', props: { html: '<p>Add your project overview here...</p>' } },
+    ]);
 
     try {
       // Step 1: Create the project
       const projectResponse = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, content: defaultContent }),
       });
 
       if (!projectResponse.ok) {
@@ -197,11 +195,9 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
       }
 
       const project = await projectResponse.json();
-      console.log('Project created:', project);
 
-      // Step 2: Create the default start page with the content
+      // Step 2: Create the default start page with generated content
       try {
-        console.log('Creating default page for project:', project.id);
         const pageResponse = await fetch(`/api/project-pages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -209,23 +205,17 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
             projectId: project.id,
             title: 'Overview',
             slug: 'overview',
-            content: formData.content,
+            content: defaultContent,
             isStartPage: true,
             order: 0,
           }),
         });
 
         if (!pageResponse.ok) {
-          const pageError = await pageResponse.json();
-          console.error('Failed to create start page:', pageError);
-          toast.error('Project created but failed to create start page. You can add it manually.');
-        } else {
-          const page = await pageResponse.json();
-          console.log('Start page created:', page);
+          toast.error('Project created but failed to create overview page. You can add it manually.');
         }
-      } catch (pageError) {
-        console.error('Error creating start page:', pageError);
-        toast.error('Project created but failed to create start page. You can add it manually.');
+      } catch {
+        toast.error('Project created but failed to create overview page. You can add it manually.');
       }
 
       toast.success('Project created successfully!');
@@ -386,27 +376,8 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
                 </div>
               </StepperContent>
 
-              {/* Step 2: Content */}
+              {/* Step 2: Images & Links */}
               <StepperContent value={2}>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Project Content *</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Add the main content for your project using the rich text editor
-                    </p>
-                    <div className="max-h-100 overflow-y-auto">
-                      <RichTextEditor
-                        content={formData.content}
-                        onChange={(content: string) => setFormData({ ...formData, content })}
-                        placeholder="Start writing your project content..."
-                      />
-                    </div>
-                  </div>
-                </div>
-              </StepperContent>
-
-              {/* Step 3: Images & Links */}
-              <StepperContent value={3}>
                 <div className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     <ImageUploadField
@@ -447,8 +418,8 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
                 </div>
               </StepperContent>
 
-              {/* Step 4: Details */}
-              <StepperContent value={4}>
+              {/* Step 3: Details */}
+              <StepperContent value={3}>
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Tags</Label>
@@ -492,8 +463,8 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
                 </div>
               </StepperContent>
 
-              {/* Step 5: Settings */}
-              <StepperContent value={5}>
+              {/* Step 4: Settings */}
+              <StepperContent value={4}>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="space-y-1">
@@ -533,10 +504,6 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
                       <div className="flex justify-between">
                         <dt className="text-muted-foreground">Slug:</dt>
                         <dd className="font-medium">/{formData.slug || 'not-set'}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Has Content:</dt>
-                        <dd className="font-medium">{formData.content ? 'Yes' : 'No'}</dd>
                       </div>
                       <div className="flex justify-between">
                         <dt className="text-muted-foreground">Status:</dt>

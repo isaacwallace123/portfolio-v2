@@ -62,7 +62,10 @@ export function AdminSidebar() {
           <Link
             key={href}
             href={href}
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false);
+              window.dispatchEvent(new Event('admin-sidebar-closed'));
+            }}
             className={cn(
               'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               isActive(href)
@@ -86,7 +89,10 @@ export function AdminSidebar() {
           <Link
             key={href}
             href={href}
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false);
+              window.dispatchEvent(new Event('admin-sidebar-closed'));
+            }}
             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <Icon className="h-4 w-4" />
@@ -114,9 +120,12 @@ export function AdminSidebar() {
         <>
           <div
             className="fixed inset-0 z-40 bg-black/40 md:hidden"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false);
+              window.dispatchEvent(new Event('admin-sidebar-closed'));
+            }}
           />
-          <aside className="fixed inset-y-0 left-0 z-50 w-56 flex flex-col border-r border-border/40 bg-background md:hidden">
+          <aside className="fixed inset-y-0 left-0 z-50 w-64 flex flex-col border-r border-border/40 bg-background md:hidden overflow-y-auto">
             <div className="px-4 py-5">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Admin

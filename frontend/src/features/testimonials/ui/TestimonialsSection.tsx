@@ -53,7 +53,7 @@ export function TestimonialsSection() {
   return (
     <section className="py-14">
       <div className="mx-auto w-full max-w-6xl px-4">
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
               {t('title')}
@@ -64,7 +64,7 @@ export function TestimonialsSection() {
           </div>
           <Button
             variant="outline"
-            className="rounded-2xl"
+            className="rounded-2xl self-start sm:self-auto"
             onClick={() => setFormOpen(true)}
           >
             <MessageSquarePlus className="mr-2 h-4 w-4" />
@@ -85,7 +85,7 @@ export function TestimonialsSection() {
             ))}
           </div>
         ) : testimonials.length > 3 ? (
-          <div className="px-10">
+          <div className="px-8 sm:px-10">
             <Carousel
               setApi={setApi}
               opts={{

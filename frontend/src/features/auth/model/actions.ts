@@ -88,20 +88,9 @@ export async function loginAction(
     const email = String(formData.get("email") ?? "").trim().toLowerCase();
     const password = String(formData.get("password") ?? "");
 
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("🔐 Secure Login Attempt");
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("Email:", email);
-    console.log("Expected:", ADMIN_EMAIL.toLowerCase());
-    console.log("Hash method:", process.env.ADMIN_PASSWORD_HASH_ENCRYPTED ? "AES-256-GCM" : 
-                                 process.env.ADMIN_PASSWORD_HASH_BASE64 ? "Base64" : "Plain");
-    console.log("Hash valid:", ADMIN_PASSWORD_HASH.startsWith('$2'));
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-
     // Validate input
     const validation = loginSchema.safeParse({ email, password });
     if (!validation.success) {
-      console.log("❌ Validation failed");
       return { success: false, error: "Please enter a valid email and password" };
     }
 
@@ -125,15 +114,12 @@ export async function loginAction(
 
     // Verify email
     if (email !== ADMIN_EMAIL.toLowerCase()) {
-      console.log("❌ Email mismatch");
       await new Promise(resolve => setTimeout(resolve, 1000));
       return invalid();
     }
 
     // Verify password against bcrypt hash
-    console.log("🔍 Verifying password...");
     const isPasswordValid = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
-    console.log("Result:", isPasswordValid ? "✅ SUCCESS" : "❌ FAILED");
 
     if (!isPasswordValid) {
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -149,9 +135,6 @@ export async function loginAction(
     };
 
     await createSession(user);
-    console.log("✅ Login successful");
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    
     return { success: true };
   } catch (error) {
     console.error("❌ Login error:", error);

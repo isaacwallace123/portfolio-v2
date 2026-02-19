@@ -4,6 +4,13 @@ import { useState } from 'react';
 import { useExperience } from '@/features/experience/hooks/useExperience';
 import type { Experience, ExperienceType, CreateExperienceDto } from '@/features/experience/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -201,7 +208,30 @@ export default function AdminExperiencePage() {
       </div>
 
       <Tabs value={activeType} onValueChange={(v) => setActiveType(v as ExperienceType)}>
-        <TabsList>
+        {/* Mobile: dropdown selector */}
+        <div className="sm:hidden">
+          <Select value={activeType} onValueChange={(v) => setActiveType(v as ExperienceType)}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.entries(TYPE_CONFIG) as [ExperienceType, typeof TYPE_CONFIG.WORK][]).map(([t, config]) => {
+                const Icon = config.icon;
+                return (
+                  <SelectItem key={t} value={t}>
+                    <span className="flex items-center gap-2">
+                      <Icon className="h-4 w-4" />
+                      {config.label} ({grouped[t].length})
+                    </span>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Desktop: horizontal tabs */}
+        <TabsList className="hidden sm:flex">
           {(Object.entries(TYPE_CONFIG) as [ExperienceType, typeof TYPE_CONFIG.WORK][]).map(([t, config]) => {
             const Icon = config.icon;
             return (

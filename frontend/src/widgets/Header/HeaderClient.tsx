@@ -50,6 +50,7 @@ export function HeaderClient({ user }: HeaderClientProps) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileAboutOpen, setMobileAboutOpen] = useState(false);
+  const [adminSidebarOpen, setAdminSidebarOpen] = useState(false);
 
   const aboutRef = useRef<HTMLDivElement>(null);
   const userRef  = useRef<HTMLDivElement>(null);
@@ -93,6 +94,12 @@ export function HeaderClient({ user }: HeaderClientProps) {
   }, []);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => { setAdminSidebarOpen(false); }, [pathname]);
+  useEffect(() => {
+    const handleClose = () => setAdminSidebarOpen(false);
+    window.addEventListener('admin-sidebar-closed', handleClose);
+    return () => window.removeEventListener('admin-sidebar-closed', handleClose);
+  }, []);
 
   const handleLogout = () => {
     startTransition(async () => { await logoutAction(); window.location.href = '/'; });
@@ -126,11 +133,22 @@ export function HeaderClient({ user }: HeaderClientProps) {
 
         {/* ── Logo ── */}
         <div className="flex items-center gap-2">
-          {!isAdminPage && (
-            <Button variant="ghost" size="icon" className="md:hidden -ml-2" onClick={() => setMobileOpen(!mobileOpen)}>
-              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden -ml-2"
+            onClick={() => {
+              if (isAdminPage) {
+                const next = !adminSidebarOpen;
+                setAdminSidebarOpen(next);
+                window.dispatchEvent(new Event('toggle-admin-sidebar'));
+              } else {
+                setMobileOpen(!mobileOpen);
+              }
+            }}
+          >
+            {(isAdminPage ? adminSidebarOpen : mobileOpen) ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
           {isAdminPage && user ? (
             <NextLink href="/admin" className="flex items-center gap-2">
               <div className="rounded-lg bg-primary/10 p-1.5">

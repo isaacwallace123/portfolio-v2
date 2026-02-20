@@ -156,13 +156,23 @@ function DetailPanel({
     };
   }, [container.name]);
 
-  // Fetch Prometheus range data whenever the selected time range or container changes
+  // Fetch Prometheus range data on mount, on time-range change, and every 30s so
+  // the chart auto-populates once cAdvisor data has been scraped.
   useEffect(() => {
     let cancelled = false;
-    topologyApi.getMetricsRange(timeRange, container.name)
-      .then((data) => { if (!cancelled) setPrometheusRange(data); })
-      .catch(() => { if (!cancelled) setPrometheusRange(null); });
-    return () => { cancelled = true; };
+
+    async function fetchRange() {
+      try {
+        const data = await topologyApi.getMetricsRange(timeRange, container.name);
+        if (!cancelled) setPrometheusRange(data);
+      } catch {
+        if (!cancelled) setPrometheusRange(null);
+      }
+    }
+
+    fetchRange();
+    const id = setInterval(fetchRange, 30_000);
+    return () => { cancelled = true; clearInterval(id); };
   }, [timeRange, container.name]);
 
   useEffect(() => {

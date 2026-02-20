@@ -2,12 +2,11 @@
 
 import { Link } from '@/i18n/navigation';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Github, ExternalLink, Calendar, Star } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { Project } from '../lib/types';
-import { LanguageIcon } from '@/features/github/ui/LanguageIcon';
+import { TechStackBadges } from './TechStackBadges';
 
 interface ProjectCardProps {
   project: Project;
@@ -39,21 +38,7 @@ export function ProjectCard({ project, featured }: ProjectCardProps) {
           <p className="text-sm text-muted-foreground line-clamp-2">{project.excerpt}</p>
         )}
 
-        {project.technologies && project.technologies.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {project.technologies.slice(0, 4).map((tech) => (
-              <Badge key={tech} variant="outline" className="text-xs flex items-center gap-1.5">
-                <LanguageIcon name={tech} size={14} />
-                {tech}
-              </Badge>
-            ))}
-            {project.technologies.length > 4 && (
-              <Badge variant="outline" className="text-xs">
-                +{project.technologies.length - 4}
-              </Badge>
-            )}
-          </div>
-        )}
+        <TechStackBadges technologies={project.technologies ?? []} max={4} />
 
         {project.startDate && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">

@@ -11,7 +11,6 @@ import { ContactForm } from '@/features/contacts/ui/ContactForm';
 import { TestimonialsSection } from '@/features/testimonials/ui/TestimonialsSection';
 import { MediaGalleryDialog } from '@/features/experience/ui/MediaGalleryDialog';
 import { useGithubStats } from '@/features/github/hooks/useGithubStats';
-import { LanguageIcon } from '@/features/github/ui/LanguageIcon';
 import { getLanguageColor } from '@/features/github/lib/languageUtils';
 import type { GithubRepo } from '@/features/github/lib/types';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +40,7 @@ import type { SkillItem } from '@/components/ui/globe';
 import type { Skill } from '@/features/skills/lib/types';
 import type { Experience, ExperienceMedia } from '@/features/experience/lib/types';
 import type { Project } from '@/features/projects/lib/types';
+import { TechStackBadges } from '@/features/projects/ui/TechStackBadges';
 import { localizeExperience, localizeProject } from '@/lib/localize';
 import { AnimatedBackground } from '@/shared/ui/AnimatedBackground';
 
@@ -340,14 +340,6 @@ export function HomePageClient({ locale }: { locale: string }) {
                     {t('viewWork')} <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                   <CVDownloadButton variant="outline" size="lg" className="rounded-xl px-7 text-base" />
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="rounded-xl px-7 text-base"
-                    onClick={() => scrollTo('contact')}
-                  >
-                    {t('getInTouch')}
-                  </Button>
                 </div>
 
                 {/* Socials */}
@@ -362,10 +354,8 @@ export function HomePageClient({ locale }: { locale: string }) {
                       <Linkedin className="h-5 w-5" />
                     </a>
                   </Button>
-                  <Button variant="ghost" size="icon" asChild className="rounded-xl h-10 w-10 text-muted-foreground hover:text-foreground">
-                    <a href="mailto:isaac.wallace.work@gmail.com" aria-label="Email">
-                      <Mail className="h-5 w-5" />
-                    </a>
+                  <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10 text-muted-foreground hover:text-foreground" onClick={() => scrollTo('contact')} aria-label="Email">
+                    <Mail className="h-5 w-5" />
                   </Button>
                 </div>
               </div>
@@ -954,39 +944,11 @@ function ProjectsTimeline({ projects, locale, repoByUrl }: { projects: Project[]
                       <p className="text-sm text-muted-foreground leading-relaxed">{project.excerpt}</p>
                     )}
 
-                    {(() => {
-                      const repo = project.githubUrl ? repoByUrl.get(project.githubUrl) : null;
-                      const langs = repo?.languageStats?.slice(0, 6) ?? [];
-
-                      if (langs.length > 0) {
-                        return (
-                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 pt-0.5">
-                            {langs.map((stat) => (
-                              <span key={stat.language} className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                <LanguageIcon name={stat.language} size={12} />
-                                {stat.language}
-                                <span className="opacity-60">{stat.percentage}%</span>
-                              </span>
-                            ))}
-                          </div>
-                        );
-                      }
-
-                      if (project.technologies.length === 0) return null;
-                      return (
-                        <div className="flex flex-wrap gap-1.5">
-                          {project.technologies.slice(0, 5).map((tech) => (
-                            <span key={tech} className="flex items-center gap-1.5 rounded-md border border-border/40 bg-background/60 px-2 py-0.5 text-[11px] text-muted-foreground">
-                              <LanguageIcon name={tech} size={12} />
-                              {tech}
-                            </span>
-                          ))}
-                          {project.technologies.length > 5 && (
-                            <span className="rounded-md border border-border/40 bg-background/60 px-2 py-0.5 text-[11px] text-muted-foreground">+{project.technologies.length - 5}</span>
-                          )}
-                        </div>
-                      );
-                    })()}
+                    <TechStackBadges
+                      technologies={project.technologies}
+                      languageStats={project.githubUrl ? repoByUrl.get(project.githubUrl)?.languageStats : undefined}
+                      max={5}
+                    />
 
                     <div className="flex items-center gap-2 pt-0.5">
                       <Button asChild size="sm" className="rounded-xl h-8 text-xs gap-1.5 px-4">

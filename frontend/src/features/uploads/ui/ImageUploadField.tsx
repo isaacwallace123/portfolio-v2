@@ -159,7 +159,7 @@ export function ImageUploadField({
 
       {/* Image Picker Dialog */}
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="max-w-3xl w-full">
           <DialogHeader>
             <DialogTitle>Choose an uploaded image</DialogTitle>
           </DialogHeader>
@@ -172,29 +172,32 @@ export function ImageUploadField({
               No images uploaded yet. Upload one first.
             </p>
           ) : (
-            <div className="grid max-h-96 grid-cols-3 gap-3 overflow-y-auto sm:grid-cols-4">
-              {existingFiles.map((file) => (
-                <button
-                  key={file.name}
-                  type="button"
-                  className={cn(
-                    'group relative aspect-square overflow-hidden rounded-lg border-2 transition-colors',
-                    value === file.url
-                      ? 'border-primary'
-                      : 'border-transparent hover:border-muted-foreground/30'
-                  )}
-                  onClick={() => {
-                    onChange(file.url);
-                    setPickerOpen(false);
-                  }}
-                >
-                  <img
-                    src={file.url}
-                    alt={file.name}
-                    className="h-full w-full object-cover"
-                  />
-                </button>
-              ))}
+            <div className="overflow-y-auto max-h-[60vh] pr-1">
+              <div className="grid grid-cols-3 gap-3 md:grid-cols-4">
+                {existingFiles.map((file) => (
+                  <button
+                    key={file.name}
+                    type="button"
+                    style={{ aspectRatio: '1 / 1' }}
+                    className={cn(
+                      'group relative overflow-hidden rounded-lg border-2 transition-colors w-full',
+                      value === file.url
+                        ? 'border-primary'
+                        : 'border-transparent hover:border-muted-foreground/30'
+                    )}
+                    onClick={() => {
+                      onChange(file.url);
+                      setPickerOpen(false);
+                    }}
+                  >
+                    <img
+                      src={file.url}
+                      alt={file.name}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </DialogContent>

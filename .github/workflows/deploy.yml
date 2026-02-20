@@ -76,6 +76,7 @@ jobs:
       - name: Sync compose and config files
         run: |
           cp docker-compose.prod.yml "${{ secrets.DEPLOY_PATH }}/docker-compose.prod.yml"
+          rm -rf "${{ secrets.DEPLOY_PATH }}/prometheus.yml"
           cp prometheus.yml "${{ secrets.DEPLOY_PATH }}/prometheus.yml"
 
       - name: Generate .env (prod)

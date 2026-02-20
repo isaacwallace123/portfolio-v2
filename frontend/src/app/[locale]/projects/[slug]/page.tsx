@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Github, ExternalLink, Calendar } from 'lucide-react';
 
 import { prisma } from '@/lib/prisma';
+import { ensureSkillIcons } from '@/features/skills/lib/ensureSkillIcons';
 import { ProjectContent } from '@/features/projects/ui/ProjectContent';
 import { PageTreeNavigation } from '@/features/projects/ui/PageTreeNavigation';
 import { TableOfContents } from '@/features/projects/ui/TableOfContents';
@@ -30,27 +31,23 @@ async function getProject(projectSlug: string) {
   if (!projectSlug) return null;
 
   try {
-    const [project, skills] = await Promise.all([
-      prisma.project.findUnique({
-        where: { slug: projectSlug, published: true },
-        include: {
-          pages: {
-            include: {
-              outgoingConnections: {
-                include: { targetPage: true },
-              },
+    const project = await prisma.project.findUnique({
+      where: { slug: projectSlug, published: true },
+      include: {
+        pages: {
+          include: {
+            outgoingConnections: {
+              include: { targetPage: true },
             },
-            orderBy: { order: 'asc' },
           },
+          orderBy: { order: 'asc' },
         },
-      }),
-      prisma.skill.findMany({ select: { label: true, icon: true } }),
-    ]);
+      },
+    });
 
     if (!project) return null;
 
-    const skillIcons: Record<string, string> = {};
-    for (const s of skills) skillIcons[s.label.toLowerCase()] = s.icon;
+    const skillIcons = await ensureSkillIcons(project.technologies ?? []);
 
     const startPage = project.pages.find(p => p.isStartPage);
     return { project, startPage, allPages: project.pages, skillIcons };

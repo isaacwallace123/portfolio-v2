@@ -160,6 +160,15 @@ export function HomePageClient({ locale }: { locale: string }) {
     return map;
   }, [githubStats]);
 
+  // Skill icon lookup derived from the already-fetched skills list (local URLs only)
+  const skillIconsRecord = useMemo<Record<string, string>>(() => {
+    const rec: Record<string, string> = {};
+    for (const [label, icon] of liveIconMap) {
+      rec[label.toLowerCase()] = icon;
+    }
+    return rec;
+  }, [liveIconMap]);
+
   // Hero typewriter
   const greetingText = locale === 'fr' ? 'Bonjour, je suis Isaac Wallace.' : "Hi, I'm Isaac Wallace.";
   const taglineText = locale === 'fr'
@@ -655,7 +664,7 @@ export function HomePageClient({ locale }: { locale: string }) {
             </FadeIn>
 
             {projects.length > 0 ? (
-              <ProjectsTimeline projects={projects} locale={locale} repoByUrl={repoByUrl} />
+              <ProjectsTimeline projects={projects} locale={locale} repoByUrl={repoByUrl} skillIcons={skillIconsRecord} />
             ) : (
               <div className="py-20 text-center text-muted-foreground">
                 <p className="text-lg">{locale === 'fr' ? 'Chargement...' : 'Loading projects...'}</p>
@@ -869,7 +878,7 @@ function ExperienceCard({
 
 // ─── Projects Timeline ───────────────────────────────────────────────────────
 
-function ProjectsTimeline({ projects, locale, repoByUrl }: { projects: Project[]; locale: string; repoByUrl: Map<string, GithubRepo> }) {
+function ProjectsTimeline({ projects, locale, repoByUrl, skillIcons }: { projects: Project[]; locale: string; repoByUrl: Map<string, GithubRepo>; skillIcons: Record<string, string> }) {
   return (
     <div className="relative">
       {/* Center vertical line */}
@@ -946,6 +955,7 @@ function ProjectsTimeline({ projects, locale, repoByUrl }: { projects: Project[]
 
                     <TechStackBadges
                       technologies={project.technologies}
+                      skillIcons={skillIcons}
                       languageStats={project.githubUrl ? repoByUrl.get(project.githubUrl)?.languageStats : undefined}
                       max={5}
                     />

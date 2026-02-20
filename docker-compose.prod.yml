@@ -79,7 +79,7 @@ services:
     networks: [portfolio-network]
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    image: gcr.io/cadvisor/cadvisor:latest
     container_name: portfolio_cadvisor
     restart: unless-stopped
     privileged: true
@@ -88,6 +88,7 @@ services:
     volumes:
       - /:/rootfs:ro
       - /var/run/docker.sock:/var/run/docker.sock:rw
+      - /var/run/docker/containerd/containerd.sock:/run/containerd/containerd.sock:rw
       - /sys:/sys:ro
       - /var/lib/docker:/var/lib/docker:ro
       - /dev/disk:/dev/disk:ro

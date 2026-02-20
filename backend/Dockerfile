@@ -6,7 +6,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o infra-agent .
+RUN CGO_ENABLED=0 GOOS=linux go build -o infra-agent ./cmd/infra-agent
 
 FROM alpine:3.21
 

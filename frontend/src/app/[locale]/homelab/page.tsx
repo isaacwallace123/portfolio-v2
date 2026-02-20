@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   ZoomIn, ZoomOut, Maximize, Server as ServerIcon,
@@ -295,7 +296,20 @@ function DetailPanel({
             )}
 
             {!stats && container.state === 'running' && (
-              <p className="text-sm text-muted-foreground text-center py-4">{t('loadingStats')}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[0, 1, 2].map((i) => (
+                  <Card key={i}>
+                    <CardContent className="pt-4 pb-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <Skeleton className="h-3.5 w-3.5 rounded-sm" />
+                        <Skeleton className="h-3 w-12" />
+                      </div>
+                      <Skeleton className="h-7 w-20 mt-1" />
+                      <Skeleton className="h-1.5 mt-2" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             )}
 
             {/* Time range selector + charts */}
@@ -319,48 +333,67 @@ function DetailPanel({
                     ))}
                   </div>
                 </div>
-                <Card>
-                  <CardContent className="pt-4 pb-3">
-                    <div className="h-36">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={chartData}>
-                          <defs>
-                            <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
-                              <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                          <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={28} tickFormatter={(v) => `${v}%`} />
-                          <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
-                          <Area type="monotone" dataKey="cpu" stroke="hsl(var(--chart-1))" fill="url(#cpuGradient)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
+                {prometheusRange === null ? (
+                  /* Skeleton charts while Prometheus data loads */
+                  <>
+                    <Card>
+                      <CardContent className="pt-4 pb-3">
+                        <Skeleton className="h-36 w-full rounded-md" />
+                      </CardContent>
+                    </Card>
+                    <p className="text-xs font-medium text-muted-foreground">Memory</p>
+                    <Card>
+                      <CardContent className="pt-4 pb-3">
+                        <Skeleton className="h-36 w-full rounded-md" />
+                      </CardContent>
+                    </Card>
+                  </>
+                ) : (
+                  <>
+                    <Card>
+                      <CardContent className="pt-4 pb-3">
+                        <div className="h-36">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={chartData}>
+                              <defs>
+                                <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
+                                  <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                              <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={28} tickFormatter={(v) => `${v}%`} />
+                              <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
+                              <Area type="monotone" dataKey="cpu" stroke="hsl(var(--chart-1))" fill="url(#cpuGradient)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                <p className="text-xs font-medium text-muted-foreground">Memory</p>
-                <Card>
-                  <CardContent className="pt-4 pb-3">
-                    <div className="h-36">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={chartData}>
-                          <defs>
-                            <linearGradient id="memGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3} />
-                              <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                          <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={28} tickFormatter={(v) => `${v}%`} />
-                          <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
-                          <Area type="monotone" dataKey="memory" stroke="hsl(var(--chart-2))" fill="url(#memGradient)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
+                    <p className="text-xs font-medium text-muted-foreground">Memory</p>
+                    <Card>
+                      <CardContent className="pt-4 pb-3">
+                        <div className="h-36">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={chartData}>
+                              <defs>
+                                <linearGradient id="memGradient" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3} />
+                                  <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                              <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={28} tickFormatter={(v) => `${v}%`} />
+                              <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
+                              <Area type="monotone" dataKey="memory" stroke="hsl(var(--chart-2))" fill="url(#memGradient)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
               </>
             )}
 
@@ -516,7 +549,44 @@ function ServerPanel({ server, onClose }: { server: Server; onClose: () => void 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-5 space-y-4">
         {!nodeMetrics && !systemInfo && (
-          <p className="text-sm text-muted-foreground text-center py-8">Loading server metrics…</p>
+          <>
+            {/* System info chip skeletons */}
+            <div className="grid grid-cols-2 gap-3">
+              {[0, 1, 2, 3].map((i) => (
+                <Card key={i}>
+                  <CardContent className="pt-3 pb-3">
+                    <Skeleton className="h-2.5 w-14 mb-2" />
+                    <Skeleton className="h-4 w-20" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            {/* Live gauge skeletons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[0, 1].map((i) => (
+                <Card key={i}>
+                  <CardContent className="pt-4 pb-3">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Skeleton className="h-3.5 w-3.5 rounded-sm" />
+                      <Skeleton className="h-3 w-10" />
+                    </div>
+                    <Skeleton className="h-7 w-16 mt-1" />
+                    <Skeleton className="h-1.5 mt-2" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <Card>
+              <CardContent className="pt-4 pb-3">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Skeleton className="h-3.5 w-3.5 rounded-sm" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+                <Skeleton className="h-7 w-16 mt-1" />
+                <Skeleton className="h-1.5 mt-2" />
+              </CardContent>
+            </Card>
+          </>
         )}
 
         {/* System info chips */}
@@ -623,6 +693,22 @@ function ServerPanel({ server, onClose }: { server: Server; onClose: () => void 
                 ))}
               </div>
             </div>
+
+            {/* Chart skeletons while Prometheus data is loading */}
+            {!hasCharts && nodeMetrics !== null && (
+              <div className="space-y-4">
+                {['CPU', 'Memory', 'Network I/O', 'Disk I/O'].map((label) => (
+                  <div key={label}>
+                    <Skeleton className="h-3 w-20 mb-2" />
+                    <Card>
+                      <CardContent className="pt-4 pb-3">
+                        <Skeleton className="h-36 w-full rounded-md" />
+                      </CardContent>
+                    </Card>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* CPU chart */}
             {cpuChartData.length > 1 && (

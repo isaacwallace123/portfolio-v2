@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -84,20 +85,23 @@ func (r *prometheusRepository) GetMetricsRange(ctx context.Context, duration, co
 	var cpuQuery, memQuery string
 
 	if containerName != "" {
-		// cAdvisor per-container metrics.
-		// name=~"/?CONTAINER_NAME" matches both "/portfolio_frontend" (older Docker)
-		// and "portfolio_frontend" (newer Docker Compose v2).
+		// cAdvisor per-container metrics filtered by container ID.
+		// Docker returns short 12-char IDs; cAdvisor labels use the full 64-char ID.
+		// Use a regex prefix match (=~) so "902ea922a8a6" matches
+		// "/docker/902ea922a8a6b78ece1affad1d6cbbb45b3944ff09bb72028ff6ab9d21da3baf".
+		// This works with both the Docker factory (standard Linux / Unraid) and
+		// the containerd factory (Docker Desktop WSL2).
 		// CPU normalised to 0-100% of the container's CPU limit (quota/period).
-		// Falls back to total host CPUs if no limit is set (quota = -1).
+		// Falls back to 1 CPU core via `or vector(1)` when no limit is set (quota = -1).
 		cpuQuery = fmt.Sprintf(
-			`sum(rate(container_cpu_usage_seconds_total{name=~"/?%s", image!=""}[%s])) / ((container_spec_cpu_quota{name=~"/?%s", image!=""} > 0) / container_spec_cpu_period{name=~"/?%s", image!=""} or on() scalar(count(node_cpu_seconds_total{mode="idle"}))) * 100`,
+			`sum(rate(container_cpu_usage_seconds_total{id=~"/docker/%s.*"}[%s])) / (max(container_spec_cpu_quota{id=~"/docker/%s.*"} / container_spec_cpu_period{id=~"/docker/%s.*"}) > 0 or vector(1)) * 100`,
 			containerName, cfg.rateWin, containerName, containerName,
 		)
 		// Memory: return raw working-set bytes. The frontend converts to a
 		// percentage using stats.memoryLimit (from Docker stats API) which
 		// reliably reads the cgroup limit on all kernel versions.
 		memQuery = fmt.Sprintf(
-			`container_memory_working_set_bytes{name=~"/?%s", image!=""}`,
+			`container_memory_working_set_bytes{id=~"/docker/%s.*"}`,
 			containerName,
 		)
 	} else {
@@ -106,14 +110,22 @@ func (r *prometheusRepository) GetMetricsRange(ctx context.Context, duration, co
 		memQuery = `(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100`
 	}
 
+	log.Printf("[prometheus] range query container=%q duration=%s promURL=%s", containerName, duration, r.baseURL)
+
 	cpuPoints, err := r.queryRange(ctx, cpuQuery, start, now, cfg.step)
 	if err != nil {
+		log.Printf("[prometheus] cpu query error: %v | query: %s", err, cpuQuery)
 		cpuPoints = []domain.MetricPoint{}
+	} else {
+		log.Printf("[prometheus] cpu query returned %d points", len(cpuPoints))
 	}
 
 	memPoints, err := r.queryRange(ctx, memQuery, start, now, cfg.step)
 	if err != nil {
+		log.Printf("[prometheus] mem query error: %v | query: %s", err, memQuery)
 		memPoints = []domain.MetricPoint{}
+	} else {
+		log.Printf("[prometheus] mem query returned %d points", len(memPoints))
 	}
 
 	// Disk % and I/O rates are host-level only; return empty for container-specific queries.
@@ -220,6 +232,7 @@ func (r *prometheusRepository) queryRange(ctx context.Context, query string, sta
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		log.Printf("[prometheus] queryRange HTTP error: %v | url: %s", err, endpoint)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -234,6 +247,7 @@ func (r *prometheusRepository) queryRange(ctx context.Context, query string, sta
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil || result.Status != "success" {
+		log.Printf("[prometheus] queryRange bad response: status=%s decodeErr=%v | url: %s", result.Status, err, endpoint)
 		return nil, fmt.Errorf("invalid prometheus range response")
 	}
 	if len(result.Data.Result) == 0 {

@@ -150,7 +150,7 @@ function DetailPanel({
 
     async function fetchRange() {
       try {
-        const data = await topologyApi.getMetricsRange(timeRange, container.name);
+        const data = await topologyApi.getMetricsRange(timeRange, container.id);
         if (!cancelled) setPrometheusRange(data);
       } catch {
         if (!cancelled) setPrometheusRange(null);
@@ -158,9 +158,9 @@ function DetailPanel({
     }
 
     fetchRange();
-    const id = setInterval(fetchRange, 30_000);
+    const id = setInterval(fetchRange, 15_000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [timeRange, container.name]);
+  }, [timeRange, container.id]);
 
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });

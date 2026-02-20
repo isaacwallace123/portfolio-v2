@@ -156,19 +156,16 @@ services:
     container_name: portfolio_cadvisor
     restart: unless-stopped
     privileged: true
-    devices:
-      - /dev/kmsg
     volumes:
       - /:/rootfs:ro
-      - /var/run/docker.sock:/var/run/docker.sock:rw
-      - /var/run/docker/containerd/containerd.sock:/run/containerd/containerd.sock:rw
+      - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
       - /sys:/sys:ro
-      - /var/lib/docker:/var/lib/docker:ro
-      - /dev/disk:/dev/disk:ro
     command:
-      - '--docker_only=true'
-      - '--housekeeping_interval=15s'
+      - '--containerd=/run/containerd/containerd.sock'
+      - '--containerd-namespace=moby'
+      - '--housekeeping_interval=10s'
       - '--store_container_labels=false'
+      - '--disable_metrics=disk,network,tcp,udp,percpu,sched,process,referenced_memory'
     deploy:
       resources:
         limits:
@@ -214,6 +211,8 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
     depends_on:
       - cadvisor
       - node-exporter

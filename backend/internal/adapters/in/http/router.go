@@ -30,5 +30,5 @@ func NewRouter(h *Handler, apiKey string) http.Handler {
 	mux.HandleFunc("/metrics/node", protected(h.MetricsNode))
 	mux.HandleFunc("/metrics/range", protected(h.MetricsRange))
 
-	return mux
+	return loggingMiddleware(mux)
 }

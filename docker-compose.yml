@@ -17,6 +17,14 @@ services:
       timeout: 5s
       retries: 15
       start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
     networks: [portfolio-network]
 
   redis:
@@ -32,6 +40,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
     networks: [portfolio-network]
 
   frontend:
@@ -73,6 +89,36 @@ services:
         condition: service_healthy
     volumes:
       - ./frontend/public/uploads:/app/public/uploads
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    networks: [portfolio-network]
+
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: portfolio_docker_proxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      INFO: 1
+      VERSION: 1
+      NETWORKS: 1
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+        reservations:
+          cpus: '0.05'
+          memory: 16M
     networks: [portfolio-network]
 
   infra-agent:
@@ -84,8 +130,7 @@ services:
     environment:
       INFRA_API_KEY: ${INFRA_API_KEY:-dev-infra-key}
       PROMETHEUS_URL: http://prometheus:9090
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
       interval: 10s
@@ -93,6 +138,15 @@ services:
       retries: 3
     depends_on:
       - prometheus
+      - docker-socket-proxy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 32M
     networks: [portfolio-network]
 
   # --- Observability stack ---
@@ -115,6 +169,14 @@ services:
       - '--docker_only=true'
       - '--housekeeping_interval=15s'
       - '--store_container_labels=false'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
     networks: [portfolio-network]
 
   node-exporter:
@@ -131,6 +193,14 @@ services:
       - '--path.sysfs=/host/sys'
       - '--path.rootfs=/rootfs'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 16M
     networks: [portfolio-network]
 
   prometheus:
@@ -147,6 +217,14 @@ services:
     depends_on:
       - cadvisor
       - node-exporter
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 768M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
     networks: [portfolio-network]
 
 volumes:

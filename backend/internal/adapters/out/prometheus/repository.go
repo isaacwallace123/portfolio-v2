@@ -87,15 +87,17 @@ func (r *prometheusRepository) GetMetricsRange(ctx context.Context, duration, co
 		// cAdvisor per-container metrics.
 		// name=~"/?CONTAINER_NAME" matches both "/portfolio_frontend" (older Docker)
 		// and "portfolio_frontend" (newer Docker Compose v2).
-		// CPU normalised to 0-100% across all machine CPUs.
+		// CPU normalised to 0-100% of the container's CPU limit (quota/period).
+		// Falls back to total host CPUs if no limit is set (quota = -1).
 		cpuQuery = fmt.Sprintf(
-			`sum(rate(container_cpu_usage_seconds_total{name=~"/?%s", image!=""}[%s])) / scalar(count(node_cpu_seconds_total{mode="idle"})) * 100`,
-			containerName, cfg.rateWin,
+			`sum(rate(container_cpu_usage_seconds_total{name=~"/?%s", image!=""}[%s])) / ((container_spec_cpu_quota{name=~"/?%s", image!=""} > 0) / container_spec_cpu_period{name=~"/?%s", image!=""} or on() scalar(count(node_cpu_seconds_total{mode="idle"}))) * 100`,
+			containerName, cfg.rateWin, containerName, containerName,
 		)
-		// Memory: working set bytes as % of total machine memory.
+		// Memory: working set bytes as % of the container's memory limit.
+		// Falls back to host total memory if no limit is set (spec limit = 0).
 		memQuery = fmt.Sprintf(
-			`container_memory_working_set_bytes{name=~"/?%s", image!=""} / scalar(node_memory_MemTotal_bytes) * 100`,
-			containerName,
+			`container_memory_working_set_bytes{name=~"/?%s", image!=""} / (container_spec_memory_limit_bytes{name=~"/?%s", image!=""} > 0 or on() scalar(node_memory_MemTotal_bytes)) * 100`,
+			containerName, containerName,
 		)
 	} else {
 		// Host-level metrics via node_exporter.

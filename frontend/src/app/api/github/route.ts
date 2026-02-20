@@ -11,6 +11,7 @@ type GithubRepoRaw = {
   forks_count: number;
   updated_at: string;
   fork: boolean;
+  private: boolean;
 };
 
 async function getSettingValue(key: string): Promise<string | null> {
@@ -67,11 +68,12 @@ export async function POST() {
     const token = await getSettingValue('github_token');
     const headers = githubHeaders(token);
 
-    // Fetch repos
-    const reposRes = await fetch(
-      `https://api.github.com/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=100`,
-      { headers, cache: 'no-store' }
-    );
+    // Fetch repos — use /user/repos when authenticated (includes private repos)
+    const reposEndpoint = token
+      ? `https://api.github.com/user/repos?sort=updated&per_page=100&visibility=all&affiliation=owner`
+      : `https://api.github.com/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=100`;
+
+    const reposRes = await fetch(reposEndpoint, { headers, cache: 'no-store' });
 
     if (!reposRes.ok) {
       const text = await reposRes.text();
@@ -101,16 +103,30 @@ export async function POST() {
       })
     );
 
-    const repos = ownRepos.map((r, i) => ({
-      name: r.name,
-      description: r.description,
-      language: r.language,
-      html_url: r.html_url,
-      stars: r.stargazers_count,
-      forks: r.forks_count,
-      updated_at: r.updated_at,
-      languages: Object.keys(langResults[i] || {}),
-    }));
+    const repos = ownRepos.map((r, i) => {
+      const langMap = langResults[i] || {};
+      const repoTotalBytes = Object.values(langMap).reduce((a, b) => a + b, 0);
+      const languageStats = Object.entries(langMap)
+        .map(([language, bytes]) => ({
+          language,
+          bytes,
+          percentage: repoTotalBytes > 0 ? Math.round((bytes / repoTotalBytes) * 1000) / 10 : 0,
+        }))
+        .sort((a, b) => b.bytes - a.bytes);
+
+      return {
+        name: r.name,
+        description: r.description,
+        language: r.language,
+        html_url: r.html_url,
+        stars: r.stargazers_count,
+        forks: r.forks_count,
+        updated_at: r.updated_at,
+        private: r.private,
+        languages: Object.keys(langMap),
+        languageStats,
+      };
+    });
 
     // Aggregate language bytes across all repos
     const totals: Record<string, number> = {};

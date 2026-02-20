@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +15,7 @@ import { extractTocItems } from '@/features/projects/lib/toc';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { localizeProject, localizeProjectPage } from '@/lib/localize';
 import { cn } from '@/lib/utils';
+import { LanguageIcon } from '@/features/github/ui/LanguageIcon';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -29,24 +31,30 @@ async function getProject(projectSlug: string) {
   if (!projectSlug) return null;
 
   try {
-    const project = await prisma.project.findUnique({
-      where: { slug: projectSlug, published: true },
-      include: {
-        pages: {
-          include: {
-            outgoingConnections: {
-              include: { targetPage: true },
+    const [project, skills] = await Promise.all([
+      prisma.project.findUnique({
+        where: { slug: projectSlug, published: true },
+        include: {
+          pages: {
+            include: {
+              outgoingConnections: {
+                include: { targetPage: true },
+              },
             },
+            orderBy: { order: 'asc' },
           },
-          orderBy: { order: 'asc' },
         },
-      },
-    });
+      }),
+      prisma.skill.findMany({ select: { label: true, icon: true } }),
+    ]);
 
     if (!project) return null;
 
+    const skillIconMap = new Map<string, string>();
+    for (const s of skills) skillIconMap.set(s.label.toLowerCase(), s.icon);
+
     const startPage = project.pages.find(p => p.isStartPage);
-    return { project, startPage, allPages: project.pages };
+    return { project, startPage, allPages: project.pages, skillIconMap };
   } catch (error) {
     console.error('Error fetching project:', error);
     return null;
@@ -83,6 +91,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const project = localizeProject(data.project, locale);
   const startPage = data.startPage ? localizeProjectPage(data.startPage, locale) : null;
   const allPages = data.allPages.map((p) => localizeProjectPage(p, locale));
+  const skillIconMap = data.skillIconMap;
   const content = startPage?.content || project.content || '';
   const pageTree = buildPageTree(allPages);
   const hasSubPages = pageTree.length > 1;
@@ -190,9 +199,22 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-1">
                     {t('techStack')}
                   </span>
-                  {project.technologies.map((tech) => (
-                    <Badge key={tech} variant="outline" className="text-xs">{tech}</Badge>
-                  ))}
+                  {project.technologies.map((tech) => {
+                    const iconUrl = skillIconMap.get(tech.toLowerCase());
+                    return (
+                      <Badge
+                        key={tech}
+                        variant="secondary"
+                        className="rounded-lg text-xs pl-1.5 pr-2.5 py-1 gap-1.5 inline-flex items-center border border-border/40 bg-background/60 hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                      >
+                        {iconUrl
+                          ? <Image src={iconUrl} alt="" width={13} height={13} className="shrink-0" />
+                          : <LanguageIcon name={tech} size={13} />
+                        }
+                        {tech}
+                      </Badge>
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -26,13 +26,15 @@ import { UrlInput } from '@/components/ui/url-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { ArrowRight, ArrowLeft, Github, Check, Star, GitFork } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Github, Check, Star, GitFork, Lock } from 'lucide-react';
 import { TagInput } from '@/components/ui/taginput';
 import { SkillTagInput } from '@/components/ui/skill-tag-input';
 import { ImageUploadField } from '@/features/uploads/ui/ImageUploadField';
 import { Badge } from '@/components/ui/badge';
 import { githubApi } from '@/features/github/api/githubApi';
 import type { GithubRepo } from '@/features/github/lib/types';
+import { getLanguageColor, getDeviconUrl, normalizeLanguageName } from '@/features/github/lib/languageUtils';
+import { skillsApi } from '@/features/skills/api/skillsApi';
 import { toast } from 'sonner';
 
 interface ProjectCreateDialogProps {
@@ -97,13 +99,21 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
     }
   };
 
-  const importFromRepo = (repo: GithubRepo) => {
+  const importFromRepo = async (repo: GithubRepo) => {
     setSelectedRepo(repo.name);
+    setRepoPickerOpen(false);
 
     const title = repo.name
       .replace(/[-_]/g, ' ')
       .replace(/\b\w/g, (c) => c.toUpperCase());
     const slug = repo.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+    // Normalize GitHub language names to canonical skill names (e.g. PLpgSQL → PostgreSQL)
+    // then deduplicate in case multiple GitHub languages map to the same canonical name
+    const normalizedLanguages = repo.languages.length > 0
+      ? [...new Set(repo.languages.map(normalizeLanguageName))]
+      : [];
+    const normalizedPrimary = repo.language ? normalizeLanguageName(repo.language) : null;
 
     setFormData((prev) => ({
       ...prev,
@@ -112,11 +122,46 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
       description: repo.description || '',
       excerpt: repo.description?.slice(0, CHAR_LIMITS.excerpt) || '',
       githubUrl: repo.html_url,
-      technologies: repo.languages.length > 0 ? repo.languages : prev.technologies,
-      tags: repo.language ? [repo.language] : prev.tags,
+      technologies: normalizedLanguages.length > 0 ? normalizedLanguages : prev.technologies,
+      tags: normalizedPrimary ? [normalizedPrimary] : prev.tags,
     }));
 
-    setRepoPickerOpen(false);
+    // Auto-create any normalized languages that don't exist as skills yet
+    if (normalizedLanguages.length > 0) {
+      try {
+        const existingSkills = await skillsApi.getAll();
+        const existingLabels = new Set(existingSkills.map((s) => s.label.toLowerCase()));
+        const missing = normalizedLanguages.filter((lang) => !existingLabels.has(lang.toLowerCase()));
+
+        if (missing.length > 0) {
+          // Find a suitable category (prefer "Languages" or fallback to last by order)
+          const langCategory = existingSkills.find((s) =>
+            s.category.name.toLowerCase().includes('language')
+          );
+          const fallback = existingSkills.length > 0
+            ? existingSkills.reduce((a, b) => (a.category.order > b.category.order ? a : b))
+            : null;
+          const categoryId = langCategory?.categoryId ?? fallback?.categoryId;
+
+          if (categoryId) {
+            await Promise.all(
+              missing.map((lang) =>
+                skillsApi.create({
+                  label: lang,
+                  icon: getDeviconUrl(lang) ?? '/uploads/icons/placeholder.png',
+                  categoryId,
+                }).catch(() => null)
+              )
+            );
+            toast.success(`Imported from ${repo.name} — added ${missing.length} new language${missing.length > 1 ? 's' : ''} to skills`);
+            return;
+          }
+        }
+      } catch {
+        // Non-fatal — import still works even if skill creation fails
+      }
+    }
+
     toast.success(`Imported from ${repo.name} — you can edit any field`);
   };
 
@@ -565,7 +610,7 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
 
       {/* GitHub Repo Picker — separate modal on top */}
       <Dialog open={repoPickerOpen} onOpenChange={setRepoPickerOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Github className="h-5 w-5" />
@@ -579,64 +624,89 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
           {loadingRepos ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-16 animate-pulse rounded-lg bg-muted" />
+                <div key={i} className="h-20 animate-pulse rounded-lg bg-muted" />
               ))}
             </div>
           ) : githubRepos.length > 0 ? (
-            <div className="max-h-80 overflow-y-auto space-y-2">
-              {githubRepos.map((repo) => (
-                <Button
-                  key={repo.name}
-                  type="button"
-                  variant="outline"
-                  onClick={() => importFromRepo(repo)}
-                  className={`w-full h-auto flex items-center justify-between p-3 text-left ${
-                    selectedRepo === repo.name ? 'border-primary bg-primary/5' : ''
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate font-medium text-sm">{repo.name}</span>
-                      {repo.language && (
-                        <Badge variant="secondary" className="text-[10px] shrink-0">
-                          {repo.language}
-                        </Badge>
-                      )}
-                    </div>
-                    {repo.description && (
-                      <p className="truncate text-xs text-muted-foreground mt-0.5 font-normal">
-                        {repo.description}
-                      </p>
-                    )}
-                    {repo.languages.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {repo.languages.slice(0, 5).map((lang) => (
-                          <span key={lang} className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-normal">
-                            {lang}
+            <div className="max-h-104 overflow-y-auto space-y-1.5 pr-1">
+              {githubRepos.map((repo) => {
+                const isSelected = selectedRepo === repo.name;
+                const topLangs = repo.languageStats?.slice(0, 5) ?? [];
+                return (
+                  <div
+                    key={repo.name}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => importFromRepo(repo)}
+                    onKeyDown={(e) => e.key === 'Enter' && importFromRepo(repo)}
+                    className={`group rounded-lg border p-3 cursor-pointer transition-colors hover:bg-muted/40 ${
+                      isSelected ? 'border-primary bg-primary/5' : 'border-border'
+                    }`}
+                  >
+                    {/* Top row: name + meta */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-medium text-sm truncate">{repo.name}</span>
+                          {repo.private && <Lock className="h-3 w-3 text-muted-foreground shrink-0" />}
+                        </div>
+                        {repo.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                            {repo.description}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2.5 shrink-0 text-muted-foreground">
+                        {repo.stars > 0 && (
+                          <span className="flex items-center gap-0.5 text-xs">
+                            <Star className="h-3 w-3" /> {repo.stars}
                           </span>
-                        ))}
+                        )}
+                        {repo.forks > 0 && (
+                          <span className="flex items-center gap-0.5 text-xs">
+                            <GitFork className="h-3 w-3" /> {repo.forks}
+                          </span>
+                        )}
+                        {isSelected
+                          ? <Check className="h-4 w-4 text-primary" />
+                          : <div className="h-4 w-4" />
+                        }
+                      </div>
+                    </div>
+
+                    {/* Language strip + legend */}
+                    {topLangs.length > 0 && (
+                      <div className="mt-2.5 space-y-1.5">
+                        {/* Segmented color bar */}
+                        <div className="flex h-1.5 rounded-full overflow-hidden gap-px">
+                          {topLangs.map((stat) => (
+                            <div
+                              key={stat.language}
+                              style={{
+                                width: `${stat.percentage}%`,
+                                backgroundColor: getLanguageColor(stat.language),
+                              }}
+                            />
+                          ))}
+                        </div>
+                        {/* Inline language dots */}
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                          {topLangs.map((stat) => (
+                            <span key={stat.language} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                              <span
+                                className="h-2 w-2 rounded-full shrink-0"
+                                style={{ backgroundColor: getLanguageColor(stat.language) }}
+                              />
+                              {stat.language}
+                              <span className="opacity-60">{stat.percentage}%</span>
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 ml-3 shrink-0">
-                    {repo.stars > 0 && (
-                      <span className="flex items-center gap-0.5 text-xs text-muted-foreground font-normal">
-                        <Star className="h-3 w-3" />
-                        {repo.stars}
-                      </span>
-                    )}
-                    {repo.forks > 0 && (
-                      <span className="flex items-center gap-0.5 text-xs text-muted-foreground font-normal">
-                        <GitFork className="h-3 w-3" />
-                        {repo.forks}
-                      </span>
-                    )}
-                    {selectedRepo === repo.name && (
-                      <Check className="h-4 w-4 text-primary" />
-                    )}
-                  </div>
-                </Button>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-6">

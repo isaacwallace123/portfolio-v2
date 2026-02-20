@@ -6,7 +6,9 @@ export type GithubRepo = {
   stars: number;
   forks: number;
   updated_at: string;
+  private?: boolean;
   languages: string[];
+  languageStats: { language: string; bytes: number; percentage: number }[];
 };
 
 export type LanguageStat = {

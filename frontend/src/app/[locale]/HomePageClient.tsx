@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/shared/providers/ThemeProvider';
 import { CVDownloadButton } from '@/features/cv/ui/CVDownloadButton';
@@ -10,6 +10,10 @@ import { HobbiesSection } from '@/features/hobbies/ui/HobbiesSection';
 import { ContactForm } from '@/features/contacts/ui/ContactForm';
 import { TestimonialsSection } from '@/features/testimonials/ui/TestimonialsSection';
 import { MediaGalleryDialog } from '@/features/experience/ui/MediaGalleryDialog';
+import { useGithubStats } from '@/features/github/hooks/useGithubStats';
+import { LanguageIcon } from '@/features/github/ui/LanguageIcon';
+import { getLanguageColor } from '@/features/github/lib/languageUtils';
+import type { GithubRepo } from '@/features/github/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
@@ -145,6 +149,16 @@ export function HomePageClient({ locale }: { locale: string }) {
 
   // Projects
   const [projects, setProjects] = useState<Project[]>([]);
+
+  // GitHub stats — used to enrich project cards with per-repo language data
+  const { stats: githubStats } = useGithubStats();
+  const repoByUrl = useMemo(() => {
+    const map = new Map<string, GithubRepo>();
+    for (const repo of githubStats?.repos ?? []) {
+      map.set(repo.html_url, repo);
+    }
+    return map;
+  }, [githubStats]);
 
   // Hero typewriter
   const greetingText = locale === 'fr' ? 'Bonjour, je suis Isaac Wallace.' : "Hi, I'm Isaac Wallace.";
@@ -651,7 +665,7 @@ export function HomePageClient({ locale }: { locale: string }) {
             </FadeIn>
 
             {projects.length > 0 ? (
-              <ProjectsTimeline projects={projects} locale={locale} />
+              <ProjectsTimeline projects={projects} locale={locale} repoByUrl={repoByUrl} />
             ) : (
               <div className="py-20 text-center text-muted-foreground">
                 <p className="text-lg">{locale === 'fr' ? 'Chargement...' : 'Loading projects...'}</p>
@@ -865,7 +879,7 @@ function ExperienceCard({
 
 // ─── Projects Timeline ───────────────────────────────────────────────────────
 
-function ProjectsTimeline({ projects, locale }: { projects: Project[]; locale: string }) {
+function ProjectsTimeline({ projects, locale, repoByUrl }: { projects: Project[]; locale: string; repoByUrl: Map<string, GithubRepo> }) {
   return (
     <div className="relative">
       {/* Center vertical line */}
@@ -940,16 +954,39 @@ function ProjectsTimeline({ projects, locale }: { projects: Project[]; locale: s
                       <p className="text-sm text-muted-foreground leading-relaxed">{project.excerpt}</p>
                     )}
 
-                    {project.technologies.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {project.technologies.slice(0, 5).map((t) => (
-                          <span key={t} className="rounded-md border border-border/40 bg-background/60 px-2 py-0.5 text-[11px] text-muted-foreground">{t}</span>
-                        ))}
-                        {project.technologies.length > 5 && (
-                          <span className="rounded-md border border-border/40 bg-background/60 px-2 py-0.5 text-[11px] text-muted-foreground">+{project.technologies.length - 5}</span>
-                        )}
-                      </div>
-                    )}
+                    {(() => {
+                      const repo = project.githubUrl ? repoByUrl.get(project.githubUrl) : null;
+                      const langs = repo?.languageStats?.slice(0, 6) ?? [];
+
+                      if (langs.length > 0) {
+                        return (
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 pt-0.5">
+                            {langs.map((stat) => (
+                              <span key={stat.language} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                <LanguageIcon name={stat.language} size={12} />
+                                {stat.language}
+                                <span className="opacity-60">{stat.percentage}%</span>
+                              </span>
+                            ))}
+                          </div>
+                        );
+                      }
+
+                      if (project.technologies.length === 0) return null;
+                      return (
+                        <div className="flex flex-wrap gap-1.5">
+                          {project.technologies.slice(0, 5).map((tech) => (
+                            <span key={tech} className="flex items-center gap-1.5 rounded-md border border-border/40 bg-background/60 px-2 py-0.5 text-[11px] text-muted-foreground">
+                              <LanguageIcon name={tech} size={12} />
+                              {tech}
+                            </span>
+                          ))}
+                          {project.technologies.length > 5 && (
+                            <span className="rounded-md border border-border/40 bg-background/60 px-2 py-0.5 text-[11px] text-muted-foreground">+{project.technologies.length - 5}</span>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     <div className="flex items-center gap-2 pt-0.5">
                       <Button asChild size="sm" className="rounded-xl h-8 text-xs gap-1.5 px-4">

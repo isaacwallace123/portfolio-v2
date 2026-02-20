@@ -98,12 +98,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Ensure deploy dir exists
-        run: mkdir -p "${{ secrets.DEPLOY_PATH }}"
+        run: mkdir -p "${{ secrets.DEPLOY_PATH }}/prometheus"
 
       - name: Sync compose and config files
         run: |
           cp docker-compose.prod.yml "${{ secrets.DEPLOY_PATH }}/docker-compose.prod.yml"
-          cp prometheus.yml "${{ secrets.DEPLOY_PATH }}/prometheus.yml"
+          cp prometheus/prometheus.yml "${{ secrets.DEPLOY_PATH }}/prometheus/prometheus.yml"
 
       - name: Generate .env (prod)
         run: |

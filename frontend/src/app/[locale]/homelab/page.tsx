@@ -318,7 +318,7 @@ function DetailPanel({
             )}
 
             {/* Time range selector + charts */}
-            {(chartData.length > 1 || stats !== null) && (
+            {(chartData.length > 1 || stats !== null || container.state === 'running') && (
               <>
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-medium text-muted-foreground">CPU</p>

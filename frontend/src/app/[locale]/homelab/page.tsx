@@ -207,12 +207,17 @@ function DetailPanel({
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
-  // Prefer Prometheus historical data; fall back to live in-memory history
+  // Prefer Prometheus historical data; fall back to live in-memory history.
+  // Memory from Prometheus is raw bytes; divide by stats.memoryLimit (from
+  // Docker stats API) to get %, which correctly reflects the cgroup limit
+  // regardless of cAdvisor's container_spec_memory_limit_bytes reliability.
   const promChartData = prometheusRange && prometheusRange.cpu.length > 1
     ? prometheusRange.cpu.map((pt, i) => ({
         time: pt.time,
         cpu: pt.value,
-        memory: prometheusRange.memory[i]?.value ?? 0,
+        memory: stats?.memoryLimit
+          ? Math.min((prometheusRange.memory[i]?.value ?? 0) / stats.memoryLimit * 100, 100)
+          : 0,
       }))
     : null;
 

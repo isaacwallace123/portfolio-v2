@@ -93,11 +93,12 @@ func (r *prometheusRepository) GetMetricsRange(ctx context.Context, duration, co
 			`sum(rate(container_cpu_usage_seconds_total{name=~"/?%s", image!=""}[%s])) / ((container_spec_cpu_quota{name=~"/?%s", image!=""} > 0) / container_spec_cpu_period{name=~"/?%s", image!=""} or on() scalar(count(node_cpu_seconds_total{mode="idle"}))) * 100`,
 			containerName, cfg.rateWin, containerName, containerName,
 		)
-		// Memory: working set bytes as % of the container's memory limit.
-		// Falls back to host total memory if no limit is set (spec limit = 0).
+		// Memory: return raw working-set bytes. The frontend converts to a
+		// percentage using stats.memoryLimit (from Docker stats API) which
+		// reliably reads the cgroup limit on all kernel versions.
 		memQuery = fmt.Sprintf(
-			`container_memory_working_set_bytes{name=~"/?%s", image!=""} / (container_spec_memory_limit_bytes{name=~"/?%s", image!=""} > 0 or on() scalar(node_memory_MemTotal_bytes)) * 100`,
-			containerName, containerName,
+			`container_memory_working_set_bytes{name=~"/?%s", image!=""}`,
+			containerName,
 		)
 	} else {
 		// Host-level metrics via node_exporter.

@@ -27,10 +27,15 @@ func (r *prometheusRepository) GetNodeMetrics(ctx context.Context) (map[string]i
 	}
 
 	queries := map[string]string{
-		"cpu":    `100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)`,
-		"memory": `(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100`,
-		"disk":   `(1 - node_filesystem_avail_bytes{mountpoint=~"/|/mnt/user|/mnt/cache",fstype!="tmpfs"} / node_filesystem_size_bytes{mountpoint=~"/|/mnt/user|/mnt/cache",fstype!="tmpfs"}) * 100`,
-		"uptime": `node_time_seconds - node_boot_time_seconds`,
+		"cpu":           `100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)`,
+		"memory":        `(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100`,
+		"disk":          `(1 - node_filesystem_avail_bytes{mountpoint=~"/|/mnt/user|/mnt/cache",fstype!="tmpfs"} / node_filesystem_size_bytes{mountpoint=~"/|/mnt/user|/mnt/cache",fstype!="tmpfs"}) * 100`,
+		"uptime":        `node_time_seconds - node_boot_time_seconds`,
+		"totalMemory":   `node_memory_MemTotal_bytes`,
+		"diskReadRate":  `sum(rate(node_disk_read_bytes_total{device!~"loop.*|sr.*"}[5m]))`,
+		"diskWriteRate": `sum(rate(node_disk_written_bytes_total{device!~"loop.*|sr.*"}[5m]))`,
+		"networkRxRate": `sum(rate(node_network_receive_bytes_total{device!~"lo|docker.*|br-.*|veth.*"}[5m]))`,
+		"networkTxRate": `sum(rate(node_network_transmit_bytes_total{device!~"lo|docker.*|br-.*|veth.*"}[5m]))`,
 	}
 
 	results := make(map[string]interface{})
@@ -108,22 +113,54 @@ func (r *prometheusRepository) GetMetricsRange(ctx context.Context, duration, co
 		memPoints = []domain.MetricPoint{}
 	}
 
-	// Disk is host-level only; return empty for container-specific queries.
-	var diskPoints []domain.MetricPoint
+	// Disk % and I/O rates are host-level only; return empty for container-specific queries.
+	var diskPoints, networkRxPoints, networkTxPoints, diskReadPoints, diskWritePoints []domain.MetricPoint
 	if containerName == "" {
 		diskQuery := `(1 - node_filesystem_avail_bytes{mountpoint=~"/|/mnt/user|/mnt/cache",fstype!="tmpfs"} / node_filesystem_size_bytes{mountpoint=~"/|/mnt/user|/mnt/cache",fstype!="tmpfs"}) * 100`
 		diskPoints, err = r.queryRange(ctx, diskQuery, start, now, cfg.step)
 		if err != nil {
 			diskPoints = []domain.MetricPoint{}
 		}
+
+		networkRxQuery := fmt.Sprintf(`sum(rate(node_network_receive_bytes_total{device!~"lo|docker.*|br-.*|veth.*"}[%s]))`, cfg.rateWin)
+		networkRxPoints, err = r.queryRange(ctx, networkRxQuery, start, now, cfg.step)
+		if err != nil {
+			networkRxPoints = []domain.MetricPoint{}
+		}
+
+		networkTxQuery := fmt.Sprintf(`sum(rate(node_network_transmit_bytes_total{device!~"lo|docker.*|br-.*|veth.*"}[%s]))`, cfg.rateWin)
+		networkTxPoints, err = r.queryRange(ctx, networkTxQuery, start, now, cfg.step)
+		if err != nil {
+			networkTxPoints = []domain.MetricPoint{}
+		}
+
+		diskReadQuery := fmt.Sprintf(`sum(rate(node_disk_read_bytes_total{device!~"loop.*|sr.*"}[%s]))`, cfg.rateWin)
+		diskReadPoints, err = r.queryRange(ctx, diskReadQuery, start, now, cfg.step)
+		if err != nil {
+			diskReadPoints = []domain.MetricPoint{}
+		}
+
+		diskWriteQuery := fmt.Sprintf(`sum(rate(node_disk_written_bytes_total{device!~"loop.*|sr.*"}[%s]))`, cfg.rateWin)
+		diskWritePoints, err = r.queryRange(ctx, diskWriteQuery, start, now, cfg.step)
+		if err != nil {
+			diskWritePoints = []domain.MetricPoint{}
+		}
 	} else {
 		diskPoints = []domain.MetricPoint{}
+		networkRxPoints = []domain.MetricPoint{}
+		networkTxPoints = []domain.MetricPoint{}
+		diskReadPoints = []domain.MetricPoint{}
+		diskWritePoints = []domain.MetricPoint{}
 	}
 
 	return &domain.MetricsRange{
-		CPU:    cpuPoints,
-		Memory: memPoints,
-		Disk:   diskPoints,
+		CPU:       cpuPoints,
+		Memory:    memPoints,
+		Disk:      diskPoints,
+		NetworkRx: networkRxPoints,
+		NetworkTx: networkTxPoints,
+		DiskRead:  diskReadPoints,
+		DiskWrite: diskWritePoints,
 	}, nil
 }
 

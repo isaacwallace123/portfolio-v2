@@ -9,4 +9,6 @@ type SystemInfo struct {
 	Containers    int    `json:"containers"`
 	Running       int    `json:"running"`
 	Stopped       int    `json:"stopped"`
+	IP            string `json:"ip"`
+	PublicIP      string `json:"publicIP"`
 }

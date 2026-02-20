@@ -87,6 +87,8 @@ export type SystemInfo = {
   containers: number;
   running: number;
   stopped: number;
+  ip: string;
+  publicIP: string;
 };
 
 export type NodeMetrics = {
@@ -94,6 +96,11 @@ export type NodeMetrics = {
   memory: number | null;
   disk: number | null;
   uptime: number | null;
+  totalMemory: number | null;
+  diskReadRate: number | null;
+  diskWriteRate: number | null;
+  networkRxRate: number | null;
+  networkTxRate: number | null;
 };
 
 export type MetricPoint = {
@@ -105,6 +112,10 @@ export type MetricsRange = {
   cpu: MetricPoint[];
   memory: MetricPoint[];
   disk: MetricPoint[];
+  networkRx: MetricPoint[];
+  networkTx: MetricPoint[];
+  diskRead: MetricPoint[];
+  diskWrite: MetricPoint[];
 };
 
 // DTOs

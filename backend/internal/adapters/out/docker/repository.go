@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net"
+	"net/http"
 	"strings"
 	"time"
 
@@ -180,6 +182,18 @@ func (r *dockerRepository) GetSystemInfo(ctx context.Context) (*domain.SystemInf
 
 	version, _ := r.client.ServerVersion(ctx)
 
+	ip := ""
+	if addrs, err := net.InterfaceAddrs(); err == nil {
+		for _, addr := range addrs {
+			if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
+				ip = ipnet.IP.String()
+				break
+			}
+		}
+	}
+
+	publicIP := fetchPublicIP()
+
 	return &domain.SystemInfo{
 		OS:            info.OperatingSystem,
 		Architecture:  info.Architecture,
@@ -189,7 +203,25 @@ func (r *dockerRepository) GetSystemInfo(ctx context.Context) (*domain.SystemInf
 		Containers:    info.Containers,
 		Running:       info.ContainersRunning,
 		Stopped:       info.ContainersStopped,
+		IP:            ip,
+		PublicIP:      publicIP,
 	}, nil
+}
+
+// fetchPublicIP returns the public IP by calling api.ipify.org; returns "" on failure.
+func fetchPublicIP() string {
+	resp, err := http.Get("https://api.ipify.org?format=json") //nolint:noctx
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	var result struct {
+		IP string `json:"ip"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return ""
+	}
+	return result.IP
 }
 
 // parseDockerLogs parses Docker's multiplexed log stream format (8-byte header + payload).

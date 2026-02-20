@@ -6,6 +6,7 @@ import type {
   NetworkInfo,
   SystemInfo,
   NodeMetrics,
+  MetricsRange,
   SaveTopologyDto,
 } from '../lib/types';
 
@@ -75,6 +76,12 @@ export const topologyApi = {
   async getNodeMetrics(): Promise<NodeMetrics> {
     const response = await fetch(`${INFRA_URL}?action=metrics`);
     if (!response.ok) throw new Error('Failed to fetch node metrics');
+    return response.json();
+  },
+
+  async getMetricsRange(duration: string, containerName: string): Promise<MetricsRange> {
+    const response = await fetch(`${INFRA_URL}?action=metricsrange&duration=${duration}&container=${encodeURIComponent(containerName)}`);
+    if (!response.ok) throw new Error('Failed to fetch metrics range');
     return response.json();
   },
 };

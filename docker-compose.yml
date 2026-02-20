@@ -83,7 +83,7 @@ services:
     restart: unless-stopped
     environment:
       INFRA_API_KEY: ${INFRA_API_KEY:-dev-infra-key}
-      PROMETHEUS_URL: ${PROMETHEUS_URL:-}
+      PROMETHEUS_URL: http://prometheus:9090
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     healthcheck:
@@ -91,11 +91,63 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+    depends_on:
+      - prometheus
+    networks: [portfolio-network]
+
+  # --- Observability stack ---
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: portfolio_cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    networks: [portfolio-network]
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: portfolio_node_exporter
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks: [portfolio-network]
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: portfolio_prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - cadvisor
+      - node-exporter
     networks: [portfolio-network]
 
 volumes:
   postgres_data:
   redis_data:
+  prometheus_data:
 
 networks:
   portfolio-network:

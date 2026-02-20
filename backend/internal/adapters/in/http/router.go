@@ -28,6 +28,7 @@ func NewRouter(h *Handler, apiKey string) http.Handler {
 	mux.HandleFunc("/networks", protected(h.Networks))
 	mux.HandleFunc("/system", protected(h.System))
 	mux.HandleFunc("/metrics/node", protected(h.MetricsNode))
+	mux.HandleFunc("/metrics/range", protected(h.MetricsRange))
 
 	return mux
 }

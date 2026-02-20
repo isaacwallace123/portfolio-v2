@@ -96,6 +96,17 @@ export type NodeMetrics = {
   uptime: number | null;
 };
 
+export type MetricPoint = {
+  time: string;
+  value: number;
+};
+
+export type MetricsRange = {
+  cpu: MetricPoint[];
+  memory: MetricPoint[];
+  disk: MetricPoint[];
+};
+
 // DTOs
 
 export type SaveTopologyDto = {

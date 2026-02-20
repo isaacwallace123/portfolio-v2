@@ -127,6 +127,25 @@ func (h *Handler) MetricsNode(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, metrics)
 }
 
+func (h *Handler) MetricsRange(w http.ResponseWriter, r *http.Request) {
+	duration := r.URL.Query().Get("duration")
+	if duration == "" {
+		duration = "5m"
+	}
+	containerName := r.URL.Query().Get("container")
+
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	data, err := h.service.GetMetricsRange(ctx, duration, containerName)
+	if err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, data)
+}
+
 func extractPathParam(path, prefix, suffix string) string {
 	start := strings.Index(path, prefix)
 	if start == -1 {

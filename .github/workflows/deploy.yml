@@ -73,9 +73,10 @@ jobs:
         run: |
           mkdir -p "${{ secrets.DEPLOY_PATH }}"
 
-      - name: Sync docker-compose.prod.yml
+      - name: Sync compose and config files
         run: |
           cp docker-compose.prod.yml "${{ secrets.DEPLOY_PATH }}/docker-compose.prod.yml"
+          cp prometheus.yml "${{ secrets.DEPLOY_PATH }}/prometheus.yml"
 
       - name: Generate .env (prod)
         run: |
@@ -107,7 +108,6 @@ jobs:
           CLOUDFLARE_TUNNEL_TOKEN=${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
 
           INFRA_API_KEY=${{ secrets.INFRA_API_KEY }}
-          PROMETHEUS_URL=${{ secrets.PROMETHEUS_URL }}
 
           # Persist uploads on Unraid (set this secret, or leave it as-is in compose)
           UPLOADS_PATH=${{ secrets.UPLOADS_PATH }}
@@ -131,3 +131,6 @@ jobs:
           docker logs --tail=200 portfolio_frontend || true
           docker logs --tail=200 portfolio_infra || true
           docker logs --tail=200 portfolio_tunnel || true
+          docker logs --tail=200 portfolio_prometheus || true
+          docker logs --tail=200 portfolio_cadvisor || true
+          docker logs --tail=200 portfolio_node_exporter || true

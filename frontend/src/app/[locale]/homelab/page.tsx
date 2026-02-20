@@ -12,7 +12,7 @@ import ReactFlow, {
   useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,7 +26,7 @@ import { ContainerNode, type ContainerNodeData } from '@/features/topology/ui/Co
 import { InfrastructureNode, type InfrastructureNodeData } from '@/features/topology/ui/InfrastructureNode';
 import { topologyApi } from '@/features/topology/api/topologyApi';
 import { getLogLineClassName, splitTimestamp, detectLogLevel } from '@/features/topology/lib/logColorizer';
-import type { Server, TopologyNode, TopologyConnection, ContainerInfo, ContainerStats, NodeMetrics } from '@/features/topology/lib/types';
+import type { Server, TopologyNode, TopologyConnection, ContainerInfo, ContainerStats, NodeMetrics, MetricsRange } from '@/features/topology/lib/types';
 import { useTranslations } from 'next-intl';
 
 const nodeTypes: NodeTypes = {
@@ -70,6 +70,23 @@ function formatUptime(seconds: number | null): string {
   return `${hours}h ${mins}m`;
 }
 
+// --- Chart Tooltip ---
+
+function ChartTooltip({ active, payload, label, unit = '%' }: {
+  active?: boolean;
+  payload?: { value: number }[];
+  label?: string;
+  unit?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border border-border/60 bg-background/95 backdrop-blur-sm px-2.5 py-1.5 shadow-md text-xs">
+      <p className="text-muted-foreground mb-0.5">{label}</p>
+      <p className="font-semibold tabular-nums">{payload[0].value.toFixed(1)}{unit}</p>
+    </div>
+  );
+}
+
 // --- Detail Panel (60% width, with Metrics/Logs tabs) ---
 
 function DetailPanel({
@@ -89,6 +106,7 @@ function DetailPanel({
   const [logsLoading, setLogsLoading] = useState(true);
   const [statsHistory, setStatsHistory] = useState<MetricSnapshot[]>([]);
   const [timeRange, setTimeRange] = useState<TimeRange>('5m');
+  const [prometheusRange, setPrometheusRange] = useState<MetricsRange | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -96,6 +114,7 @@ function DetailPanel({
     setStats(null);
     setLogs([]);
     setStatsHistory([]);
+    setPrometheusRange(null);
     setLogsLoading(true);
 
     async function load() {
@@ -137,12 +156,31 @@ function DetailPanel({
     };
   }, [container.name]);
 
+  // Fetch Prometheus range data whenever the selected time range or container changes
+  useEffect(() => {
+    let cancelled = false;
+    topologyApi.getMetricsRange(timeRange, container.name)
+      .then((data) => { if (!cancelled) setPrometheusRange(data); })
+      .catch(() => { if (!cancelled) setPrometheusRange(null); });
+    return () => { cancelled = true; };
+  }, [timeRange, container.name]);
+
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
+  // Prefer Prometheus historical data; fall back to live in-memory history
+  const promChartData = prometheusRange && prometheusRange.cpu.length > 1
+    ? prometheusRange.cpu.map((pt, i) => ({
+        time: pt.time,
+        cpu: pt.value,
+        memory: prometheusRange.memory[i]?.value ?? 0,
+      }))
+    : null;
+
   const maxPoints = TIME_RANGES.find((r) => r.value === timeRange)?.points ?? 60;
   const visibleHistory = statsHistory.length > maxPoints ? statsHistory.slice(-maxPoints) : statsHistory;
+  const chartData = promChartData ?? visibleHistory;
 
   const displayName = container.name.replace(/^portfolio_/, '');
 
@@ -224,10 +262,10 @@ function DetailPanel({
             )}
 
             {/* Time range selector + charts */}
-            {visibleHistory.length > 1 && (
+            {(chartData.length > 1 || stats !== null) && (
               <>
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium text-muted-foreground">CPU Usage</p>
+                  <p className="text-xs font-medium text-muted-foreground">CPU</p>
                   <div className="flex gap-1">
                     {TIME_RANGES.map((range) => (
                       <button
@@ -248,7 +286,7 @@ function DetailPanel({
                   <CardContent className="pt-4 pb-3">
                     <div className="h-36">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={visibleHistory}>
+                        <AreaChart data={chartData}>
                           <defs>
                             <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
@@ -257,6 +295,7 @@ function DetailPanel({
                           </defs>
                           <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                           <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={28} tickFormatter={(v) => `${v}%`} />
+                          <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
                           <Area type="monotone" dataKey="cpu" stroke="hsl(var(--chart-1))" fill="url(#cpuGradient)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
                         </AreaChart>
                       </ResponsiveContainer>
@@ -264,12 +303,12 @@ function DetailPanel({
                   </CardContent>
                 </Card>
 
-                <p className="text-xs font-medium text-muted-foreground">Memory Usage</p>
+                <p className="text-xs font-medium text-muted-foreground">Memory</p>
                 <Card>
                   <CardContent className="pt-4 pb-3">
                     <div className="h-36">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={visibleHistory}>
+                        <AreaChart data={chartData}>
                           <defs>
                             <linearGradient id="memGradient" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3} />
@@ -278,6 +317,7 @@ function DetailPanel({
                           </defs>
                           <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                           <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={28} tickFormatter={(v) => `${v}%`} />
+                          <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
                           <Area type="monotone" dataKey="memory" stroke="hsl(var(--chart-2))" fill="url(#memGradient)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
                         </AreaChart>
                       </ResponsiveContainer>

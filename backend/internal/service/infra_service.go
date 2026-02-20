@@ -47,3 +47,7 @@ func (s *infraService) GetSystemInfo(ctx context.Context) (*domain.SystemInfo, e
 func (s *infraService) GetNodeMetrics(ctx context.Context) (map[string]interface{}, error) {
 	return s.metrics.GetNodeMetrics(ctx)
 }
+
+func (s *infraService) GetMetricsRange(ctx context.Context, duration, containerName string) (*domain.MetricsRange, error) {
+	return s.metrics.GetMetricsRange(ctx, duration, containerName)
+}

@@ -87,7 +87,8 @@ services:
       - /dev/kmsg
     volumes:
       - /:/rootfs:ro
-      - /var/run:/var/run:ro
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - /var/run/docker/containerd/containerd.sock:/run/containerd/containerd.sock:rw
       - /sys:/sys:ro
       - /var/lib/docker:/var/lib/docker:ro
       - /dev/disk:/dev/disk:ro

@@ -7,13 +7,11 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # Per-container CPU, memory, network, disk I/O
   - job_name: 'cadvisor'
     scrape_interval: 5s
     static_configs:
       - targets: ['cadvisor:8080']
 
-  # Host-level CPU, memory, disk space, uptime
   - job_name: 'node-exporter'
     static_configs:
       - targets: ['node-exporter:9100']

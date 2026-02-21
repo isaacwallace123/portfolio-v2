@@ -102,9 +102,25 @@ jobs:
           set -euo pipefail
           mkdir -p "${{ secrets.DEPLOY_PATH }}/backend/prometheus"
           cp docker-compose.prod.yml "${{ secrets.DEPLOY_PATH }}/docker-compose.prod.yml"
-          cp backend/prometheus/prometheus.yml "${{ secrets.DEPLOY_PATH }}/backend/prometheus/prometheus.yml"
-          echo "Deploy dir contents:"
-          ls -la "${{ secrets.DEPLOY_PATH }}/backend/prometheus/"
+          cat > "${{ secrets.DEPLOY_PATH }}/backend/prometheus/prometheus.yml" << 'PROMEOF'
+          global:
+            scrape_interval: 15s
+            evaluation_interval: 15s
+
+          scrape_configs:
+            - job_name: 'prometheus'
+              static_configs:
+                - targets: ['localhost:9090']
+
+            - job_name: 'cadvisor'
+              scrape_interval: 5s
+              static_configs:
+                - targets: ['cadvisor:8080']
+
+            - job_name: 'node-exporter'
+              static_configs:
+                - targets: ['node-exporter:9100']
+          PROMEOF
 
       - name: Generate .env (prod)
         run: |

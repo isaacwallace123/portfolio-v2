@@ -120,8 +120,10 @@ services:
       timeout: 3s
       retries: 3
     depends_on:
-      - prometheus
-      - docker-socket-proxy
+      prometheus:
+        condition: service_healthy
+      docker-socket-proxy:
+        condition: service_started
     deploy:
       resources:
         limits:
@@ -196,9 +198,17 @@ services:
     volumes:
       - ./backend/prometheus:/etc/prometheus:ro
       - prometheus_data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
-      - cadvisor
-      - node-exporter
+      cadvisor:
+        condition: service_started
+      node-exporter:
+        condition: service_started
     deploy:
       resources:
         limits:

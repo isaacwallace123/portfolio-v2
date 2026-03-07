@@ -19,8 +19,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import {
   ZoomIn, ZoomOut, Maximize, Server as ServerIcon,
   Cpu, MemoryStick, Clock, X, PowerOff, ChevronRight, ChevronLeft,
@@ -29,6 +27,7 @@ import { AppGroupNode, type AppGroupNodeData } from '@/features/topology/ui/AppG
 import { NamespaceGroupNode } from '@/features/topology/ui/NamespaceGroupNode';
 import { InfrastructureNode, type InfrastructureNodeData } from '@/features/topology/ui/InfrastructureNode';
 import { PodNode, type PodNodeData } from '@/features/topology/ui/PodNode';
+import { ProxmoxHostNode } from '@/features/topology/ui/ProxmoxHostNode';
 import { topologyApi } from '@/features/topology/api/topologyApi';
 import { detectIconFromContainer } from '@/features/topology/lib/iconMap';
 import { getLogLineClassName, splitTimestamp, detectLogLevel } from '@/features/topology/lib/logColorizer';
@@ -40,18 +39,16 @@ const nodeTypes: NodeTypes = {
   namespaceGroupNode: NamespaceGroupNode,
   infrastructureNode: InfrastructureNode,
   podNode: PodNode,
+  proxmoxHostNode: ProxmoxHostNode,
 };
 
 const POLL_INTERVAL = 10_000;
 
 const NS_ORDER = ['portfolio', 'networking', 'monitoring', 'media', 'argocd', 'secrets'];
-const INFRA_KEYWORDS = ['postgres', 'redis', 'mongo', 'mysql', 'mariadb', 'elasticsearch', 'rabbitmq', 'kafka', 'memcached'];
-const GATEWAY_KEYWORDS = ['traefik', 'nginx', 'cloudflared', 'gateway'];
-const MONITORING_KEYWORDS = ['prometheus', 'loki', 'grafana', 'alertmanager'];
 
 // localStorage settings
 const SETTINGS_KEY = 'homelab_app_settings';
-type AppSettings = { visible: boolean; showLogs: boolean; displayName: string };
+type AppSettings = { visible: boolean; showLogs: boolean; displayName: string; icon?: string };
 
 function loadSettings(): Map<string, AppSettings> {
   try {
@@ -59,11 +56,6 @@ function loadSettings(): Map<string, AppSettings> {
     if (!raw) return new Map();
     return new Map(JSON.parse(raw) as [string, AppSettings][]);
   } catch { return new Map(); }
-}
-function saveSettings(map: Map<string, AppSettings>): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(Array.from(map.entries())));
-  }
 }
 
 type TimeRange = '5m' | '15m' | '1h' | '24h';
@@ -152,7 +144,7 @@ function PodDetailPanel({
 
   useEffect(() => { logsEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
 
-  const chartData = prometheusRange && prometheusRange.cpu.length > 1
+  const chartData = prometheusRange && prometheusRange.cpu.length > 0
     ? prometheusRange.cpu.map((pt, i) => ({
         time: pt.time,
         cpu: pt.value,
@@ -316,17 +308,14 @@ function PodDetailPanel({
 
 // --- App group panel ---
 function AppGroupPanel({
-  group, onClose, t, isAdmin, groupSettings, onUpdateSettings,
+  group, onClose, t, showLogs,
 }: {
   group: AppGroup;
   onClose: () => void;
   t: (key: string) => string;
-  isAdmin: boolean;
-  groupSettings: AppSettings | undefined;
-  onUpdateSettings: (patch: Partial<AppSettings>) => void;
+  showLogs: boolean;
 }) {
   const [selectedPod, setSelectedPod] = useState<ContainerInfo | null>(null);
-  const showLogs = groupSettings?.showLogs !== false;
 
   if (selectedPod) {
     return (
@@ -342,7 +331,7 @@ function AppGroupPanel({
     <div className="w-full md:w-[48%] shrink-0 border-l border-border/40 bg-background flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
       <div className="flex items-center justify-between px-5 py-3 border-b border-border/40 shrink-0">
         <div className="min-w-0 flex-1 flex items-center gap-2.5">
-          <h3 className="text-sm font-semibold truncate">{groupSettings?.displayName || group.appName}</h3>
+          <h3 className="text-sm font-semibold truncate">{group.appName}</h3>
           <Badge variant="outline" className="text-[10px] shrink-0">{group.namespace}</Badge>
           <span className="text-[10px] text-muted-foreground shrink-0">{running}/{group.pods.length} running</span>
         </div>
@@ -351,64 +340,24 @@ function AppGroupPanel({
         </Button>
       </div>
 
-      <Tabs defaultValue="pods" className="flex-1 flex flex-col min-h-0">
-        <div className="px-4 pt-2 border-b border-border/40 shrink-0">
-          <TabsList variant="line">
-            <TabsTrigger value="pods">Pods</TabsTrigger>
-            {isAdmin && <TabsTrigger value="settings">Settings</TabsTrigger>}
-          </TabsList>
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4 space-y-1.5">
+          {group.pods.map((pod) => (
+            <button key={pod.id} onClick={() => setSelectedPod(pod)}
+              className="w-full flex items-center gap-3 p-3 rounded-lg border border-border/40 hover:border-primary/40 hover:bg-muted/20 transition-all text-left group"
+            >
+              <span className={`w-2 h-2 rounded-full shrink-0 ${
+                pod.state === 'running' ? 'bg-green-500' : pod.state === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
+              }`} />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium truncate">{pod.name}</p>
+                <p className="text-[10px] text-muted-foreground capitalize">{pod.state} · {pod.image?.split('/').pop()?.split(':')[0] ?? ''}</p>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          ))}
         </div>
-
-        <TabsContent value="pods" className="flex-1 overflow-y-auto m-0">
-          <div className="p-4 space-y-1.5">
-            {group.pods.map((pod) => (
-              <button key={pod.id} onClick={() => setSelectedPod(pod)}
-                className="w-full flex items-center gap-3 p-3 rounded-lg border border-border/40 hover:border-primary/40 hover:bg-muted/20 transition-all text-left group"
-              >
-                <span className={`w-2 h-2 rounded-full shrink-0 ${
-                  pod.state === 'running' ? 'bg-green-500' : pod.state === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
-                }`} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium truncate">{pod.name}</p>
-                  <p className="text-[10px] text-muted-foreground capitalize">{pod.state} · {pod.image?.split('/').pop()?.split(':')[0] ?? ''}</p>
-                </div>
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
-            ))}
-          </div>
-        </TabsContent>
-
-        {isAdmin && (
-          <TabsContent value="settings" className="flex-1 overflow-y-auto m-0">
-            <div className="p-4 space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Display name</Label>
-                <input
-                  className="w-full rounded-md border border-border/60 bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                  value={groupSettings?.displayName ?? ''}
-                  placeholder={group.appName}
-                  onChange={(e) => onUpdateSettings({ displayName: e.target.value })}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-muted-foreground">Visible on public page</Label>
-                <Switch
-                  checked={groupSettings?.visible !== false}
-                  onCheckedChange={(v) => onUpdateSettings({ visible: v })}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-muted-foreground">Allow log viewing</Label>
-                <Switch
-                  checked={groupSettings?.showLogs !== false}
-                  onCheckedChange={(v) => onUpdateSettings({ showLogs: v })}
-                />
-              </div>
-              <p className="text-[10px] text-muted-foreground">Changes are saved automatically.</p>
-            </div>
-          </TabsContent>
-        )}
-      </Tabs>
+      </div>
     </div>
   );
 }
@@ -429,6 +378,7 @@ const NS_ROW_GAP = 32;
 const NS_COL_GAP = 40;
 const NS_GRID_COLS = 2;
 const TIER_GAP = 56;
+const PROXMOX_NODE_H = 100;
 const INFRA_NODE_H = 88;
 const INFRA_TIER_GAP = 36;
 
@@ -447,7 +397,7 @@ function nsBoxDims(nsGroups: AppGroup[]) {
     h += Math.max(...rowApps.map((g) => colHeight(g.pods.length)));
     if (r < rows - 1) h += NS_ROW_GAP;
   }
-  h += NS_PAD_Y + 8; // extra bottom clearance
+  h += NS_PAD_Y + 8;
   return { w, h };
 }
 
@@ -484,7 +434,7 @@ function buildFlow(groups: AppGroup[]): { nodes: Node[]; edges: Edge[] } {
   const edgeList: Edge[] = [];
   const seen = new Set<string>();
 
-  const addEdge = (source: string, target: string, type = 'smoothstep', dashed = false) => {
+  const addEdge = (source: string, target: string, dashed = false, type = 'smoothstep') => {
     const key = `${source}--${target}`;
     if (seen.has(key) || source === target) return;
     seen.add(key);
@@ -501,10 +451,6 @@ function buildFlow(groups: AppGroup[]): { nodes: Node[]; edges: Edge[] } {
     return ai - bi;
   };
 
-  const isInfraG = (g: AppGroup) => INFRA_KEYWORDS.some((k) => g.appName.toLowerCase().includes(k));
-  const isGatewayG = (g: AppGroup) => GATEWAY_KEYWORDS.some((k) => g.appName.toLowerCase().includes(k));
-  const isMonitoringG = (g: AppGroup) => MONITORING_KEYWORDS.some((k) => g.appName.toLowerCase().includes(k));
-
   const networkingGroups = groups.filter((g) => g.namespace === 'networking');
   const otherGroups = groups.filter((g) => g.namespace !== 'networking');
   const otherNamespaces = [...new Set(otherGroups.map((g) => g.namespace))].sort(sortNs);
@@ -520,29 +466,40 @@ function buildFlow(groups: AppGroup[]): { nodes: Node[]; edges: Edge[] } {
 
   const gwCount = networkingGroups.length;
   const gwTierW = gwCount > 0 ? gwCount * (APP_W + APP_GAP_X) - APP_GAP_X : 0;
-  const canvasW = Math.max(totalGridW, gwTierW, 500);
+  const proxmoxW = 340;
+  const canvasW = Math.max(totalGridW, gwTierW, proxmoxW, 500);
   const centerX = canvasW / 2;
 
-  // 1. Infrastructure chain: Internet → Router → Server
+  // 1. Infrastructure chain: Internet → Router → ProxmoxHost
   let yOffset = 0;
-  const infraChain = [
-    { id: '__internet', label: 'Internet', infraType: 'internet' },
-    { id: '__router',   label: 'Router',   infraType: 'router' },
-    { id: '__server',   label: 'Server',   infraType: 'server' },
-  ];
-  for (let i = 0; i < infraChain.length; i++) {
-    const { id, label, infraType } = infraChain[i];
-    flowNodes.push({
-      id, type: 'infrastructureNode',
-      position: { x: centerX - 40, y: yOffset },
-      draggable: false, selectable: false,
-      data: { label, infrastructureType: infraType } satisfies InfrastructureNodeData,
-    });
-    if (i > 0) addEdge(infraChain[i - 1].id, id);
-    yOffset += INFRA_NODE_H + INFRA_TIER_GAP;
-  }
 
-  // 2. Networking / gateway tier (standalone, no namespace parent)
+  flowNodes.push({
+    id: '__internet', type: 'infrastructureNode',
+    position: { x: centerX - 40, y: yOffset },
+    draggable: false, selectable: false,
+    data: { label: 'Internet', infrastructureType: 'internet' } satisfies InfrastructureNodeData,
+  });
+  yOffset += INFRA_NODE_H + INFRA_TIER_GAP;
+
+  flowNodes.push({
+    id: '__router', type: 'infrastructureNode',
+    position: { x: centerX - 40, y: yOffset },
+    draggable: false, selectable: false,
+    data: { label: 'Home Router', infrastructureType: 'router' } satisfies InfrastructureNodeData,
+  });
+  addEdge('__internet', '__router');
+  yOffset += INFRA_NODE_H + INFRA_TIER_GAP;
+
+  flowNodes.push({
+    id: '__proxmox', type: 'proxmoxHostNode',
+    position: { x: centerX - proxmoxW / 2, y: yOffset },
+    draggable: false, selectable: false,
+    data: {},
+  });
+  addEdge('__router', '__proxmox');
+  yOffset += PROXMOX_NODE_H + INFRA_TIER_GAP;
+
+  // 2. Networking / gateway tier (standalone)
   const gatewayIds: string[] = [];
   if (gwCount > 0) {
     const gwStartX = centerX - gwTierW / 2;
@@ -554,10 +511,10 @@ function buildFlow(groups: AppGroup[]): { nodes: Node[]; edges: Edge[] } {
         draggable: false,
         data: { appName: g.appName, namespace: g.namespace, pods: g.pods, icon: g.icon } satisfies AppGroupNodeData,
       });
-      addEdge('__server', g.id);
+      addEdge('__proxmox', g.id);
       gatewayIds.push(g.id);
 
-      // Pod nodes for networking apps (absolute coords, no parent)
+      // Pod nodes for networking apps (absolute coords)
       const podX = gx + (APP_W - POD_W) / 2;
       g.pods.forEach((pod, pi) => {
         flowNodes.push({
@@ -566,7 +523,7 @@ function buildFlow(groups: AppGroup[]): { nodes: Node[]; edges: Edge[] } {
           draggable: false,
           data: { pod } satisfies PodNodeData,
         });
-        addEdge(g.id, `pod__${pod.id}`, 'straight');
+        addEdge(g.id, `pod__${pod.id}`, false, 'straight');
       });
     });
     const maxNetPods = Math.max(...networkingGroups.map((g) => g.pods.length), 1);
@@ -600,11 +557,11 @@ function buildFlow(groups: AppGroup[]): { nodes: Node[]; edges: Edge[] } {
       selectable: false, draggable: false,
     });
 
-    // Dashed edges: gateways → namespace
-    const sources = gatewayIds.length > 0 ? gatewayIds : ['__server'];
-    for (const src of sources) addEdge(src, `ns__${ns}`, 'smoothstep', true);
+    // Dashed edges: gateways → namespace (or proxmox if no gateways)
+    const sources = gatewayIds.length > 0 ? gatewayIds : ['__proxmox'];
+    for (const src of sources) addEdge(src, `ns__${ns}`, true);
 
-    // Compute per-row Y offsets within namespace
+    // Per-row Y offsets within namespace
     const nsRows = Math.ceil(nsGroups.length / APPS_PER_ROW);
     const nsRowYOffsets: number[] = [];
     let nsRy = NS_HEADER + NS_PAD_Y;
@@ -636,34 +593,15 @@ function buildFlow(groups: AppGroup[]): { nodes: Node[]; edges: Edge[] } {
         flowNodes.push({
           id: `pod__${pod.id}`, type: 'podNode',
           parentId: `ns__${ns}`,
+          extent: 'parent' as const,
           position: { x: podRelX, y: appRelY + APP_H + APP_POD_GAP + pi * (POD_H + POD_GAP) },
           draggable: false,
           data: { pod } satisfies PodNodeData,
         });
-        addEdge(group.id, `pod__${pod.id}`, 'straight');
+        addEdge(group.id, `pod__${pod.id}`, false, 'straight');
       });
     });
-
-    // Internal namespace edges between app groups
-    const infraGs = nsGroups.filter(isInfraG);
-    const gwGs = nsGroups.filter(isGatewayG);
-    const monGs = nsGroups.filter(isMonitoringG);
-    const appGs = nsGroups.filter((g) => !isInfraG(g) && !isGatewayG(g) && !isMonitoringG(g));
-    for (const gw of gwGs) for (const app of appGs) addEdge(gw.id, app.id);
-    for (const app of appGs) for (const inf of infraGs) addEdge(app.id, inf.id);
-    const prom = monGs.find((g) => g.appName.includes('prometheus'));
-    const grafana = monGs.find((g) => g.appName.includes('grafana'));
-    const loki = monGs.find((g) => g.appName.includes('loki'));
-    if (prom && grafana) addEdge(grafana.id, prom.id);
-    if (prom && loki) addEdge(prom.id, loki.id);
   });
-
-  // Networking internal edges
-  if (networkingGroups.length > 1) {
-    const gws = networkingGroups.filter(isGatewayG);
-    const rest = networkingGroups.filter((g) => !isGatewayG(g));
-    for (const gw of gws) for (const r of rest) addEdge(gw.id, r.id);
-  }
 
   return { nodes: flowNodes, edges: edgeList };
 }
@@ -677,16 +615,13 @@ function TopologyCanvas() {
   const [loading, setLoading] = useState(true);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedPod, setSelectedPod] = useState<ContainerInfo | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [settingsMap, setSettingsMap] = useState<Map<string, AppSettings>>(new Map());
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, , onEdgesChange] = useEdgesState([]);
   const initializedRef = useRef(false);
 
-  // Check admin status
   useEffect(() => {
-    fetch('/api/auth/me').then((r) => r.json()).then((d) => setIsAdmin(d.isAdmin)).catch(() => {});
     setSettingsMap(loadSettings());
   }, []);
 
@@ -721,8 +656,7 @@ function TopologyCanvas() {
       try {
         const containers = await topologyApi.discoverContainers();
         setLiveContainers(containers);
-        const groups = groupContainersToApps(containers);
-        const groupMap = new Map(groups.map((g) => [g.id, g]));
+        const groupMap = new Map(groupContainersToApps(containers).map((g) => [g.id, g]));
         const podMap = new Map(containers.map((c) => [`pod__${c.id}`, c]));
         setNodes((prev) => prev.map((n) => {
           if (n.type === 'appGroupNode') {
@@ -756,16 +690,6 @@ function TopologyCanvas() {
       setSelectedGroupId(null);
       setSelectedPod((node.data as PodNodeData).pod);
     }
-  }, []);
-
-  const handleUpdateSettings = useCallback((groupId: string, patch: Partial<AppSettings>) => {
-    setSettingsMap((prev) => {
-      const next = new Map(prev);
-      const current = next.get(groupId) ?? { visible: true, showLogs: true, displayName: '' };
-      next.set(groupId, { ...current, ...patch });
-      saveSettings(next);
-      return next;
-    });
   }, []);
 
   if (loading) {
@@ -814,9 +738,7 @@ function TopologyCanvas() {
           group={selectedGroup}
           onClose={() => setSelectedGroupId(null)}
           t={(key) => t(key)}
-          isAdmin={isAdmin}
-          groupSettings={settingsMap.get(selectedGroup.id)}
-          onUpdateSettings={(patch) => handleUpdateSettings(selectedGroup.id, patch)}
+          showLogs={settingsMap.get(selectedGroup.id)?.showLogs !== false}
         />
       )}
 

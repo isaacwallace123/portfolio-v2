@@ -4,17 +4,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { topologyApi } from '@/features/topology/api/topologyApi';
 import { detectIconFromContainer } from '@/features/topology/lib/iconMap';
+import { IconPicker } from '@/features/topology/ui/IconPicker';
 import type { ContainerInfo } from '@/features/topology/lib/types';
 import { toast } from 'sonner';
-import Image from 'next/image';
 import { RefreshCw, Save } from 'lucide-react';
 
 const SETTINGS_KEY = 'homelab_app_settings';
-type AppSettings = { visible: boolean; showLogs: boolean; displayName: string };
+type AppSettings = { visible: boolean; showLogs: boolean; displayName: string; icon?: string };
 type GroupKey = string; // `${namespace}/${appName}`
 
 function loadSettings(): Map<GroupKey, AppSettings> {
@@ -176,16 +175,11 @@ export default function AdminHomelabPage() {
                         s.visible ? 'border-border/50 bg-card' : 'border-border/30 bg-muted/20 opacity-60'
                       }`}
                     >
-                      {/* Icon */}
-                      <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0 overflow-hidden">
-                        {group.icon ? (
-                          <Image src={group.icon} alt="" width={20} height={20} unoptimized />
-                        ) : (
-                          <span className="text-[10px] font-bold text-muted-foreground">
-                            {group.appName.slice(0, 2).toUpperCase()}
-                          </span>
-                        )}
-                      </div>
+                      {/* Icon picker */}
+                      <IconPicker
+                        currentIcon={s.icon ?? group.icon}
+                        onSelect={(iconPath) => updateSetting(group.key, { icon: iconPath })}
+                      />
 
                       {/* Name + pod count */}
                       <div className="flex-1 min-w-0">

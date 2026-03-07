@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/isaacwallace123/portfolio-infra/internal/core/domain"
@@ -85,25 +86,36 @@ func (r *prometheusRepository) GetMetricsRange(ctx context.Context, duration, co
 	var cpuQuery, memQuery string
 
 	if containerName != "" {
-		// cAdvisor per-container metrics filtered by container ID.
-		// Docker returns short 12-char IDs; cAdvisor labels use the full 64-char ID.
-		// Use a regex prefix match (=~) so "902ea922a8a6" matches
-		// "/docker/902ea922a8a6b78ece1affad1d6cbbb45b3944ff09bb72028ff6ab9d21da3baf".
-		// This works with both the Docker factory (standard Linux / Unraid) and
-		// the containerd factory (Docker Desktop WSL2).
-		// CPU normalised to 0-100% of the container's CPU limit (quota/period).
-		// Falls back to 1 CPU core via `or vector(1)` when no limit is set (quota = -1).
-		cpuQuery = fmt.Sprintf(
-			`sum(rate(container_cpu_usage_seconds_total{id=~"/docker/%s.*"}[%s])) / (max(container_spec_cpu_quota{id=~"/docker/%s.*"} / container_spec_cpu_period{id=~"/docker/%s.*"}) > 0 or vector(1)) * 100`,
-			containerName, cfg.rateWin, containerName, containerName,
-		)
-		// Memory: return raw working-set bytes. The frontend converts to a
-		// percentage using stats.memoryLimit (from Docker stats API) which
-		// reliably reads the cgroup limit on all kernel versions.
-		memQuery = fmt.Sprintf(
-			`container_memory_working_set_bytes{id=~"/docker/%s.*"}`,
-			containerName,
-		)
+		// containerName is "namespace/pod-name" from the Kubernetes adapter.
+		// Use k8s cAdvisor labels scraped by kubelet. container!="POD" filters
+		// out the pause/sandbox container.
+		parts := strings.SplitN(containerName, "/", 2)
+		var namespace, pod string
+		if len(parts) == 2 {
+			namespace, pod = parts[0], parts[1]
+		} else {
+			pod = containerName
+		}
+
+		if namespace != "" {
+			cpuQuery = fmt.Sprintf(
+				`sum(rate(container_cpu_usage_seconds_total{pod=%q,namespace=%q,container!="POD"}[%s])) * 100`,
+				pod, namespace, cfg.rateWin,
+			)
+			memQuery = fmt.Sprintf(
+				`sum(container_memory_working_set_bytes{pod=%q,namespace=%q,container!="POD"})`,
+				pod, namespace,
+			)
+		} else {
+			cpuQuery = fmt.Sprintf(
+				`sum(rate(container_cpu_usage_seconds_total{pod=%q,container!="POD"}[%s])) * 100`,
+				pod, cfg.rateWin,
+			)
+			memQuery = fmt.Sprintf(
+				`sum(container_memory_working_set_bytes{pod=%q,container!="POD"})`,
+				pod,
+			)
+		}
 	} else {
 		// Host-level metrics via node_exporter.
 		cpuQuery = fmt.Sprintf(`100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[%s])) * 100)`, cfg.rateWin)

@@ -46,7 +46,7 @@ const NAME_RULES: IconRule[] = [
   { pattern: /mariadb/i, icon: '/uploads/icons/mariadb.png' },
 ];
 
-const FALLBACK_ICON = '/uploads/icons/docker.png';
+const FALLBACK_ICON = '/uploads/icons/kubernetes.png';
 
 export function detectIconFromImage(imageName: string): string {
   for (const rule of IMAGE_RULES) {

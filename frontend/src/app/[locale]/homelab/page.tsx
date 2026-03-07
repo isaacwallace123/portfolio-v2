@@ -116,8 +116,8 @@ function DetailPanel({
 
     async function load() {
       const [statsData, logsData] = await Promise.all([
-        topologyApi.getContainerStats(container.name).catch(() => null),
-        showLogs ? topologyApi.getContainerLogs(container.name, 80).catch(() => null) : null,
+        topologyApi.getContainerStats(container.id).catch(() => null),
+        showLogs ? topologyApi.getContainerLogs(container.id, 80).catch(() => null) : null,
       ]);
 
       if (statsData) setStats(statsData);
@@ -130,7 +130,7 @@ function DetailPanel({
     // Poll gauges only (no history accumulation — charts use Prometheus exclusively)
     intervalRef.current = setInterval(async () => {
       try {
-        const data = await topologyApi.getContainerStats(container.name);
+        const data = await topologyApi.getContainerStats(container.id);
         setStats(data);
       } catch {
         // ignore

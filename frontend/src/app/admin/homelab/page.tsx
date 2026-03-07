@@ -300,14 +300,16 @@ function HomelabEditor() {
     [nodeStates, setNodes]
   );
 
-  // Auto-detect connections using smart heuristics (gateway→app→infra pattern)
+  // Auto-detect connections using smart heuristics, namespace-scoped
   const handleAutoDetect = useCallback(async () => {
     try {
-      await topologyApi.discoverContainers();
+      const containers = await topologyApi.discoverContainers();
+      setDiscoveredContainers(containers);
 
       const INFRA_KW = ['postgres', 'redis', 'mongo', 'mysql', 'mariadb', 'elasticsearch', 'rabbitmq', 'kafka', 'memcached'];
       const GATEWAY_KW = ['traefik', 'nginx', 'cloudflared', 'gateway'];
-      const nodeKeys = new Set(
+
+      const inCanvas = new Set(
         Array.from(nodeStates.entries())
           .filter(([, s]) => !s.nodeType || s.nodeType === 'container')
           .map(([key]) => key)
@@ -329,20 +331,36 @@ function HomelabEditor() {
         }
       };
 
-      const nodeList = Array.from(nodeKeys);
       const isInfra = (name: string) => INFRA_KW.some((k) => name.toLowerCase().includes(k));
       const isGateway = (name: string) => GATEWAY_KW.some((k) => name.toLowerCase().includes(k));
 
-      const infraNodes = nodeList.filter(isInfra);
-      const gatewayNodes = nodeList.filter(isGateway);
-      const appNodes = nodeList.filter((n) => !isInfra(n) && !isGateway(n));
+      // Group canvas containers by namespace, connect only within each namespace
+      const byNamespace = new Map<string, ContainerInfo[]>();
+      for (const c of containers) {
+        if (!inCanvas.has(c.name)) continue;
+        const ns = c.networks[0] || 'default';
+        if (!byNamespace.has(ns)) byNamespace.set(ns, []);
+        byNamespace.get(ns)!.push(c);
+      }
 
-      for (const gw of gatewayNodes) {
-        for (const app of appNodes) addEdge(gw, app);
+      for (const [, nsContainers] of byNamespace) {
+        const appName = (c: ContainerInfo) => c.appName || c.name;
+        const infra = nsContainers.filter((c) => isInfra(appName(c)));
+        const gateways = nsContainers.filter((c) => isGateway(appName(c)));
+        const apps = nsContainers.filter((c) => !isInfra(appName(c)) && !isGateway(appName(c)));
+
+        for (const gw of gateways) {
+          for (const app of apps) addEdge(gw.name, app.name);
+        }
+        for (const app of apps) {
+          for (const inf of infra) addEdge(app.name, inf.name);
+        }
       }
-      for (const app of appNodes) {
-        for (const inf of infraNodes) addEdge(app, inf);
-      }
+
+      // Known cross-namespace: traefik → frontend
+      const traefik = containers.find((c) => inCanvas.has(c.name) && isGateway(c.appName || c.name) && c.networks[0] !== (containers.find((x) => (x.appName || x.name).includes('frontend'))?.networks[0]));
+      const frontend = containers.find((c) => inCanvas.has(c.name) && (c.appName === 'frontend' || c.name.includes('frontend')));
+      if (traefik && frontend) addEdge(traefik.name, frontend.name);
 
       if (newEdges > 0) {
         toast.success(`Detected ${newEdges} connection(s)`);

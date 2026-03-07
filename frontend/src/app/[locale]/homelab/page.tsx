@@ -139,7 +139,9 @@ function PodDetailPanel({
     let cancelled = false;
     async function fetchRange() {
       try {
-        const data = await topologyApi.getMetricsRange(timeRange, pod.id);
+        const ns = pod.networks[0] || '';
+        const metricsId = ns ? `${ns}/${pod.name}` : pod.name;
+        const data = await topologyApi.getMetricsRange(timeRange, metricsId);
         if (!cancelled) setPrometheusRange(data);
       } catch {
         if (!cancelled) setPrometheusRange(null);

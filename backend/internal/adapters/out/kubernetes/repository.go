@@ -422,6 +422,23 @@ func (r *kubernetesRepository) ListDependencies(ctx context.Context) ([]domain.A
 		return "", "", false
 	}
 
+	// Build configmap data index: (name, namespace) -> concatenated values
+	type cmKey struct{ name, ns string }
+	cmData := make(map[cmKey]string)
+	if configMaps, err := r.client.CoreV1().ConfigMaps("").List(ctx, metav1.ListOptions{}); err == nil {
+		for _, cm := range configMaps.Items {
+			if systemNamespaces[cm.Namespace] {
+				continue
+			}
+			var sb strings.Builder
+			for _, v := range cm.Data {
+				sb.WriteString(v)
+				sb.WriteByte('\n')
+			}
+			cmData[cmKey{cm.Name, cm.Namespace}] = sb.String()
+		}
+	}
+
 	for _, pod := range pods.Items {
 		if systemNamespaces[pod.Namespace] {
 			continue
@@ -448,6 +465,32 @@ func (r *kubernetesRepository) ListDependencies(ctx context.Context) ([]domain.A
 				if strings.Contains(cmdStr, "nc -z "+svc.Name+" ") ||
 					strings.Contains(cmdStr, svc.Name+":") {
 					addDep(srcApp, pod.Namespace, svc.Name, svc.Namespace)
+				}
+			}
+		}
+
+		// Scan ConfigMaps referenced by this pod's volumes
+		for _, vol := range pod.Spec.Volumes {
+			if vol.ConfigMap == nil {
+				continue
+			}
+			data, ok := cmData[cmKey{vol.ConfigMap.Name, pod.Namespace}]
+			if !ok {
+				continue
+			}
+			for _, svc := range services.Items {
+				if systemNamespaces[svc.Namespace] {
+					continue
+				}
+				n, ns := svc.Name, svc.Namespace
+				if ns == pod.Namespace {
+					if strings.Contains(data, n+":") || strings.Contains(data, "/"+n+"/") ||
+						strings.Contains(data, "@"+n+":") || strings.Contains(data, "//"+n) ||
+						strings.Contains(data, n+"."+ns) {
+						addDep(srcApp, pod.Namespace, n, ns)
+					}
+				} else if strings.Contains(data, n+"."+ns) {
+					addDep(srcApp, pod.Namespace, n, ns)
 				}
 			}
 		}

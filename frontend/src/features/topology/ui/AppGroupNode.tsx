@@ -39,41 +39,21 @@ export const AppGroupNode = memo(({ data, selected }: NodeProps<AppGroupNodeData
             : 'border-border/50 hover:border-primary/40 hover:shadow-md'
         }`}
       >
-        <div className="p-3">
-          <div className="flex items-center gap-2 mb-2.5">
-            <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+        <div className="px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center shrink-0 overflow-hidden">
               {icon ? (
-                <Image src={icon} alt="" width={20} height={20} unoptimized />
+                <Image src={icon} alt="" width={16} height={16} unoptimized />
               ) : (
-                <span className="text-[10px] font-bold text-muted-foreground">{initials}</span>
+                <span className="text-[9px] font-bold text-muted-foreground">{initials}</span>
               )}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold truncate leading-tight">{appName}</p>
               <p className="text-[10px] text-muted-foreground truncate">{namespace}</p>
             </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex gap-1 items-center flex-wrap">
-              {pods.slice(0, 8).map((pod, i) => (
-                <span
-                  key={i}
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    pod.state === 'running'
-                      ? 'bg-green-500'
-                      : pod.state === 'pending'
-                      ? 'bg-yellow-500'
-                      : 'bg-red-500'
-                  }`}
-                />
-              ))}
-              {total > 8 && (
-                <span className="text-[9px] text-muted-foreground">+{total - 8}</span>
-              )}
-            </div>
             <span
-              className={`text-[10px] font-medium ${
+              className={`text-[9px] font-semibold shrink-0 ${
                 allRunning ? 'text-green-600' : anyRunning ? 'text-yellow-600' : 'text-red-600'
               }`}
             >

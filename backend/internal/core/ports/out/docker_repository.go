@@ -6,7 +6,7 @@ import (
 	"github.com/isaacwallace123/portfolio-infra/internal/core/domain"
 )
 
-type DockerRepository interface {
+type ClusterRepository interface {
 	Ping(ctx context.Context) error
 	ListContainers(ctx context.Context) ([]domain.ContainerInfo, error)
 	GetContainerStats(ctx context.Context, id string) (*domain.ContainerStats, error)

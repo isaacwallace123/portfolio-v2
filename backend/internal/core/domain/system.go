@@ -5,7 +5,7 @@ type SystemInfo struct {
 	Architecture  string `json:"architecture"`
 	CPUs          int    `json:"cpus"`
 	MemoryTotal   int64  `json:"memoryTotal"`
-	DockerVersion string `json:"dockerVersion"`
+	KubernetesVersion string `json:"kubernetesVersion"`
 	Containers    int    `json:"containers"`
 	Running       int    `json:"running"`
 	Stopped       int    `json:"stopped"`

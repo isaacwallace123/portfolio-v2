@@ -9,39 +9,39 @@ import (
 )
 
 type infraService struct {
-	docker  portout.DockerRepository
+	cluster portout.ClusterRepository
 	metrics portout.MetricsRepository
 }
 
-func NewInfraService(docker portout.DockerRepository, metrics portout.MetricsRepository) portin.InfraService {
+func NewInfraService(cluster portout.ClusterRepository, metrics portout.MetricsRepository) portin.InfraService {
 	return &infraService{
-		docker:  docker,
+		cluster: cluster,
 		metrics: metrics,
 	}
 }
 
 func (s *infraService) Health(ctx context.Context) error {
-	return s.docker.Ping(ctx)
+	return s.cluster.Ping(ctx)
 }
 
 func (s *infraService) ListContainers(ctx context.Context) ([]domain.ContainerInfo, error) {
-	return s.docker.ListContainers(ctx)
+	return s.cluster.ListContainers(ctx)
 }
 
 func (s *infraService) GetContainerStats(ctx context.Context, id string) (*domain.ContainerStats, error) {
-	return s.docker.GetContainerStats(ctx, id)
+	return s.cluster.GetContainerStats(ctx, id)
 }
 
 func (s *infraService) GetContainerLogs(ctx context.Context, id, tail string) (*domain.ContainerLogs, error) {
-	return s.docker.GetContainerLogs(ctx, id, tail)
+	return s.cluster.GetContainerLogs(ctx, id, tail)
 }
 
 func (s *infraService) ListNetworks(ctx context.Context) ([]domain.NetworkInfo, error) {
-	return s.docker.ListNetworks(ctx)
+	return s.cluster.ListNetworks(ctx)
 }
 
 func (s *infraService) GetSystemInfo(ctx context.Context) (*domain.SystemInfo, error) {
-	return s.docker.GetSystemInfo(ctx)
+	return s.cluster.GetSystemInfo(ctx)
 }
 
 func (s *infraService) GetNodeMetrics(ctx context.Context) (map[string]interface{}, error) {

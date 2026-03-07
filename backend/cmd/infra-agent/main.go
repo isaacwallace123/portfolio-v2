@@ -1,17 +1,17 @@
 package main
 
 import (
-	"context"
 	"log"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/docker/docker/client"
 	httpadapter "github.com/isaacwallace123/portfolio-infra/internal/adapters/in/http"
-	dockeradapter "github.com/isaacwallace123/portfolio-infra/internal/adapters/out/docker"
+	k8sadapter "github.com/isaacwallace123/portfolio-infra/internal/adapters/out/kubernetes"
 	prometheusadapter "github.com/isaacwallace123/portfolio-infra/internal/adapters/out/prometheus"
 	"github.com/isaacwallace123/portfolio-infra/internal/service"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	metricsv1beta1 "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 func main() {
@@ -23,22 +23,24 @@ func main() {
 		port = "8080"
 	}
 
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	config, err := rest.InClusterConfig()
 	if err != nil {
-		log.Fatalf("Failed to create Docker client: %v", err)
+		log.Fatalf("Failed to load in-cluster config: %v", err)
 	}
-	defer dockerClient.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if _, err := dockerClient.Ping(ctx); err != nil {
-		log.Fatalf("Failed to connect to Docker daemon: %v", err)
+	k8sClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Fatalf("Failed to create Kubernetes client: %v", err)
 	}
-	log.Println("Connected to Docker daemon")
 
-	dockerRepo := dockeradapter.NewDockerRepository(dockerClient)
+	metricsClient, err := metricsv1beta1.NewForConfig(config)
+	if err != nil {
+		log.Fatalf("Failed to create metrics client: %v", err)
+	}
+
+	clusterRepo := k8sadapter.NewKubernetesRepository(k8sClient, metricsClient)
 	metricsRepo := prometheusadapter.NewPrometheusRepository(promURL)
-	infraSvc := service.NewInfraService(dockerRepo, metricsRepo)
+	infraSvc := service.NewInfraService(clusterRepo, metricsRepo)
 
 	handler := httpadapter.NewHandler(infraSvc)
 	router := httpadapter.NewRouter(handler, apiKey)

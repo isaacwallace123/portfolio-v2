@@ -332,6 +332,130 @@ func (r *kubernetesRepository) GetSystemInfo(ctx context.Context) (*domain.Syste
 	}, nil
 }
 
+func (r *kubernetesRepository) ListNodes(ctx context.Context) ([]domain.NodeInfo, error) {
+	nodes, err := r.client.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]domain.NodeInfo, 0, len(nodes.Items))
+	for _, node := range nodes.Items {
+		role := "worker"
+		if _, ok := node.Labels["node-role.kubernetes.io/control-plane"]; ok {
+			role = "control-plane"
+		} else if _, ok := node.Labels["node-role.kubernetes.io/master"]; ok {
+			role = "control-plane"
+		}
+
+		status := "Unknown"
+		for _, cond := range node.Status.Conditions {
+			if cond.Type == "Ready" {
+				if cond.Status == "True" {
+					status = "Ready"
+				} else {
+					status = "NotReady"
+				}
+			}
+		}
+
+		cpuCores := node.Status.Capacity.Cpu().Value()
+		memBytes := node.Status.Capacity.Memory().Value()
+		memGB := float64(memBytes) / (1024 * 1024 * 1024)
+
+		result = append(result, domain.NodeInfo{
+			Name:     node.Name,
+			Role:     role,
+			Status:   status,
+			CPUCores: cpuCores,
+			MemoryGB: memGB,
+			OSImage:  node.Status.NodeInfo.OSImage,
+		})
+	}
+	return result, nil
+}
+
+func (r *kubernetesRepository) ListDependencies(ctx context.Context) ([]domain.AppDependency, error) {
+	services, err := r.client.CoreV1().Services("").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	pods, err := r.client.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	type depKey struct{ src, srcNs, tgt, tgtNs string }
+	seen := make(map[depKey]bool)
+	var deps []domain.AppDependency
+
+	addDep := func(srcApp, srcNs, tgtApp, tgtNs string) {
+		if srcApp == tgtApp && srcNs == tgtNs {
+			return
+		}
+		k := depKey{srcApp, srcNs, tgtApp, tgtNs}
+		if !seen[k] {
+			seen[k] = true
+			deps = append(deps, domain.AppDependency{
+				SourceApp: srcApp, SourceNamespace: srcNs,
+				TargetApp: tgtApp, TargetNamespace: tgtNs,
+			})
+		}
+	}
+
+	matchService := func(value, podNs string) (svcName, svcNs string, ok bool) {
+		for _, svc := range services.Items {
+			if systemNamespaces[svc.Namespace] {
+				continue
+			}
+			n, ns := svc.Name, svc.Namespace
+			if ns == podNs {
+				if strings.Contains(value, n+":") || strings.Contains(value, "/"+n+"/") ||
+					strings.Contains(value, "@"+n+":") || strings.Contains(value, "@"+n+"/") ||
+					strings.HasPrefix(value, n+".") || value == n {
+					return n, ns, true
+				}
+			}
+			if strings.Contains(value, n+"."+ns) {
+				return n, ns, true
+			}
+		}
+		return "", "", false
+	}
+
+	for _, pod := range pods.Items {
+		if systemNamespaces[pod.Namespace] {
+			continue
+		}
+		srcApp := podAppName(pod)
+
+		for _, c := range pod.Spec.Containers {
+			for _, env := range c.Env {
+				if env.Value == "" {
+					continue
+				}
+				if tgtName, tgtNs, ok := matchService(env.Value, pod.Namespace); ok {
+					addDep(srcApp, pod.Namespace, tgtName, tgtNs)
+				}
+			}
+		}
+
+		for _, ic := range pod.Spec.InitContainers {
+			cmdStr := strings.Join(append(ic.Command, ic.Args...), " ")
+			for _, svc := range services.Items {
+				if systemNamespaces[svc.Namespace] || svc.Namespace != pod.Namespace {
+					continue
+				}
+				if strings.Contains(cmdStr, "nc -z "+svc.Name+" ") ||
+					strings.Contains(cmdStr, svc.Name+":") {
+					addDep(srcApp, pod.Namespace, svc.Name, svc.Namespace)
+				}
+			}
+		}
+	}
+
+	return deps, nil
+}
+
 func parseID(id string) (namespace, podName string, err error) {
 	parts := strings.SplitN(id, "/", 2)
 	if len(parts) != 2 {

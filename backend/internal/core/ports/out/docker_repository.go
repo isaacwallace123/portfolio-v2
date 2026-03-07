@@ -13,4 +13,6 @@ type ClusterRepository interface {
 	GetContainerLogs(ctx context.Context, id, tail string) (*domain.ContainerLogs, error)
 	ListNetworks(ctx context.Context) ([]domain.NetworkInfo, error)
 	GetSystemInfo(ctx context.Context) (*domain.SystemInfo, error)
+	ListDependencies(ctx context.Context) ([]domain.AppDependency, error)
+	ListNodes(ctx context.Context) ([]domain.NodeInfo, error)
 }

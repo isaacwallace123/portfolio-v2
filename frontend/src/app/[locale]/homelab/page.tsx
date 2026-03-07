@@ -27,11 +27,11 @@ import { AppGroupNode, type AppGroupNodeData } from '@/features/topology/ui/AppG
 import { NamespaceGroupNode } from '@/features/topology/ui/NamespaceGroupNode';
 import { InfrastructureNode, type InfrastructureNodeData } from '@/features/topology/ui/InfrastructureNode';
 import { PodNode, type PodNodeData } from '@/features/topology/ui/PodNode';
-import { ProxmoxHostNode } from '@/features/topology/ui/ProxmoxHostNode';
+import { ProxmoxHostNode, type ProxmoxHostNodeData } from '@/features/topology/ui/ProxmoxHostNode';
 import { topologyApi } from '@/features/topology/api/topologyApi';
 import { detectIconFromContainer } from '@/features/topology/lib/iconMap';
 import { getLogLineClassName, splitTimestamp, detectLogLevel } from '@/features/topology/lib/logColorizer';
-import type { ContainerInfo, ContainerStats, MetricsRange } from '@/features/topology/lib/types';
+import type { ContainerInfo, ContainerStats, MetricsRange, AppDependency, NodeInfo } from '@/features/topology/lib/types';
 import { useTranslations } from 'next-intl';
 
 const nodeTypes: NodeTypes = {
@@ -43,7 +43,6 @@ const nodeTypes: NodeTypes = {
 };
 
 const POLL_INTERVAL = 10_000;
-
 const NS_ORDER = ['portfolio', 'networking', 'monitoring', 'media', 'argocd', 'secrets'];
 
 // localStorage settings
@@ -374,7 +373,7 @@ const POD_GAP = 8;
 const NS_PAD_X = 28;
 const NS_PAD_Y = 16;
 const NS_HEADER = 36;
-const NS_ROW_GAP = 32;
+const ROW_GAP = 32;
 const NS_COL_GAP = 40;
 const NS_GRID_COLS = 2;
 const TIER_GAP = 56;
@@ -387,15 +386,60 @@ function colHeight(nPods: number): number {
   return APP_H + APP_POD_GAP + n * POD_H + (n - 1) * POD_GAP;
 }
 
-function nsBoxDims(nsGroups: AppGroup[]) {
-  const cols = Math.min(nsGroups.length, APPS_PER_ROW);
-  const rows = Math.ceil(nsGroups.length / APPS_PER_ROW);
-  const w = cols * (APP_W + APP_GAP_X) - APP_GAP_X + NS_PAD_X * 2;
+/** Compute depth-from-deepest-leaf for each app using dependency edges within a namespace. */
+function computeDepths(apps: AppGroup[], deps: AppDependency[]): Map<string, number> {
+  const ids = new Set(apps.map((a) => a.id));
+  // outEdges[id] = list of dependency ids (what this app depends on)
+  const outEdges = new Map<string, string[]>(apps.map((a) => [a.id, []]));
+
+  for (const dep of deps) {
+    const srcId = `${dep.sourceNamespace}/${dep.sourceApp}`;
+    const tgtId = `${dep.targetNamespace}/${dep.targetApp}`;
+    if (ids.has(srcId) && ids.has(tgtId)) {
+      outEdges.get(srcId)!.push(tgtId);
+    }
+  }
+
+  const depths = new Map<string, number>();
+  function getDepth(id: string, visited = new Set<string>()): number {
+    if (depths.has(id)) return depths.get(id)!;
+    if (visited.has(id)) return 0;
+    visited.add(id);
+    const successors = outEdges.get(id) ?? [];
+    const d = successors.length === 0 ? 0 : 1 + Math.max(...successors.map((s) => getDepth(s, new Set(visited))));
+    depths.set(id, d);
+    return d;
+  }
+  for (const app of apps) getDepth(app.id);
+  return depths;
+}
+
+/** Group apps by depth level (descending depth = row 0 at top). */
+function groupByLevel(apps: AppGroup[], depths: Map<string, number>): AppGroup[][] {
+  const maxDepth = Math.max(0, ...Array.from(depths.values()));
+  const levels: AppGroup[][] = Array.from({ length: maxDepth + 1 }, () => []);
+  for (const app of apps) {
+    const d = depths.get(app.id) ?? 0;
+    // Higher depth = closer to top (more "upstream")
+    levels[maxDepth - d].push(app);
+  }
+  return levels.filter((l) => l.length > 0);
+}
+
+function nsBoxDims(levels: AppGroup[][]): { w: number; h: number } {
+  let maxRowW = 0;
+  for (const row of levels) {
+    const rowW = Math.min(row.length, APPS_PER_ROW) * (APP_W + APP_GAP_X) - APP_GAP_X;
+    if (rowW > maxRowW) maxRowW = rowW;
+  }
+  const w = maxRowW + NS_PAD_X * 2;
+
   let h = NS_HEADER + NS_PAD_Y;
-  for (let r = 0; r < rows; r++) {
-    const rowApps = nsGroups.slice(r * APPS_PER_ROW, (r + 1) * APPS_PER_ROW);
+  for (let ri = 0; ri < levels.length; ri++) {
+    const rowApps = levels[ri];
+    // Each "cell" in a row = app card + pod nodes stacked below
     h += Math.max(...rowApps.map((g) => colHeight(g.pods.length)));
-    if (r < rows - 1) h += NS_ROW_GAP;
+    if (ri < levels.length - 1) h += ROW_GAP;
   }
   h += NS_PAD_Y + 8;
   return { w, h };
@@ -429,7 +473,7 @@ function deriveAppName(podName: string): string {
   return name || podName;
 }
 
-function buildFlow(groups: AppGroup[]): { nodes: Node[]; edges: Edge[] } {
+function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo[]): { nodes: Node[]; edges: Edge[] } {
   const flowNodes: Node[] = [];
   const edgeList: Edge[] = [];
   const seen = new Set<string>();
@@ -455,13 +499,22 @@ function buildFlow(groups: AppGroup[]): { nodes: Node[]; edges: Edge[] } {
   const otherGroups = groups.filter((g) => g.namespace !== 'networking');
   const otherNamespaces = [...new Set(otherGroups.map((g) => g.namespace))].sort(sortNs);
 
-  const nsDims = otherNamespaces.map((ns) => {
+  // Precompute levels + dims for each namespace
+  const nsLevels = new Map<string, AppGroup[][]>();
+  const nsDimsMap = new Map<string, { w: number; h: number }>();
+  for (const ns of otherNamespaces) {
     const nsGroups = otherGroups.filter((g) => g.namespace === ns);
-    return { ns, nsGroups, ...nsBoxDims(nsGroups) };
-  });
+    const depths = computeDepths(nsGroups, deps);
+    const levels = groupByLevel(nsGroups, depths);
+    nsLevels.set(ns, levels);
+    nsDimsMap.set(ns, nsBoxDims(levels));
+  }
 
   const colWidths: number[] = Array(NS_GRID_COLS).fill(0);
-  nsDims.forEach(({ w }, i) => { colWidths[i % NS_GRID_COLS] = Math.max(colWidths[i % NS_GRID_COLS], w); });
+  otherNamespaces.forEach((ns, i) => {
+    const d = nsDimsMap.get(ns)!;
+    colWidths[i % NS_GRID_COLS] = Math.max(colWidths[i % NS_GRID_COLS], d.w);
+  });
   const totalGridW = colWidths.reduce((s, w) => s + w, 0) + NS_COL_GAP * (NS_GRID_COLS - 1);
 
   const gwCount = networkingGroups.length;
@@ -494,40 +547,64 @@ function buildFlow(groups: AppGroup[]): { nodes: Node[]; edges: Edge[] } {
     id: '__proxmox', type: 'proxmoxHostNode',
     position: { x: centerX - proxmoxW / 2, y: yOffset },
     draggable: false, selectable: false,
-    data: {},
+    data: { k8sNodes } satisfies ProxmoxHostNodeData,
   });
   addEdge('__router', '__proxmox');
   yOffset += PROXMOX_NODE_H + INFRA_TIER_GAP;
 
-  // 2. Networking / gateway tier (standalone)
+  // 2. Networking / gateway tier
   const gatewayIds: string[] = [];
   if (gwCount > 0) {
     const gwStartX = centerX - gwTierW / 2;
-    networkingGroups.forEach((g, i) => {
-      const gx = gwStartX + i * (APP_W + APP_GAP_X);
-      flowNodes.push({
-        id: g.id, type: 'appGroupNode',
-        position: { x: gx, y: yOffset },
-        draggable: false,
-        data: { appName: g.appName, namespace: g.namespace, pods: g.pods, icon: g.icon } satisfies AppGroupNodeData,
-      });
-      addEdge('__proxmox', g.id);
-      gatewayIds.push(g.id);
 
-      // Pod nodes for networking apps (absolute coords)
-      const podX = gx + (APP_W - POD_W) / 2;
-      g.pods.forEach((pod, pi) => {
+    // Compute networking levels
+    const netDepths = computeDepths(networkingGroups, deps);
+    const netLevels = groupByLevel(networkingGroups, netDepths);
+    let gwY = yOffset;
+
+    netLevels.forEach((levelApps) => {
+      const rowW = levelApps.length * (APP_W + APP_GAP_X) - APP_GAP_X;
+      const rowStartX = gwStartX + (gwTierW - rowW) / 2;
+      const maxPods = Math.max(...levelApps.map((g) => g.pods.length), 1);
+
+      levelApps.forEach((g, i) => {
+        const gx = rowStartX + i * (APP_W + APP_GAP_X);
         flowNodes.push({
-          id: `pod__${pod.id}`, type: 'podNode',
-          position: { x: podX, y: yOffset + APP_H + APP_POD_GAP + pi * (POD_H + POD_GAP) },
+          id: g.id, type: 'appGroupNode',
+          position: { x: gx, y: gwY },
           draggable: false,
-          data: { pod } satisfies PodNodeData,
+          data: { appName: g.appName, namespace: g.namespace, pods: g.pods, icon: g.icon } satisfies AppGroupNodeData,
         });
-        addEdge(g.id, `pod__${pod.id}`, false, 'straight');
+        addEdge('__proxmox', g.id);
+        gatewayIds.push(g.id);
+
+        const podX = gx + (APP_W - POD_W) / 2;
+        g.pods.forEach((pod, pi) => {
+          flowNodes.push({
+            id: `pod__${pod.id}`, type: 'podNode',
+            position: { x: podX, y: gwY + APP_H + APP_POD_GAP + pi * (POD_H + POD_GAP) },
+            draggable: false,
+            data: { pod } satisfies PodNodeData,
+          });
+          addEdge(g.id, `pod__${pod.id}`, false, 'straight');
+        });
       });
+
+      // Intra-networking dep edges within this level's context
+      gwY += colHeight(maxPods) + ROW_GAP;
     });
-    const maxNetPods = Math.max(...networkingGroups.map((g) => g.pods.length), 1);
-    yOffset += colHeight(maxNetPods) + TIER_GAP;
+
+    yOffset = gwY - ROW_GAP + TIER_GAP;
+
+    // Draw networking inter-app dep edges
+    const netIds = new Set(networkingGroups.map((g) => g.id));
+    for (const dep of deps) {
+      const srcId = `${dep.sourceNamespace}/${dep.sourceApp}`;
+      const tgtId = `${dep.targetNamespace}/${dep.targetApp}`;
+      if (netIds.has(srcId) && netIds.has(tgtId)) {
+        addEdge(srcId, tgtId);
+      }
+    }
   }
 
   // 3. Namespace grid (2-column)
@@ -538,69 +615,81 @@ function buildFlow(groups: AppGroup[]): { nodes: Node[]; edges: Edge[] } {
 
   const rowCount = Math.ceil(otherNamespaces.length / NS_GRID_COLS);
   const rowHeights: number[] = Array(rowCount).fill(0);
-  nsDims.forEach(({ h }, i) => { rowHeights[Math.floor(i / NS_GRID_COLS)] = Math.max(rowHeights[Math.floor(i / NS_GRID_COLS)], h); });
+  otherNamespaces.forEach((ns, i) => {
+    const h = nsDimsMap.get(ns)!.h;
+    rowHeights[Math.floor(i / NS_GRID_COLS)] = Math.max(rowHeights[Math.floor(i / NS_GRID_COLS)], h);
+  });
   const rowYOffsets: number[] = [];
   let ryCursor = yOffset;
-  for (let r = 0; r < rowCount; r++) { rowYOffsets.push(ryCursor); ryCursor += rowHeights[r] + NS_ROW_GAP; }
+  for (let r = 0; r < rowCount; r++) { rowYOffsets.push(ryCursor); ryCursor += rowHeights[r] + ROW_GAP; }
 
-  nsDims.forEach(({ ns, w: nsW, h: nsH, nsGroups }, idx) => {
+  otherNamespaces.forEach((ns, idx) => {
     const col = idx % NS_GRID_COLS;
     const row = Math.floor(idx / NS_GRID_COLS);
     const nsX = colXOffsets[col];
     const nsY = rowYOffsets[row];
+    const { w: nsW, h: nsH } = nsDimsMap.get(ns)!;
+    const levels = nsLevels.get(ns)!;
 
     flowNodes.push({
       id: `ns__${ns}`, type: 'namespaceGroupNode',
       position: { x: nsX, y: nsY },
       style: { width: nsW, height: nsH, zIndex: 0 },
-      data: { namespace: ns, podCount: nsGroups.reduce((s, g) => s + g.pods.length, 0) },
+      data: { namespace: ns, podCount: otherGroups.filter((g) => g.namespace === ns).reduce((s, g) => s + g.pods.length, 0) },
       selectable: false, draggable: false,
     });
 
-    // Dashed edges: gateways → namespace (or proxmox if no gateways)
-    const sources = gatewayIds.length > 0 ? gatewayIds : ['__proxmox'];
-    for (const src of sources) addEdge(src, `ns__${ns}`, true);
+    // Position apps by depth level
+    let levelY = NS_HEADER + NS_PAD_Y;
+    for (const levelApps of levels) {
+      const maxPodCount = Math.max(...levelApps.map((g) => g.pods.length));
+      const rowH = colHeight(maxPodCount);
 
-    // Per-row Y offsets within namespace
-    const nsRows = Math.ceil(nsGroups.length / APPS_PER_ROW);
-    const nsRowYOffsets: number[] = [];
-    let nsRy = NS_HEADER + NS_PAD_Y;
-    for (let r = 0; r < nsRows; r++) {
-      nsRowYOffsets.push(nsRy);
-      const rowApps = nsGroups.slice(r * APPS_PER_ROW, (r + 1) * APPS_PER_ROW);
-      nsRy += Math.max(...rowApps.map((g) => colHeight(g.pods.length)));
-      if (r < nsRows - 1) nsRy += NS_ROW_GAP;
-    }
+      // Center this row horizontally in the namespace
+      const rowW = Math.min(levelApps.length, APPS_PER_ROW) * (APP_W + APP_GAP_X) - APP_GAP_X;
+      const rowStartX = NS_PAD_X + (nsW - NS_PAD_X * 2 - rowW) / 2;
 
-    nsGroups.forEach((group, gi) => {
-      const gcol = gi % APPS_PER_ROW;
-      const grow = Math.floor(gi / APPS_PER_ROW);
-      const appRelX = NS_PAD_X + gcol * (APP_W + APP_GAP_X);
-      const appRelY = nsRowYOffsets[grow];
+      levelApps.forEach((group, gi) => {
+        const gcol = gi % APPS_PER_ROW;
+        const appRelX = rowStartX + gcol * (APP_W + APP_GAP_X);
+        const appRelY = levelY;
 
-      flowNodes.push({
-        id: group.id, type: 'appGroupNode',
-        parentId: `ns__${ns}`,
-        extent: 'parent' as const,
-        position: { x: appRelX, y: appRelY },
-        draggable: false,
-        data: { appName: group.appName, namespace: group.namespace, pods: group.pods, icon: group.icon } satisfies AppGroupNodeData,
-      });
-
-      // Pod nodes as children of namespace box
-      const podRelX = appRelX + (APP_W - POD_W) / 2;
-      group.pods.forEach((pod, pi) => {
         flowNodes.push({
-          id: `pod__${pod.id}`, type: 'podNode',
+          id: group.id, type: 'appGroupNode',
           parentId: `ns__${ns}`,
           extent: 'parent' as const,
-          position: { x: podRelX, y: appRelY + APP_H + APP_POD_GAP + pi * (POD_H + POD_GAP) },
+          position: { x: appRelX, y: appRelY },
           draggable: false,
-          data: { pod } satisfies PodNodeData,
+          data: { appName: group.appName, namespace: group.namespace, pods: group.pods, icon: group.icon } satisfies AppGroupNodeData,
         });
-        addEdge(group.id, `pod__${pod.id}`, false, 'straight');
+
+        // Pod nodes as children of namespace box
+        const podRelX = appRelX + (APP_W - POD_W) / 2;
+        group.pods.forEach((pod, pi) => {
+          flowNodes.push({
+            id: `pod__${pod.id}`, type: 'podNode',
+            parentId: `ns__${ns}`,
+            extent: 'parent' as const,
+            position: { x: podRelX, y: appRelY + APP_H + APP_POD_GAP + pi * (POD_H + POD_GAP) },
+            draggable: false,
+            data: { pod } satisfies PodNodeData,
+          });
+          addEdge(group.id, `pod__${pod.id}`, false, 'straight');
+        });
       });
-    });
+
+      levelY += rowH + ROW_GAP;
+    }
+
+    // Draw intra-namespace dependency edges between app group nodes
+    const nsIds = new Set(otherGroups.filter((g) => g.namespace === ns).map((g) => g.id));
+    for (const dep of deps) {
+      const srcId = `${dep.sourceNamespace}/${dep.sourceApp}`;
+      const tgtId = `${dep.targetNamespace}/${dep.targetApp}`;
+      if (nsIds.has(srcId) && nsIds.has(tgtId)) {
+        addEdge(srcId, tgtId);
+      }
+    }
   });
 
   return { nodes: flowNodes, edges: edgeList };
@@ -612,6 +701,8 @@ function TopologyCanvas() {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
 
   const [liveContainers, setLiveContainers] = useState<ContainerInfo[]>([]);
+  const [deps, setDeps] = useState<AppDependency[]>([]);
+  const [k8sNodes, setK8sNodes] = useState<NodeInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedPod, setSelectedPod] = useState<ContainerInfo | null>(null);
@@ -625,29 +716,35 @@ function TopologyCanvas() {
     setSettingsMap(loadSettings());
   }, []);
 
-  // Fetch live containers once
+  // Fetch containers, dependencies, and nodes on mount
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const containers = await topologyApi.discoverContainers().catch(() => [] as ContainerInfo[]);
+        const [containers, dependencies, nodeList] = await Promise.all([
+          topologyApi.discoverContainers().catch(() => [] as ContainerInfo[]),
+          topologyApi.getDependencies().catch(() => [] as AppDependency[]),
+          topologyApi.getNodes().catch(() => [] as NodeInfo[]),
+        ]);
         if (cancelled) return;
         setLiveContainers(containers);
+        setDeps(dependencies);
+        setK8sNodes(nodeList);
       } finally { if (!cancelled) setLoading(false); }
     }
     load();
     return () => { cancelled = true; };
   }, []);
 
-  // Build flow once
+  // Build flow once when data arrives
   useEffect(() => {
     if (initializedRef.current || liveContainers.length === 0) return;
     initializedRef.current = true;
     const groups = applySettings(groupContainersToApps(liveContainers), settingsMap);
-    const { nodes: flowNodes, edges: flowEdges } = buildFlow(groups);
+    const { nodes: flowNodes, edges: flowEdges } = buildFlow(groups, deps, k8sNodes);
     setNodes(flowNodes);
     onEdgesChange(flowEdges.map((e) => ({ type: 'add' as const, item: e })));
-  }, [liveContainers, settingsMap, setNodes, onEdgesChange]);
+  }, [liveContainers, deps, k8sNodes, settingsMap, setNodes, onEdgesChange]);
 
   // Poll pod states
   useEffect(() => {

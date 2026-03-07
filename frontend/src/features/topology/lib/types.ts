@@ -153,3 +153,19 @@ export type SaveTopologyDto = {
 };
 
 export type InfrastructureNodeType = 'router' | 'internet' | 'server' | 'database' | 'switch' | 'firewall';
+
+export type AppDependency = {
+  sourceApp: string;
+  sourceNamespace: string;
+  targetApp: string;
+  targetNamespace: string;
+};
+
+export type NodeInfo = {
+  name: string;
+  role: string;
+  status: string;
+  cpuCores: number;
+  memoryGB: number;
+  osImage: string;
+};

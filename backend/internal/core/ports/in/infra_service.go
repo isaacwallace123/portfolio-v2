@@ -15,4 +15,6 @@ type InfraService interface {
 	GetSystemInfo(ctx context.Context) (*domain.SystemInfo, error)
 	GetNodeMetrics(ctx context.Context) (map[string]interface{}, error)
 	GetMetricsRange(ctx context.Context, duration, containerName string) (*domain.MetricsRange, error)
+	ListDependencies(ctx context.Context) ([]domain.AppDependency, error)
+	ListNodes(ctx context.Context) ([]domain.NodeInfo, error)
 }

@@ -33,3 +33,19 @@ type ContainerLogs struct {
 	ContainerID string   `json:"containerId"`
 	Lines       []string `json:"lines"`
 }
+
+type AppDependency struct {
+	SourceApp       string `json:"sourceApp"`
+	SourceNamespace string `json:"sourceNamespace"`
+	TargetApp       string `json:"targetApp"`
+	TargetNamespace string `json:"targetNamespace"`
+}
+
+type NodeInfo struct {
+	Name      string  `json:"name"`
+	Role      string  `json:"role"`
+	Status    string  `json:"status"`
+	CPUCores  int64   `json:"cpuCores"`
+	MemoryGB  float64 `json:"memoryGB"`
+	OSImage   string  `json:"osImage"`
+}

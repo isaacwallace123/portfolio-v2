@@ -99,20 +99,20 @@ func (r *prometheusRepository) GetMetricsRange(ctx context.Context, duration, co
 
 		if namespace != "" {
 			cpuQuery = fmt.Sprintf(
-				`sum(rate(container_cpu_usage_seconds_total{pod=%q,namespace=%q,container!="POD"}[%s])) * 100`,
+				`sum(rate(container_cpu_usage_seconds_total{pod=%q,namespace=%q,container!~"POD|"}[%s])) * 100`,
 				pod, namespace, cfg.rateWin,
 			)
 			memQuery = fmt.Sprintf(
-				`sum(container_memory_working_set_bytes{pod=%q,namespace=%q,container!="POD"})`,
+				`sum(container_memory_working_set_bytes{pod=%q,namespace=%q,container!~"POD|"})`,
 				pod, namespace,
 			)
 		} else {
 			cpuQuery = fmt.Sprintf(
-				`sum(rate(container_cpu_usage_seconds_total{pod=%q,container!="POD"}[%s])) * 100`,
+				`sum(rate(container_cpu_usage_seconds_total{pod=%q,container!~"POD|"}[%s])) * 100`,
 				pod, cfg.rateWin,
 			)
 			memQuery = fmt.Sprintf(
-				`sum(container_memory_working_set_bytes{pod=%q,container!="POD"})`,
+				`sum(container_memory_working_set_bytes{pod=%q,container!~"POD|"})`,
 				pod,
 			)
 		}

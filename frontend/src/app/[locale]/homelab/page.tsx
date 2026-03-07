@@ -470,131 +470,196 @@ function deriveAppName(podName: string): string {
   return name || podName;
 }
 
-const APPS_PER_ROW = 5;
+const APPS_PER_ROW = 3;
 const APP_W = 155;
 const APP_H = 110;
 const APP_GAP = 20;
-const NS_PAD_X = 40;
-const NS_PAD_Y = 20;
+const NS_PAD_X = 30;
+const NS_PAD_Y = 16;
 const NS_HEADER = 36;
-const NS_GAP = 32;
+const NS_ROW_GAP = 40;
+const NS_COL_GAP = 40;
+const NS_GRID_COLS = 2;
+const TIER_GAP = 64;
+const INTERNET_NODE_H = 88;
+
+function nsBoxDims(nsGroups: AppGroup[]) {
+  const cols = Math.min(nsGroups.length, APPS_PER_ROW);
+  const rows = Math.ceil(nsGroups.length / APPS_PER_ROW);
+  const w = cols * (APP_W + APP_GAP) - APP_GAP + NS_PAD_X * 2;
+  const h = NS_HEADER + NS_PAD_Y + rows * (APP_H + APP_GAP) - APP_GAP + NS_PAD_Y;
+  return { w, h };
+}
 
 function buildFlow(groups: AppGroup[]): { nodes: Node[]; edges: Edge[] } {
-  const nsSorted = [...new Set(groups.map((g) => g.namespace))].sort((a, b) => {
+  const flowNodes: Node[] = [];
+  const edgeList: Edge[] = [];
+  const seen = new Set<string>();
+
+  const addEdge = (source: string, target: string, dashed = false) => {
+    const key = `${source}--${target}`;
+    if (seen.has(key) || source === target) return;
+    seen.add(key);
+    edgeList.push({
+      id: key,
+      source,
+      target,
+      type: 'smoothstep',
+      animated: false,
+      style: {
+        stroke: 'hsl(var(--border))',
+        strokeWidth: 1.5,
+        ...(dashed ? { strokeDasharray: '5 4', opacity: 0.5 } : {}),
+      },
+    });
+  };
+
+  const sortNs = (a: string, b: string) => {
     const ai = NS_ORDER.indexOf(a), bi = NS_ORDER.indexOf(b);
     if (ai === -1 && bi === -1) return a.localeCompare(b);
     if (ai === -1) return 1;
     if (bi === -1) return -1;
     return ai - bi;
+  };
+
+  const isInfraG = (g: AppGroup) => INFRA_KEYWORDS.some((k) => g.appName.toLowerCase().includes(k));
+  const isGatewayG = (g: AppGroup) => GATEWAY_KEYWORDS.some((k) => g.appName.toLowerCase().includes(k));
+  const isMonitoringG = (g: AppGroup) => MONITORING_KEYWORDS.some((k) => g.appName.toLowerCase().includes(k));
+
+  // Split networking namespace (gateway tier) from the rest
+  const networkingGroups = groups.filter((g) => g.namespace === 'networking');
+  const otherGroups = groups.filter((g) => g.namespace !== 'networking');
+  const otherNamespaces = [...new Set(otherGroups.map((g) => g.namespace))].sort(sortNs);
+
+  // Compute 2-column grid dimensions for other namespaces
+  const nsDims = otherNamespaces.map((ns) => {
+    const nsGroups = otherGroups.filter((g) => g.namespace === ns);
+    return { ns, nsGroups, ...nsBoxDims(nsGroups) };
   });
 
-  const flowNodes: Node[] = [];
-  let yOffset = 0;
+  const colWidths: number[] = Array(NS_GRID_COLS).fill(0);
+  nsDims.forEach(({ w }, i) => {
+    colWidths[i % NS_GRID_COLS] = Math.max(colWidths[i % NS_GRID_COLS], w);
+  });
+  const totalGridW = colWidths.reduce((s, w) => s + w, 0) + NS_COL_GAP * (NS_GRID_COLS - 1);
 
-  for (const ns of nsSorted) {
-    const nsGroups = groups.filter((g) => g.namespace === ns);
-    const cols = Math.min(nsGroups.length, APPS_PER_ROW);
-    const rows = Math.ceil(nsGroups.length / APPS_PER_ROW);
-    const nsW = cols * (APP_W + APP_GAP) - APP_GAP + NS_PAD_X * 2;
-    const nsH = NS_HEADER + NS_PAD_Y + rows * (APP_H + APP_GAP) - APP_GAP + NS_PAD_Y;
+  const gwCount = networkingGroups.length;
+  const gwTierW = gwCount > 0 ? gwCount * (APP_W + APP_GAP) - APP_GAP : 0;
+  const canvasW = Math.max(totalGridW, gwTierW, 500);
+  const centerX = canvasW / 2;
+
+  // 1. Internet entry node (top center)
+  let yOffset = 0;
+  flowNodes.push({
+    id: '__internet',
+    type: 'infrastructureNode',
+    position: { x: centerX - 40, y: yOffset },
+    draggable: false,
+    selectable: false,
+    data: { label: 'Internet', infrastructureType: 'internet' } satisfies InfrastructureNodeData,
+  });
+  yOffset += INTERNET_NODE_H + TIER_GAP;
+
+  // 2. Networking / gateway tier (standalone app group nodes, no parent)
+  const gatewayIds: string[] = [];
+  if (gwCount > 0) {
+    const gwStartX = centerX - gwTierW / 2;
+    networkingGroups.forEach((g, i) => {
+      flowNodes.push({
+        id: g.id,
+        type: 'appGroupNode',
+        position: { x: gwStartX + i * (APP_W + APP_GAP), y: yOffset },
+        draggable: false,
+        data: { appName: g.appName, namespace: g.namespace, pods: g.pods, icon: g.icon } satisfies AppGroupNodeData,
+      });
+      addEdge('__internet', g.id);
+      gatewayIds.push(g.id);
+    });
+    yOffset += APP_H + TIER_GAP;
+  }
+
+  // 3. Namespace grid (2-column)
+  const colXOffsets: number[] = [];
+  const gridStartX = centerX - totalGridW / 2;
+  let xCursor = gridStartX;
+  for (let c = 0; c < NS_GRID_COLS; c++) {
+    colXOffsets.push(xCursor);
+    xCursor += colWidths[c] + NS_COL_GAP;
+  }
+
+  const rowCount = Math.ceil(otherNamespaces.length / NS_GRID_COLS);
+  const rowHeights: number[] = Array(rowCount).fill(0);
+  nsDims.forEach(({ h }, i) => {
+    rowHeights[Math.floor(i / NS_GRID_COLS)] = Math.max(rowHeights[Math.floor(i / NS_GRID_COLS)], h);
+  });
+  const rowYOffsets: number[] = [];
+  let ryCursor = yOffset;
+  for (let r = 0; r < rowCount; r++) {
+    rowYOffsets.push(ryCursor);
+    ryCursor += rowHeights[r] + NS_ROW_GAP;
+  }
+
+  nsDims.forEach(({ ns, w: nsW, h: nsH, nsGroups }, i) => {
+    const col = i % NS_GRID_COLS;
+    const row = Math.floor(i / NS_GRID_COLS);
+    const nsX = colXOffsets[col];
+    const nsY = rowYOffsets[row];
 
     flowNodes.push({
       id: `ns__${ns}`,
       type: 'namespaceGroupNode',
-      position: { x: 0, y: yOffset },
+      position: { x: nsX, y: nsY },
       style: { width: nsW, height: nsH, zIndex: 0 },
       data: { namespace: ns, podCount: nsGroups.reduce((s, g) => s + g.pods.length, 0) },
       selectable: false,
       draggable: false,
     });
 
-    nsGroups.forEach((group, i) => {
-      const col = i % APPS_PER_ROW;
-      const row = Math.floor(i / APPS_PER_ROW);
+    nsGroups.forEach((group, gi) => {
+      const gcol = gi % APPS_PER_ROW;
+      const grow = Math.floor(gi / APPS_PER_ROW);
       flowNodes.push({
         id: group.id,
         type: 'appGroupNode',
         parentId: `ns__${ns}`,
         extent: 'parent' as const,
         position: {
-          x: NS_PAD_X + col * (APP_W + APP_GAP),
-          y: NS_HEADER + NS_PAD_Y + row * (APP_H + APP_GAP),
+          x: NS_PAD_X + gcol * (APP_W + APP_GAP),
+          y: NS_HEADER + NS_PAD_Y + grow * (APP_H + APP_GAP),
         },
         draggable: false,
-        data: {
-          appName: group.appName,
-          namespace: group.namespace,
-          pods: group.pods,
-          icon: group.icon,
-        } satisfies AppGroupNodeData,
+        data: { appName: group.appName, namespace: group.namespace, pods: group.pods, icon: group.icon } satisfies AppGroupNodeData,
       });
     });
 
-    yOffset += nsH + NS_GAP;
-  }
+    // Dashed edges: gateway tier → each namespace box
+    const sources = gatewayIds.length > 0 ? gatewayIds : ['__internet'];
+    for (const src of sources) addEdge(src, `ns__${ns}`, true);
 
-  return { nodes: flowNodes, edges: buildSmartEdges(groups) };
-}
+    // Internal namespace edges
+    const infraGs = nsGroups.filter(isInfraG);
+    const gwGs = nsGroups.filter(isGatewayG);
+    const monGs = nsGroups.filter(isMonitoringG);
+    const appGs = nsGroups.filter((g) => !isInfraG(g) && !isGatewayG(g) && !isMonitoringG(g));
 
-function buildSmartEdges(groups: AppGroup[]): Edge[] {
-  const edges: Edge[] = [];
-  const seen = new Set<string>();
+    for (const gw of gwGs) for (const app of appGs) addEdge(gw.id, app.id);
+    for (const app of appGs) for (const inf of infraGs) addEdge(app.id, inf.id);
 
-  const addEdge = (source: string, target: string) => {
-    const key = `${source}--${target}`;
-    if (seen.has(key) || source === target) return;
-    seen.add(key);
-    edges.push({
-      id: key,
-      source,
-      target,
-      type: 'smoothstep',
-      animated: false,
-      style: { stroke: 'hsl(var(--border))', strokeWidth: 1.5 },
-    });
-  };
-
-  const nsMap = new Map<string, AppGroup[]>();
-  for (const g of groups) {
-    if (!nsMap.has(g.namespace)) nsMap.set(g.namespace, []);
-    nsMap.get(g.namespace)!.push(g);
-  }
-
-  for (const [, nsGroups] of nsMap) {
-    const isInfra = (g: AppGroup) => INFRA_KEYWORDS.some((k) => g.appName.toLowerCase().includes(k));
-    const isGateway = (g: AppGroup) => GATEWAY_KEYWORDS.some((k) => g.appName.toLowerCase().includes(k));
-    const isMonitoring = (g: AppGroup) => MONITORING_KEYWORDS.some((k) => g.appName.toLowerCase().includes(k));
-
-    const infra = nsGroups.filter(isInfra);
-    const gateways = nsGroups.filter(isGateway);
-    const monitoring = nsGroups.filter(isMonitoring);
-    const apps = nsGroups.filter((g) => !isInfra(g) && !isGateway(g) && !isMonitoring(g));
-
-    for (const gw of gateways) {
-      for (const app of apps) addEdge(gw.id, app.id);
-    }
-    for (const app of apps) {
-      for (const inf of infra) addEdge(app.id, inf.id);
-    }
-    // Connect monitoring apps to each other (prometheus ← loki, grafana → prometheus)
-    const prom = monitoring.find((g) => g.appName.includes('prometheus'));
-    const grafana = monitoring.find((g) => g.appName.includes('grafana'));
-    const loki = monitoring.find((g) => g.appName.includes('loki'));
+    const prom = monGs.find((g) => g.appName.includes('prometheus'));
+    const grafana = monGs.find((g) => g.appName.includes('grafana'));
+    const loki = monGs.find((g) => g.appName.includes('loki'));
     if (prom && grafana) addEdge(grafana.id, prom.id);
     if (prom && loki) addEdge(prom.id, loki.id);
+  });
+
+  // Networking internal edges
+  if (networkingGroups.length > 1) {
+    const gws = networkingGroups.filter(isGatewayG);
+    const rest = networkingGroups.filter((g) => !isGatewayG(g));
+    for (const gw of gws) for (const r of rest) addEdge(gw.id, r.id);
   }
 
-  // Cross-namespace known patterns
-  const find = (name: string) => groups.find((g) => g.appName.toLowerCase().includes(name));
-  const traefik = find('traefik');
-  const frontend = find('frontend');
-  const infraAgent = groups.find((g) => g.appName === 'infra' || g.appName === 'infra-agent');
-  const prometheus = find('prometheus');
-
-  if (traefik && frontend) addEdge(traefik.id, frontend.id);
-  if (infraAgent && prometheus) addEdge(infraAgent.id, prometheus.id);
-
-  return edges;
+  return { nodes: flowNodes, edges: edgeList };
 }
 
 // --- Main canvas ---

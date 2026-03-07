@@ -44,6 +44,8 @@ export type TopologyConnection = {
 export type ContainerInfo = {
   id: string;
   name: string;
+  appName: string;
+  labels: Record<string, string>;
   image: string;
   state: string;
   status: string;
@@ -83,7 +85,7 @@ export type SystemInfo = {
   architecture: string;
   cpus: number;
   memoryTotal: number;
-  dockerVersion: string;
+  kubernetesVersion: string;
   containers: number;
   running: number;
   stopped: number;

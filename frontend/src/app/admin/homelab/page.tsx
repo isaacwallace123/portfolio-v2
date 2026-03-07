@@ -300,45 +300,52 @@ function HomelabEditor() {
     [nodeStates, setNodes]
   );
 
-  // Auto-detect connections
+  // Auto-detect connections using smart heuristics (gateway→app→infra pattern)
   const handleAutoDetect = useCallback(async () => {
     try {
-      const networks = await topologyApi.discoverNetworks();
+      await topologyApi.discoverContainers();
+
+      const INFRA_KW = ['postgres', 'redis', 'mongo', 'mysql', 'mariadb', 'elasticsearch', 'rabbitmq', 'kafka', 'memcached'];
+      const GATEWAY_KW = ['traefik', 'nginx', 'cloudflared', 'gateway'];
       const nodeKeys = new Set(
         Array.from(nodeStates.entries())
           .filter(([, s]) => !s.nodeType || s.nodeType === 'container')
           .map(([key]) => key)
       );
-      let newEdges = 0;
-      const existingEdgePairs = new Set(edges.map((e) => `${e.source}-${e.target}`));
 
-      for (const network of networks) {
-        const matchedContainers = network.containers.filter((c) => nodeKeys.has(c));
-        for (let i = 0; i < matchedContainers.length; i++) {
-          for (let j = i + 1; j < matchedContainers.length; j++) {
-            const pairKey = `${matchedContainers[i]}-${matchedContainers[j]}`;
-            const reversePairKey = `${matchedContainers[j]}-${matchedContainers[i]}`;
-            if (!existingEdgePairs.has(pairKey) && !existingEdgePairs.has(reversePairKey)) {
-              setEdges((prev) => [
-                ...prev,
-                {
-                  id: `auto-${Date.now()}-${i}-${j}`,
-                  source: matchedContainers[i],
-                  target: matchedContainers[j],
-                  label: network.name,
-                  type: 'smoothstep',
-                  animated: true,
-                },
-              ]);
-              existingEdgePairs.add(pairKey);
-              newEdges++;
-            }
-          }
+      const existingEdgePairs = new Set(edges.map((e) => `${e.source}-${e.target}`));
+      let newEdges = 0;
+
+      const addEdge = (source: string, target: string) => {
+        const fwd = `${source}-${target}`;
+        const rev = `${target}-${source}`;
+        if (!existingEdgePairs.has(fwd) && !existingEdgePairs.has(rev)) {
+          setEdges((prev) => [
+            ...prev,
+            { id: `auto-${Date.now()}-${newEdges}`, source, target, type: 'smoothstep', animated: false },
+          ]);
+          existingEdgePairs.add(fwd);
+          newEdges++;
         }
+      };
+
+      const nodeList = Array.from(nodeKeys);
+      const isInfra = (name: string) => INFRA_KW.some((k) => name.toLowerCase().includes(k));
+      const isGateway = (name: string) => GATEWAY_KW.some((k) => name.toLowerCase().includes(k));
+
+      const infraNodes = nodeList.filter(isInfra);
+      const gatewayNodes = nodeList.filter(isGateway);
+      const appNodes = nodeList.filter((n) => !isInfra(n) && !isGateway(n));
+
+      for (const gw of gatewayNodes) {
+        for (const app of appNodes) addEdge(gw, app);
+      }
+      for (const app of appNodes) {
+        for (const inf of infraNodes) addEdge(app, inf);
       }
 
       if (newEdges > 0) {
-        toast.success(`Detected ${newEdges} connection(s) from Docker networks`);
+        toast.success(`Detected ${newEdges} connection(s)`);
       } else {
         toast.info('No new connections detected');
       }

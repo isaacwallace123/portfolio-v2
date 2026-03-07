@@ -7,8 +7,10 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,13 +21,20 @@ import (
 	portout "github.com/isaacwallace123/portfolio-infra/internal/core/ports/out"
 )
 
+var systemNamespaces = map[string]bool{
+	"kube-system":       true,
+	"kube-public":       true,
+	"kube-node-lease":   true,
+}
+
 type kubernetesRepository struct {
 	client        *kubernetes.Clientset
 	metricsClient *metricsv1beta1.Clientset
+	lokiURL       string
 }
 
-func NewKubernetesRepository(client *kubernetes.Clientset, metricsClient *metricsv1beta1.Clientset) portout.ClusterRepository {
-	return &kubernetesRepository{client: client, metricsClient: metricsClient}
+func NewKubernetesRepository(client *kubernetes.Clientset, metricsClient *metricsv1beta1.Clientset, lokiURL string) portout.ClusterRepository {
+	return &kubernetesRepository{client: client, metricsClient: metricsClient, lokiURL: lokiURL}
 }
 
 func (r *kubernetesRepository) Ping(ctx context.Context) error {
@@ -41,6 +50,10 @@ func (r *kubernetesRepository) ListContainers(ctx context.Context) ([]domain.Con
 
 	result := make([]domain.ContainerInfo, 0, len(pods.Items))
 	for _, pod := range pods.Items {
+		if systemNamespaces[pod.Namespace] {
+			continue
+		}
+
 		state, status := podStateAndStatus(pod)
 		health := podHealth(pod)
 
@@ -58,9 +71,17 @@ func (r *kubernetesRepository) ListContainers(ctx context.Context) ([]domain.Con
 			}
 		}
 
+		appName := podAppName(pod)
+		labels := make(map[string]string, len(pod.Labels))
+		for k, v := range pod.Labels {
+			labels[k] = v
+		}
+
 		result = append(result, domain.ContainerInfo{
 			ID:       fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
 			Name:     pod.Name,
+			AppName:  appName,
+			Labels:   labels,
 			Image:    image,
 			State:    state,
 			Status:   status,
@@ -127,11 +148,18 @@ func (r *kubernetesRepository) GetContainerLogs(ctx context.Context, id, tail st
 		return nil, err
 	}
 
-	tailLines := int64(50)
-	if n, err := strconv.ParseInt(tail, 10, 64); err == nil && n > 0 {
-		tailLines = n
+	limit := 80
+	if n, err := strconv.Atoi(tail); err == nil && n > 0 {
+		limit = n
 	}
 
+	if r.lokiURL != "" {
+		if logs, err := r.getLokiLogs(ctx, namespace, podName, limit); err == nil && len(logs.Lines) > 0 {
+			return logs, nil
+		}
+	}
+
+	tailLines := int64(limit)
 	req := r.client.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{
 		TailLines:  &tailLines,
 		Timestamps: true,
@@ -155,10 +183,61 @@ func (r *kubernetesRepository) GetContainerLogs(ctx context.Context, id, tail st
 		}
 	}
 
-	return &domain.ContainerLogs{
-		ContainerID: id,
-		Lines:       lines,
-	}, nil
+	return &domain.ContainerLogs{ContainerID: id, Lines: lines}, nil
+}
+
+func (r *kubernetesRepository) getLokiLogs(ctx context.Context, namespace, pod string, limit int) (*domain.ContainerLogs, error) {
+	query := fmt.Sprintf(`{namespace=%q, pod=%q}`, namespace, pod)
+	end := time.Now()
+	start := end.Add(-2 * time.Hour)
+
+	params := url.Values{}
+	params.Set("query", query)
+	params.Set("start", start.UTC().Format(time.RFC3339Nano))
+	params.Set("end", end.UTC().Format(time.RFC3339Nano))
+	params.Set("limit", strconv.Itoa(limit))
+	params.Set("direction", "backward")
+
+	reqURL := fmt.Sprintf("%s/loki/api/v1/query_range?%s", r.lokiURL, params.Encode())
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Data struct {
+			Result []struct {
+				Values [][]string `json:"values"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	lines := make([]string, 0, limit)
+	for _, stream := range result.Data.Result {
+		for _, v := range stream.Values {
+			if len(v) >= 2 {
+				lines = append(lines, v[1])
+			}
+		}
+	}
+
+	for i, j := 0, len(lines)-1; i < j; i, j = i+1, j-1 {
+		lines[i], lines[j] = lines[j], lines[i]
+	}
+	if len(lines) > limit {
+		lines = lines[len(lines)-limit:]
+	}
+
+	return &domain.ContainerLogs{ContainerID: fmt.Sprintf("%s/%s", namespace, pod), Lines: lines}, nil
 }
 
 func (r *kubernetesRepository) ListNetworks(ctx context.Context) ([]domain.NetworkInfo, error) {
@@ -268,6 +347,44 @@ func podStateAndStatus(pod corev1.Pod) (state, status string) {
 		status = string(pod.Status.Phase)
 	}
 	return
+}
+
+func podAppName(pod corev1.Pod) string {
+	for _, key := range []string{"app.kubernetes.io/name", "app", "app.kubernetes.io/component"} {
+		if v := pod.Labels[key]; v != "" {
+			return v
+		}
+	}
+	// Fallback: strip replicaset/pod hash suffixes from pod name
+	name := pod.Name
+	// StatefulSet: strip trailing -N
+	if idx := strings.LastIndex(name, "-"); idx != -1 {
+		suffix := name[idx+1:]
+		allDigits := true
+		for _, c := range suffix {
+			if c < '0' || c > '9' {
+				allDigits = false
+				break
+			}
+		}
+		if allDigits && len(suffix) > 0 {
+			name = name[:idx]
+		}
+	}
+	// Deployment: strip -{replicaset}-{pod} hash (two 5-10 char alphanum suffixes)
+	for i := 0; i < 2; i++ {
+		idx := strings.LastIndex(name, "-")
+		if idx == -1 {
+			break
+		}
+		suffix := name[idx+1:]
+		if len(suffix) >= 5 && len(suffix) <= 12 {
+			name = name[:idx]
+		} else {
+			break
+		}
+	}
+	return name
 }
 
 func podHealth(pod corev1.Pod) string {

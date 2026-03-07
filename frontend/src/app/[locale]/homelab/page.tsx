@@ -21,21 +21,32 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   ZoomIn, ZoomOut, Maximize, Server as ServerIcon,
-  Cpu, MemoryStick, HardDrive, Clock, X, PowerOff,
+  Cpu, MemoryStick, Clock, X, PowerOff, ChevronRight, ChevronLeft,
 } from 'lucide-react';
-import { ContainerNode, type ContainerNodeData } from '@/features/topology/ui/ContainerNode';
+import { AppGroupNode, type AppGroupNodeData } from '@/features/topology/ui/AppGroupNode';
+import { NamespaceGroupNode } from '@/features/topology/ui/NamespaceGroupNode';
 import { InfrastructureNode, type InfrastructureNodeData } from '@/features/topology/ui/InfrastructureNode';
 import { topologyApi } from '@/features/topology/api/topologyApi';
+import { detectIconFromContainer } from '@/features/topology/lib/iconMap';
 import { getLogLineClassName, splitTimestamp, detectLogLevel } from '@/features/topology/lib/logColorizer';
-import type { Server, TopologyNode, TopologyConnection, ContainerInfo, ContainerStats, NodeMetrics, SystemInfo, MetricsRange } from '@/features/topology/lib/types';
+import type { ContainerInfo, ContainerStats, MetricsRange } from '@/features/topology/lib/types';
 import { useTranslations } from 'next-intl';
 
 const nodeTypes: NodeTypes = {
-  containerNode: ContainerNode,
+  appGroupNode: AppGroupNode,
+  namespaceGroupNode: NamespaceGroupNode,
   infrastructureNode: InfrastructureNode,
 };
 
-const POLL_INTERVAL = 5000;
+const POLL_INTERVAL = 10_000;
+
+// Namespace display order (others appended alphabetically after)
+const NS_ORDER = ['portfolio', 'networking', 'monitoring', 'media', 'argocd', 'secrets'];
+
+// Keywords for smart connection detection
+const INFRA_KEYWORDS = ['postgres', 'redis', 'mongo', 'mysql', 'mariadb', 'elasticsearch', 'rabbitmq', 'kafka', 'memcached'];
+const GATEWAY_KEYWORDS = ['traefik', 'nginx', 'cloudflared', 'gateway'];
+const MONITORING_KEYWORDS = ['prometheus', 'loki', 'grafana', 'alertmanager'];
 
 type TimeRange = '5m' | '15m' | '1h' | '24h';
 const TIME_RANGES: { label: string; value: TimeRange }[] = [
@@ -45,6 +56,15 @@ const TIME_RANGES: { label: string; value: TimeRange }[] = [
   { label: '24h', value: '24h' },
 ];
 
+interface AppGroup {
+  id: string;
+  appName: string;
+  namespace: string;
+  pods: ContainerInfo[];
+  icon: string | null;
+  image: string;
+}
+
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -52,25 +72,6 @@ function formatBytes(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
-
-function formatUptime(seconds: number | null): string {
-  if (!seconds) return 'N/A';
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  if (days > 0) return `${days}d ${hours}h`;
-  const mins = Math.floor((seconds % 3600) / 60);
-  return `${hours}h ${mins}m`;
-}
-
-function formatRate(bytesPerSec: number | null): string {
-  if (bytesPerSec === null) return 'N/A';
-  if (bytesPerSec < 1024) return `${bytesPerSec.toFixed(0)} B/s`;
-  if (bytesPerSec < 1024 * 1024) return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
-  if (bytesPerSec < 1024 * 1024 * 1024) return `${(bytesPerSec / 1024 / 1024).toFixed(1)} MB/s`;
-  return `${(bytesPerSec / 1024 / 1024 / 1024).toFixed(1)} GB/s`;
-}
-
-// --- Chart Tooltip ---
 
 function ChartTooltip({ active, payload, label, unit = '%' }: {
   active?: boolean;
@@ -82,21 +83,20 @@ function ChartTooltip({ active, payload, label, unit = '%' }: {
   return (
     <div className="rounded-lg border border-border/60 bg-background/95 backdrop-blur-sm px-2.5 py-1.5 shadow-md text-xs">
       <p className="text-muted-foreground mb-0.5">{label}</p>
-      <p className="font-semibold tabular-nums">{payload[0].value.toFixed(1)}{unit}</p>
+      <p className="font-semibold tabular-nums">{payload[0].value.toFixed(2)}{unit}</p>
     </div>
   );
 }
 
-// --- Detail Panel (60% width, with Metrics/Logs tabs) ---
-
-function DetailPanel({
-  container,
-  onClose,
+// --- Pod detail panel (metrics + logs for a single pod) ---
+function PodDetailPanel({
+  pod,
+  onBack,
   showLogs,
   t,
 }: {
-  container: ContainerInfo;
-  onClose: () => void;
+  pod: ContainerInfo;
+  onBack: () => void;
   showLogs: boolean;
   t: (key: string) => string;
 }) {
@@ -116,277 +116,219 @@ function DetailPanel({
 
     async function load() {
       const [statsData, logsData] = await Promise.all([
-        topologyApi.getContainerStats(container.id).catch(() => null),
-        showLogs ? topologyApi.getContainerLogs(container.id, 80).catch(() => null) : null,
+        topologyApi.getContainerStats(pod.id).catch(() => null),
+        showLogs ? topologyApi.getContainerLogs(pod.id, 80).catch(() => null) : null,
       ]);
-
       if (statsData) setStats(statsData);
       if (logsData) setLogs(logsData.lines);
       setLogsLoading(false);
     }
-
     load();
 
-    // Poll gauges only (no history accumulation — charts use Prometheus exclusively)
     intervalRef.current = setInterval(async () => {
       try {
-        const data = await topologyApi.getContainerStats(container.id);
+        const data = await topologyApi.getContainerStats(pod.id);
         setStats(data);
-      } catch {
-        // ignore
-      }
+      } catch { /* ignore */ }
     }, POLL_INTERVAL);
 
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [container.name]);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [pod.id, showLogs]);
 
-  // Fetch Prometheus range data on mount, on time-range change, and every 30s so
-  // the chart auto-populates once cAdvisor data has been scraped.
   useEffect(() => {
     let cancelled = false;
-
     async function fetchRange() {
       try {
-        const data = await topologyApi.getMetricsRange(timeRange, container.id);
+        const data = await topologyApi.getMetricsRange(timeRange, pod.id);
         if (!cancelled) setPrometheusRange(data);
       } catch {
         if (!cancelled) setPrometheusRange(null);
       }
     }
-
     fetchRange();
     const id = setInterval(fetchRange, 15_000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [timeRange, container.id]);
+  }, [timeRange, pod.id]);
 
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
-  // Charts use Prometheus exclusively. Memory from cAdvisor is raw bytes;
-  // divide by stats.memoryLimit (Docker stats API) to get % relative to the
-  // cgroup limit, which works correctly even on cgroups v2 / Unraid.
+  // Memory chart shows working set bytes → MB
   const chartData = prometheusRange && prometheusRange.cpu.length > 1
     ? prometheusRange.cpu.map((pt, i) => ({
         time: pt.time,
         cpu: pt.value,
-        memory: stats?.memoryLimit
-          ? Math.min((prometheusRange.memory[i]?.value ?? 0) / stats.memoryLimit * 100, 100)
-          : 0,
+        memory: (prometheusRange.memory[i]?.value ?? 0) / 1024 / 1024,
       }))
     : null;
 
-  const displayName = container.name.replace(/^portfolio_/, '');
+  const displayName = pod.appName || pod.name;
 
   return (
-    <div className="w-full md:w-[60%] shrink-0 border-l border-border/40 bg-background flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border/40">
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/40 shrink-0">
+        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={onBack}>
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </Button>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold truncate">{displayName}</h3>
+            <p className="text-xs font-semibold truncate">{displayName}</p>
             <Badge
               variant="outline"
-              className={`text-[10px] ${
-                container.state === 'running'
+              className={`text-[10px] shrink-0 ${
+                pod.state === 'running'
                   ? 'bg-green-500/10 text-green-600 border-green-500/30'
                   : 'bg-red-500/10 text-red-600 border-red-500/30'
               }`}
             >
-              {container.state}
+              {pod.state}
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground truncate">{container.image}</p>
+          <p className="text-[10px] text-muted-foreground truncate">{pod.name}</p>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
       </div>
 
-      {/* Tabs */}
       <Tabs defaultValue="metrics" className="flex-1 flex flex-col min-h-0">
-        <div className="px-5 pt-2 border-b border-border/40">
+        <div className="px-4 pt-2 border-b border-border/40 shrink-0">
           <TabsList variant="line">
             <TabsTrigger value="metrics">{t('resources')}</TabsTrigger>
             {showLogs && <TabsTrigger value="logs">{t('recentLogs')}</TabsTrigger>}
           </TabsList>
         </div>
 
-        {/* Metrics Tab */}
         <TabsContent value="metrics" className="flex-1 overflow-y-auto m-0">
-          <div className="p-5 space-y-5">
-            {container.state !== 'running' ? (
-              /* Offline state */
-              <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+          <div className="p-4 space-y-4">
+            {pod.state !== 'running' ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
                 <div className="rounded-full bg-muted p-4">
-                  <PowerOff className="h-6 w-6 text-muted-foreground" />
+                  <PowerOff className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <div>
-                  <p className="text-sm font-medium">Container Offline</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 capitalize">{container.state}</p>
-                </div>
+                <p className="text-sm font-medium">Pod Offline</p>
+                <p className="text-xs text-muted-foreground capitalize">{pod.state}</p>
               </div>
             ) : (
               <>
-                {/* Live gauges */}
-                {stats && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {stats ? (
+                  <div className="grid grid-cols-3 gap-2">
                     <Card>
-                      <CardContent className="pt-4 pb-3">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <Cpu className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">CPU</span>
+                      <CardContent className="pt-3 pb-2.5">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Cpu className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-[10px] text-muted-foreground">CPU</span>
                         </div>
-                        <p className="text-xl font-bold">{stats.cpuPercent.toFixed(1)}%</p>
-                        <Progress value={Math.min(stats.cpuPercent, 100)} className="h-1.5 mt-2" />
+                        <p className="text-base font-bold">{stats.cpuPercent.toFixed(1)}%</p>
+                        <Progress value={Math.min(stats.cpuPercent, 100)} className="h-1 mt-1.5" />
                       </CardContent>
                     </Card>
                     <Card>
-                      <CardContent className="pt-4 pb-3">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <MemoryStick className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">{t('memory')}</span>
+                      <CardContent className="pt-3 pb-2.5">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <MemoryStick className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-[10px] text-muted-foreground">Mem</span>
                         </div>
-                        <p className="text-xl font-bold">{formatBytes(stats.memoryUsage)}</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">of {formatBytes(stats.memoryLimit)}</p>
-                        <Progress value={stats.memoryPercent} className="h-1.5 mt-1.5" />
+                        <p className="text-base font-bold">{formatBytes(stats.memoryUsage)}</p>
+                        <Progress value={Math.min(stats.memoryPercent, 100)} className="h-1 mt-1.5" />
                       </CardContent>
                     </Card>
                     <Card>
-                      <CardContent className="pt-4 pb-3">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">{t('uptime')}</span>
+                      <CardContent className="pt-3 pb-2.5">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Clock className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-[10px] text-muted-foreground">Status</span>
                         </div>
-                        <p className="text-xl font-bold">{container.status.replace(/^Up\s*/i, '')}</p>
+                        <p className="text-base font-bold capitalize">{pod.state}</p>
                       </CardContent>
                     </Card>
                   </div>
-                )}
-
-                {!stats && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
                     {[0, 1, 2].map((i) => (
-                      <Card key={i}>
-                        <CardContent className="pt-4 pb-3">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <Skeleton className="h-3.5 w-3.5 rounded-sm" />
-                            <Skeleton className="h-3 w-12" />
-                          </div>
-                          <Skeleton className="h-7 w-20 mt-1" />
-                          <Skeleton className="h-1.5 mt-2" />
-                        </CardContent>
-                      </Card>
+                      <Card key={i}><CardContent className="pt-3 pb-2.5">
+                        <Skeleton className="h-3 w-10 mb-1.5" />
+                        <Skeleton className="h-5 w-14 mt-1" />
+                        <Skeleton className="h-1 mt-1.5" />
+                      </CardContent></Card>
                     ))}
                   </div>
                 )}
 
-                {/* Time range selector + charts */}
-                <>
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-muted-foreground">CPU</p>
-                    <div className="flex gap-1">
-                      {TIME_RANGES.map((range) => (
-                        <button
-                          key={range.value}
-                          onClick={() => setTimeRange(range.value)}
-                          className={`px-2 py-0.5 text-[10px] rounded-md transition-colors ${
-                            timeRange === range.value
-                              ? 'bg-primary text-primary-foreground'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                          }`}
-                        >
-                          {range.label}
-                        </button>
-                      ))}
-                    </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-medium text-muted-foreground">CPU %</p>
+                  <div className="flex gap-1">
+                    {TIME_RANGES.map((r) => (
+                      <button
+                        key={r.value}
+                        onClick={() => setTimeRange(r.value)}
+                        className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${
+                          timeRange === r.value
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                      >{r.label}</button>
+                    ))}
                   </div>
-                  {prometheusRange === null ? (
-                    /* Skeleton while Prometheus fetch is in flight */
-                    <>
-                      <Card>
-                        <CardContent className="pt-4 pb-3">
-                          <Skeleton className="h-36 w-full rounded-md" />
-                        </CardContent>
-                      </Card>
-                      <p className="text-xs font-medium text-muted-foreground">Memory</p>
-                      <Card>
-                        <CardContent className="pt-4 pb-3">
-                          <Skeleton className="h-36 w-full rounded-md" />
-                        </CardContent>
-                      </Card>
-                    </>
-                  ) : chartData === null ? (
-                    /* Prometheus responded but not enough data points yet */
-                    <>
-                      <Card>
-                        <CardContent className="pt-4 pb-3 flex items-center justify-center h-36">
-                          <p className="text-xs text-muted-foreground">Collecting metrics&hellip;</p>
-                        </CardContent>
-                      </Card>
-                      <p className="text-xs font-medium text-muted-foreground">Memory</p>
-                      <Card>
-                        <CardContent className="pt-4 pb-3 flex items-center justify-center h-36">
-                          <p className="text-xs text-muted-foreground">Collecting metrics&hellip;</p>
-                        </CardContent>
-                      </Card>
-                    </>
-                  ) : (
-                    <>
-                      <Card>
-                        <CardContent className="pt-4 pb-3">
-                          <div className="h-36">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart data={chartData}>
-                                <defs>
-                                  <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
-                                  </linearGradient>
-                                </defs>
-                                <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                                <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={28} tickFormatter={(v) => `${v}%`} />
-                                <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
-                                <Area type="monotone" dataKey="cpu" stroke="hsl(var(--chart-1))" fill="url(#cpuGradient)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                              </AreaChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </CardContent>
-                      </Card>
+                </div>
 
-                      <p className="text-xs font-medium text-muted-foreground">Memory</p>
-                      <Card>
-                        <CardContent className="pt-4 pb-3">
-                          <div className="h-36">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart data={chartData}>
-                                <defs>
-                                  <linearGradient id="memGradient" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
-                                  </linearGradient>
-                                </defs>
-                                <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                                <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={28} tickFormatter={(v) => `${v}%`} />
-                                <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
-                                <Area type="monotone" dataKey="memory" stroke="hsl(var(--chart-2))" fill="url(#memGradient)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                              </AreaChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </>
-                  )}
-                </>
+                {prometheusRange === null ? (
+                  <Card><CardContent className="pt-3 pb-2.5"><Skeleton className="h-28 w-full rounded" /></CardContent></Card>
+                ) : chartData === null ? (
+                  <Card><CardContent className="pt-3 pb-2.5 flex items-center justify-center h-28">
+                    <p className="text-xs text-muted-foreground">Collecting metrics…</p>
+                  </CardContent></Card>
+                ) : (
+                  <Card><CardContent className="pt-3 pb-2.5">
+                    <div className="h-28">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={chartData}>
+                          <defs>
+                            <linearGradient id="cpuGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                          <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={26} tickFormatter={(v) => `${v}%`} />
+                          <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
+                          <Area type="monotone" dataKey="cpu" stroke="hsl(var(--chart-1))" fill="url(#cpuGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent></Card>
+                )}
+
+                <p className="text-[11px] font-medium text-muted-foreground">Memory (MB)</p>
+                {prometheusRange === null ? (
+                  <Card><CardContent className="pt-3 pb-2.5"><Skeleton className="h-28 w-full rounded" /></CardContent></Card>
+                ) : chartData === null ? (
+                  <Card><CardContent className="pt-3 pb-2.5 flex items-center justify-center h-28">
+                    <p className="text-xs text-muted-foreground">Collecting metrics…</p>
+                  </CardContent></Card>
+                ) : (
+                  <Card><CardContent className="pt-3 pb-2.5">
+                    <div className="h-28">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={chartData}>
+                          <defs>
+                            <linearGradient id="memGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                          <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={30} tickFormatter={(v) => `${v.toFixed(0)}`} />
+                          <Tooltip content={<ChartTooltip unit=" MB" />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
+                          <Area type="monotone" dataKey="memory" stroke="hsl(var(--chart-2))" fill="url(#memGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent></Card>
+                )}
               </>
             )}
           </div>
         </TabsContent>
 
-        {/* Logs Tab */}
         {showLogs && (
           <TabsContent value="logs" className="flex-1 m-0 flex flex-col min-h-0">
             <div className="flex-1 overflow-y-auto bg-black/40 font-mono text-[11px] leading-relaxed p-3">
@@ -398,15 +340,9 @@ function DetailPanel({
                   const colorClass = getLogLineClassName(line);
                   const level = detectLogLevel(line);
                   return (
-                    <div key={i} className="flex items-start gap-2 py-px hover:bg-white/5 px-2 rounded">
-                      {timestamp && (
-                        <span className="text-[10px] text-gray-600 shrink-0 tabular-nums">{timestamp}</span>
-                      )}
-                      {level && (
-                        <span className={`shrink-0 text-[9px] font-bold px-1 rounded ${level.badgeClass}`}>
-                          {level.badge}
-                        </span>
-                      )}
+                    <div key={i} className="flex items-start gap-2 py-px hover:bg-white/5 px-1 rounded">
+                      {timestamp && <span className="text-[10px] text-gray-600 shrink-0 tabular-nums">{timestamp}</span>}
+                      {level && <span className={`shrink-0 text-[9px] font-bold px-1 rounded ${level.badgeClass}`}>{level.badge}</span>}
                       <span className={`${colorClass} whitespace-pre-wrap break-all`}>{rest}</span>
                     </div>
                   );
@@ -423,442 +359,265 @@ function DetailPanel({
   );
 }
 
-// --- Multi-line chart tooltip (for I/O charts with two series) ---
-
-function MultiChartTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: { name: string; value: number; color: string }[];
-  label?: string;
+// --- App group panel (list of pods, click one to drill into metrics) ---
+function AppGroupPanel({
+  group,
+  onClose,
+  t,
+}: {
+  group: AppGroup;
+  onClose: () => void;
+  t: (key: string) => string;
 }) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-lg border border-border/60 bg-background/95 backdrop-blur-sm px-2.5 py-1.5 shadow-md text-xs">
-      <p className="text-muted-foreground mb-1">{label}</p>
-      {payload.map((p, i) => (
-        <p key={i} className="font-semibold tabular-nums" style={{ color: p.color }}>
-          {p.name}: {formatRate(p.value)}
-        </p>
-      ))}
-    </div>
-  );
-}
+  const [selectedPod, setSelectedPod] = useState<ContainerInfo | null>(null);
 
-// --- Server Panel (admin-only, shown when a server infrastructure node is clicked) ---
+  if (selectedPod) {
+    return (
+      <div className="w-full md:w-[48%] shrink-0 border-l border-border/40 bg-background flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
+        <PodDetailPanel
+          pod={selectedPod}
+          onBack={() => setSelectedPod(null)}
+          showLogs={true}
+          t={t}
+        />
+      </div>
+    );
+  }
 
-function ServerPanel({ server, onClose }: { server: Server; onClose: () => void }) {
-  const [nodeMetrics, setNodeMetrics] = useState<NodeMetrics | null>(null);
-  const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
-  const [prometheusRange, setPrometheusRange] = useState<MetricsRange | null>(null);
-  const [timeRange, setTimeRange] = useState<TimeRange>('5m');
-
-  // Poll live metrics every 10s
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      const [metrics, sysInfo] = await Promise.all([
-        topologyApi.getNodeMetrics().catch(() => null),
-        topologyApi.getSystemInfo().catch(() => null),
-      ]);
-      if (cancelled) return;
-      if (metrics) setNodeMetrics(metrics as NodeMetrics);
-      if (sysInfo) setSystemInfo(sysInfo as SystemInfo);
-    }
-
-    load();
-    const id = setInterval(load, 10_000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, []);
-
-  // Fetch Prometheus range data for host-level charts (containerName = '')
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchRange() {
-      try {
-        const data = await topologyApi.getMetricsRange(timeRange, '');
-        if (!cancelled) setPrometheusRange(data);
-      } catch {
-        if (!cancelled) setPrometheusRange(null);
-      }
-    }
-
-    fetchRange();
-    const id = setInterval(fetchRange, 30_000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, [timeRange]);
-
-  // Build chart data arrays aligned by index
-  const cpuChartData = prometheusRange?.cpu.map((pt, i) => ({
-    time: pt.time,
-    cpu: pt.value,
-    memory: prometheusRange.memory[i]?.value ?? 0,
-  })) ?? [];
-
-  const networkChartData = prometheusRange?.networkRx.map((pt, i) => ({
-    time: pt.time,
-    rx: pt.value,
-    tx: prometheusRange.networkTx[i]?.value ?? 0,
-  })) ?? [];
-
-  const diskIoChartData = prometheusRange?.diskRead.map((pt, i) => ({
-    time: pt.time,
-    read: pt.value,
-    write: prometheusRange.diskWrite[i]?.value ?? 0,
-  })) ?? [];
-
-  const hasCharts = cpuChartData.length > 1;
-
-  const displayIP = systemInfo?.publicIP || systemInfo?.ip || '';
+  const running = group.pods.filter((p) => p.state === 'running').length;
 
   return (
-    <div className="w-full md:w-[60%] shrink-0 border-l border-border/40 bg-background flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border/40">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <ServerIcon className="h-4 w-4 text-primary shrink-0" />
-            <h3 className="text-sm font-semibold truncate">{server.name}</h3>
-            <Badge variant="outline" className="text-[10px]">{server.type}</Badge>
-          </div>
-          {systemInfo && (
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">
-              {systemInfo.os} · {systemInfo.architecture} · {systemInfo.cpus} CPUs
-            </p>
-          )}
+    <div className="w-full md:w-[48%] shrink-0 border-l border-border/40 bg-background flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border/40 shrink-0">
+        <div className="min-w-0 flex-1 flex items-center gap-2.5">
+          <h3 className="text-sm font-semibold truncate">{group.appName}</h3>
+          <Badge variant="outline" className="text-[10px] shrink-0">{group.namespace}</Badge>
+          <span className="text-[10px] text-muted-foreground shrink-0">{running}/{group.pods.length} running</span>
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-4">
-        {!nodeMetrics && !systemInfo && (
-          <>
-            {/* System info chip skeletons */}
-            <div className="grid grid-cols-2 gap-3">
-              {[0, 1, 2, 3].map((i) => (
-                <Card key={i}>
-                  <CardContent className="pt-3 pb-3">
-                    <Skeleton className="h-2.5 w-14 mb-2" />
-                    <Skeleton className="h-4 w-20" />
-                  </CardContent>
-                </Card>
-              ))}
+      <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
+        {group.pods.map((pod) => (
+          <button
+            key={pod.id}
+            onClick={() => setSelectedPod(pod)}
+            className="w-full flex items-center gap-3 p-3 rounded-lg border border-border/40 hover:border-primary/40 hover:bg-muted/20 transition-all text-left group"
+          >
+            <span
+              className={`w-2 h-2 rounded-full shrink-0 ${
+                pod.state === 'running'
+                  ? 'bg-green-500'
+                  : pod.state === 'pending'
+                  ? 'bg-yellow-500'
+                  : 'bg-red-500'
+              }`}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium truncate">{pod.name}</p>
+              <p className="text-[10px] text-muted-foreground capitalize">{pod.state} · {pod.image?.split('/').pop()?.split(':')[0] ?? ''}</p>
             </div>
-            {/* Live gauge skeletons */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {[0, 1].map((i) => (
-                <Card key={i}>
-                  <CardContent className="pt-4 pb-3">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <Skeleton className="h-3.5 w-3.5 rounded-sm" />
-                      <Skeleton className="h-3 w-10" />
-                    </div>
-                    <Skeleton className="h-7 w-16 mt-1" />
-                    <Skeleton className="h-1.5 mt-2" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            <Card>
-              <CardContent className="pt-4 pb-3">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Skeleton className="h-3.5 w-3.5 rounded-sm" />
-                  <Skeleton className="h-3 w-16" />
-                </div>
-                <Skeleton className="h-7 w-16 mt-1" />
-                <Skeleton className="h-1.5 mt-2" />
-              </CardContent>
-            </Card>
-          </>
-        )}
-
-        {/* System info chips */}
-        {systemInfo && (
-          <div className="grid grid-cols-2 gap-3">
-            {displayIP && (
-              <Card>
-                <CardContent className="pt-3 pb-3">
-                  <p className="text-[10px] text-muted-foreground mb-0.5">Public IP</p>
-                  <p className="text-sm font-mono font-medium">{displayIP}</p>
-                </CardContent>
-              </Card>
-            )}
-            <Card>
-              <CardContent className="pt-3 pb-3">
-                <p className="text-[10px] text-muted-foreground mb-0.5">Docker</p>
-                <p className="text-sm font-medium">v{systemInfo.dockerVersion}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-3 pb-3">
-                <p className="text-[10px] text-muted-foreground mb-0.5">Containers</p>
-                <p className="text-sm font-medium">{systemInfo.running} running / {systemInfo.containers} total</p>
-              </CardContent>
-            </Card>
-            {nodeMetrics?.uptime != null && (
-              <Card>
-                <CardContent className="pt-3 pb-3">
-                  <p className="text-[10px] text-muted-foreground mb-0.5">Uptime</p>
-                  <p className="text-sm font-medium">{formatUptime(nodeMetrics.uptime)}</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
-
-        {/* Live gauges */}
-        {nodeMetrics && (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {nodeMetrics.cpu !== null && (
-                <Card>
-                  <CardContent className="pt-4 pb-3">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <Cpu className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">CPU</span>
-                    </div>
-                    <p className="text-xl font-bold">{Math.max(0, nodeMetrics.cpu).toFixed(1)}%</p>
-                    <Progress value={Math.max(0, Math.min(nodeMetrics.cpu, 100))} className="h-1.5 mt-2" />
-                  </CardContent>
-                </Card>
-              )}
-              {nodeMetrics.memory !== null && (
-                <Card>
-                  <CardContent className="pt-4 pb-3">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <MemoryStick className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">Memory</span>
-                    </div>
-                    <p className="text-xl font-bold">{nodeMetrics.memory.toFixed(1)}%</p>
-                    {nodeMetrics.totalMemory != null && (
-                      <p className="text-[10px] text-muted-foreground mt-0.5">of {formatBytes(nodeMetrics.totalMemory)}</p>
-                    )}
-                    <Progress value={nodeMetrics.memory} className="h-1.5 mt-1.5" />
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            {nodeMetrics.disk !== null && (
-              <Card>
-                <CardContent className="pt-4 pb-3">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <HardDrive className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Disk Usage</span>
-                  </div>
-                  <p className="text-xl font-bold">{nodeMetrics.disk.toFixed(1)}%</p>
-                  <Progress value={nodeMetrics.disk} className="h-1.5 mt-2" />
-                </CardContent>
-              </Card>
-            )}
-
-          </>
-        )}
-
-        {/* Historical charts (Prometheus) */}
-        {(hasCharts || nodeMetrics !== null) && (
-          <>
-            <div className="flex items-center justify-between pt-1">
-              <p className="text-xs font-medium text-muted-foreground">Historical</p>
-              <div className="flex gap-1">
-                {TIME_RANGES.map((range) => (
-                  <button
-                    key={range.value}
-                    onClick={() => setTimeRange(range.value)}
-                    className={`px-2 py-0.5 text-[10px] rounded-md transition-colors ${
-                      timeRange === range.value
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {range.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Chart skeletons while Prometheus data is loading */}
-            {!hasCharts && nodeMetrics !== null && (
-              <div className="space-y-4">
-                {['CPU', 'Memory', 'Network I/O', 'Disk I/O'].map((label) => (
-                  <div key={label}>
-                    <Skeleton className="h-3 w-20 mb-2" />
-                    <Card>
-                      <CardContent className="pt-4 pb-3">
-                        <Skeleton className="h-36 w-full rounded-md" />
-                      </CardContent>
-                    </Card>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* CPU chart */}
-            {cpuChartData.length > 1 && (
-              <>
-                <p className="text-xs font-medium text-muted-foreground">CPU</p>
-                <Card>
-                  <CardContent className="pt-4 pb-3">
-                    <div className="h-36">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={cpuChartData}>
-                          <defs>
-                            <linearGradient id="svCpuGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
-                              <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                          <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={28} tickFormatter={(v) => `${v}%`} />
-                          <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
-                          <Area type="monotone" dataKey="cpu" stroke="hsl(var(--chart-1))" fill="url(#svCpuGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-
-            {/* Memory chart */}
-            {cpuChartData.length > 1 && (
-              <>
-                <p className="text-xs font-medium text-muted-foreground">Memory</p>
-                <Card>
-                  <CardContent className="pt-4 pb-3">
-                    <div className="h-36">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={cpuChartData}>
-                          <defs>
-                            <linearGradient id="svMemGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3} />
-                              <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                          <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={28} tickFormatter={(v) => `${v}%`} />
-                          <Tooltip content={<ChartTooltip unit="%" />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
-                          <Area type="monotone" dataKey="memory" stroke="hsl(var(--chart-2))" fill="url(#svMemGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-
-            {/* Network I/O chart */}
-            {networkChartData.length > 1 && (
-              <>
-                <p className="text-xs font-medium text-muted-foreground">Network I/O</p>
-                <Card>
-                  <CardContent className="pt-4 pb-3">
-                    <div className="h-36">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={networkChartData}>
-                          <defs>
-                            <linearGradient id="svNetRxGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.3} />
-                              <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0} />
-                            </linearGradient>
-                            <linearGradient id="svNetTxGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.2} />
-                              <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                          <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={44} tickFormatter={(v) => formatRate(v).replace('/s', '')} />
-                          <Tooltip content={<MultiChartTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
-                          <Area type="monotone" dataKey="rx" name="In" stroke="hsl(var(--chart-3))" fill="url(#svNetRxGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                          <Area type="monotone" dataKey="tx" name="Out" stroke="hsl(var(--chart-4))" fill="url(#svNetTxGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-
-            {/* Disk I/O chart */}
-            {diskIoChartData.length > 1 && (
-              <>
-                <p className="text-xs font-medium text-muted-foreground">Disk I/O</p>
-                <Card>
-                  <CardContent className="pt-4 pb-3">
-                    <div className="h-36">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={diskIoChartData}>
-                          <defs>
-                            <linearGradient id="svDiskReadGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(var(--chart-5))" stopOpacity={0.3} />
-                              <stop offset="95%" stopColor="hsl(var(--chart-5))" stopOpacity={0} />
-                            </linearGradient>
-                            <linearGradient id="svDiskWriteGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.2} />
-                              <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                          <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={44} tickFormatter={(v) => formatRate(v).replace('/s', '')} />
-                          <Tooltip content={<MultiChartTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
-                          <Area type="monotone" dataKey="read" name="Read" stroke="hsl(var(--chart-5))" fill="url(#svDiskReadGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                          <Area type="monotone" dataKey="write" name="Write" stroke="hsl(var(--chart-1))" fill="url(#svDiskWriteGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-          </>
-        )}
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+        ))}
       </div>
     </div>
   );
 }
 
-// --- Main Topology View ---
+// --- Layout helpers ---
+
+function groupContainersToApps(containers: ContainerInfo[]): AppGroup[] {
+  const map = new Map<string, AppGroup>();
+  for (const c of containers) {
+    const ns = c.networks[0] || 'default';
+    const app = c.appName || deriveAppName(c.name);
+    const key = `${ns}/${app}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        id: key,
+        appName: app,
+        namespace: ns,
+        pods: [],
+        icon: detectIconFromContainer(c.image || '', app),
+        image: c.image,
+      });
+    }
+    map.get(key)!.pods.push(c);
+  }
+  return Array.from(map.values());
+}
+
+function deriveAppName(podName: string): string {
+  let name = podName.replace(/^portfolio_/, '');
+  // Strip StatefulSet index: app-0, app-1
+  name = name.replace(/-\d+$/, '');
+  // Strip two trailing hash segments (Deployment): app-{rs}-{pod}
+  for (let i = 0; i < 2; i++) {
+    const idx = name.lastIndexOf('-');
+    if (idx === -1) break;
+    const suffix = name.slice(idx + 1);
+    if (suffix.length >= 5 && suffix.length <= 12 && /^[a-z0-9]+$/.test(suffix)) {
+      name = name.slice(0, idx);
+    } else {
+      break;
+    }
+  }
+  return name || podName;
+}
+
+const APPS_PER_ROW = 5;
+const APP_W = 155;
+const APP_H = 110;
+const APP_GAP = 20;
+const NS_PAD_X = 40;
+const NS_PAD_Y = 20;
+const NS_HEADER = 36;
+const NS_GAP = 32;
+
+function buildFlow(groups: AppGroup[]): { nodes: Node[]; edges: Edge[] } {
+  const nsSorted = [...new Set(groups.map((g) => g.namespace))].sort((a, b) => {
+    const ai = NS_ORDER.indexOf(a), bi = NS_ORDER.indexOf(b);
+    if (ai === -1 && bi === -1) return a.localeCompare(b);
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+
+  const flowNodes: Node[] = [];
+  let yOffset = 0;
+
+  for (const ns of nsSorted) {
+    const nsGroups = groups.filter((g) => g.namespace === ns);
+    const cols = Math.min(nsGroups.length, APPS_PER_ROW);
+    const rows = Math.ceil(nsGroups.length / APPS_PER_ROW);
+    const nsW = cols * (APP_W + APP_GAP) - APP_GAP + NS_PAD_X * 2;
+    const nsH = NS_HEADER + NS_PAD_Y + rows * (APP_H + APP_GAP) - APP_GAP + NS_PAD_Y;
+
+    flowNodes.push({
+      id: `ns__${ns}`,
+      type: 'namespaceGroupNode',
+      position: { x: 0, y: yOffset },
+      style: { width: nsW, height: nsH, zIndex: 0 },
+      data: { namespace: ns, podCount: nsGroups.reduce((s, g) => s + g.pods.length, 0) },
+      selectable: false,
+      draggable: false,
+    });
+
+    nsGroups.forEach((group, i) => {
+      const col = i % APPS_PER_ROW;
+      const row = Math.floor(i / APPS_PER_ROW);
+      flowNodes.push({
+        id: group.id,
+        type: 'appGroupNode',
+        parentId: `ns__${ns}`,
+        extent: 'parent' as const,
+        position: {
+          x: NS_PAD_X + col * (APP_W + APP_GAP),
+          y: NS_HEADER + NS_PAD_Y + row * (APP_H + APP_GAP),
+        },
+        draggable: false,
+        data: {
+          appName: group.appName,
+          namespace: group.namespace,
+          pods: group.pods,
+          icon: group.icon,
+        } satisfies AppGroupNodeData,
+      });
+    });
+
+    yOffset += nsH + NS_GAP;
+  }
+
+  return { nodes: flowNodes, edges: buildSmartEdges(groups) };
+}
+
+function buildSmartEdges(groups: AppGroup[]): Edge[] {
+  const edges: Edge[] = [];
+  const seen = new Set<string>();
+
+  const addEdge = (source: string, target: string) => {
+    const key = `${source}--${target}`;
+    if (seen.has(key) || source === target) return;
+    seen.add(key);
+    edges.push({
+      id: key,
+      source,
+      target,
+      type: 'smoothstep',
+      animated: false,
+      style: { stroke: 'hsl(var(--border))', strokeWidth: 1.5 },
+    });
+  };
+
+  const nsMap = new Map<string, AppGroup[]>();
+  for (const g of groups) {
+    if (!nsMap.has(g.namespace)) nsMap.set(g.namespace, []);
+    nsMap.get(g.namespace)!.push(g);
+  }
+
+  for (const [, nsGroups] of nsMap) {
+    const isInfra = (g: AppGroup) => INFRA_KEYWORDS.some((k) => g.appName.toLowerCase().includes(k));
+    const isGateway = (g: AppGroup) => GATEWAY_KEYWORDS.some((k) => g.appName.toLowerCase().includes(k));
+    const isMonitoring = (g: AppGroup) => MONITORING_KEYWORDS.some((k) => g.appName.toLowerCase().includes(k));
+
+    const infra = nsGroups.filter(isInfra);
+    const gateways = nsGroups.filter(isGateway);
+    const monitoring = nsGroups.filter(isMonitoring);
+    const apps = nsGroups.filter((g) => !isInfra(g) && !isGateway(g) && !isMonitoring(g));
+
+    for (const gw of gateways) {
+      for (const app of apps) addEdge(gw.id, app.id);
+    }
+    for (const app of apps) {
+      for (const inf of infra) addEdge(app.id, inf.id);
+    }
+    // Connect monitoring apps to each other (prometheus ← loki, grafana → prometheus)
+    const prom = monitoring.find((g) => g.appName.includes('prometheus'));
+    const grafana = monitoring.find((g) => g.appName.includes('grafana'));
+    const loki = monitoring.find((g) => g.appName.includes('loki'));
+    if (prom && grafana) addEdge(grafana.id, prom.id);
+    if (prom && loki) addEdge(prom.id, loki.id);
+  }
+
+  // Cross-namespace known patterns
+  const find = (name: string) => groups.find((g) => g.appName.toLowerCase().includes(name));
+  const traefik = find('traefik');
+  const frontend = find('frontend');
+  const infraAgent = groups.find((g) => g.appName === 'infra' || g.appName === 'infra-agent');
+  const prometheus = find('prometheus');
+
+  if (traefik && frontend) addEdge(traefik.id, frontend.id);
+  if (infraAgent && prometheus) addEdge(infraAgent.id, prometheus.id);
+
+  return edges;
+}
+
+// --- Main canvas ---
 
 function TopologyCanvas() {
   const t = useTranslations('homelab');
   const { zoomIn, zoomOut, fitView } = useReactFlow();
 
-  const [servers, setServers] = useState<Server[]>([]);
   const [liveContainers, setLiveContainers] = useState<ContainerInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, , onEdgesChange] = useEdgesState([]);
-  const [selectedContainerName, setSelectedContainerName] = useState<string | null>(null);
-  const [selectedServerNode, setSelectedServerNode] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+
   const initializedRef = useRef(false);
 
-  // Check admin status
-  useEffect(() => {
-    fetch('/api/auth/me')
-      .then((r) => r.json())
-      .then((data) => setIsAdmin(data.isAdmin))
-      .catch(() => {});
-  }, []);
-
-  // Fetch data
+  // Fetch live containers
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const [topologyData, containers] = await Promise.all([
-          topologyApi.getTopology(),
-          topologyApi.discoverContainers().catch(() => [] as ContainerInfo[]),
-        ]);
+        const containers = await topologyApi.discoverContainers().catch(() => [] as ContainerInfo[]);
         if (cancelled) return;
-        setServers(topologyData);
         setLiveContainers(containers);
-      } catch {
-        // ignore
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -867,107 +626,53 @@ function TopologyCanvas() {
     return () => { cancelled = true; };
   }, []);
 
-  const containerMap = useMemo(() => {
-    const map = new Map<string, ContainerInfo>();
-    for (const c of liveContainers) map.set(c.name, c);
-    return map;
-  }, [liveContainers]);
-
-  const selectedContainer = selectedContainerName ? containerMap.get(selectedContainerName) ?? null : null;
-
-  const showLogsMap = useMemo(() => {
-    const map = new Map<string, boolean>();
-    for (const server of servers) {
-      for (const node of server.nodes) {
-        map.set(node.containerName, node.showLogs);
-      }
-    }
-    return map;
-  }, [servers]);
-
-  // Build flow
+  // Build flow once containers are loaded
   useEffect(() => {
-    if (initializedRef.current || servers.length === 0) return;
+    if (initializedRef.current || liveContainers.length === 0) return;
     initializedRef.current = true;
 
-    const server = servers[0];
-    const containerLookup = new Map<string, ContainerInfo>();
-    for (const c of liveContainers) containerLookup.set(c.name, c);
-
-    const flowNodes: Node[] = server.nodes.map((node: TopologyNode) => {
-      const nodeKey = node.containerName;
-
-      if (node.nodeType === 'infrastructure') {
-        return {
-          id: nodeKey,
-          type: 'infrastructureNode',
-          position: { x: node.positionX, y: node.positionY },
-          draggable: false,
-          data: {
-            label: node.containerName,
-            infrastructureType: node.infrastructureType || 'server',
-          } satisfies InfrastructureNodeData,
-        };
-      }
-
-      const live = containerLookup.get(nodeKey);
-      return {
-        id: nodeKey,
-        type: 'containerNode',
-        position: { x: node.positionX, y: node.positionY },
-        draggable: false,
-        data: {
-          containerName: node.containerName,
-          containerId: live?.id || node.containerId,
-          icon: node.icon,
-          state: live?.state,
-          health: live?.health,
-        } satisfies ContainerNodeData,
-      };
-    });
-
-    const flowEdges: Edge[] = [];
-    for (const node of server.nodes) {
-      for (const conn of node.outgoing as TopologyConnection[]) {
-        const targetNode = server.nodes.find((n: TopologyNode) => n.id === conn.targetId);
-        if (targetNode) {
-          flowEdges.push({
-            id: conn.id,
-            source: node.containerName,
-            target: targetNode.containerName,
-            label: conn.label || undefined,
-            type: 'smoothstep',
-            animated: conn.animated,
-          });
-        }
-      }
-    }
+    const groups = groupContainersToApps(liveContainers);
+    const { nodes: flowNodes, edges: flowEdges } = buildFlow(groups);
 
     setNodes(flowNodes);
     onEdgesChange(flowEdges.map((e) => ({ type: 'add' as const, item: e })));
-  }, [servers, liveContainers, setNodes, onEdgesChange]);
+  }, [liveContainers, setNodes, onEdgesChange]);
 
-  // Update selected state on nodes
+  // Poll for updated container states every 10s (update node data only)
+  useEffect(() => {
+    if (loading) return;
+    const id = setInterval(async () => {
+      try {
+        const containers = await topologyApi.discoverContainers();
+        setLiveContainers(containers);
+        const groups = groupContainersToApps(containers);
+        const groupMap = new Map(groups.map((g) => [g.id, g]));
+        setNodes((prev) =>
+          prev.map((n) => {
+            const g = groupMap.get(n.id);
+            if (!g) return n;
+            return { ...n, data: { ...n.data, pods: g.pods } };
+          })
+        );
+      } catch { /* ignore */ }
+    }, POLL_INTERVAL);
+    return () => clearInterval(id);
+  }, [loading, setNodes]);
+
+  // Update selected state
   useEffect(() => {
     setNodes((prev) =>
-      prev.map((n) => ({
-        ...n,
-        data: { ...n.data, selected: n.id === selectedContainerName },
-      }))
+      prev.map((n) => ({ ...n, data: { ...n.data, selected: n.id === selectedGroupId } }))
     );
-  }, [selectedContainerName, setNodes]);
+  }, [selectedGroupId, setNodes]);
+
+  const appGroups = useMemo(() => groupContainersToApps(liveContainers), [liveContainers]);
+  const selectedGroup = selectedGroupId ? appGroups.find((g) => g.id === selectedGroupId) ?? null : null;
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-    if (node.type === 'infrastructureNode') {
-      if (isAdmin && node.data?.infrastructureType === 'server') {
-        setSelectedServerNode((prev) => (prev === node.id ? null : node.id));
-        setSelectedContainerName(null);
-      }
-      return;
-    }
-    setSelectedContainerName((prev) => (prev === node.id ? null : node.id));
-    setSelectedServerNode(null);
-  }, [isAdmin]);
+    if (node.type !== 'appGroupNode') return;
+    setSelectedGroupId((prev) => (prev === node.id ? null : node.id));
+  }, []);
 
   if (loading) {
     return (
@@ -977,7 +682,7 @@ function TopologyCanvas() {
     );
   }
 
-  if (servers.length === 0) {
+  if (liveContainers.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-muted-foreground text-sm">{t('noTopology')}</div>
@@ -987,7 +692,6 @@ function TopologyCanvas() {
 
   return (
     <div className="flex h-full">
-      {/* Canvas */}
       <div className="flex-1 relative">
         <ReactFlow
           nodes={nodes}
@@ -995,12 +699,12 @@ function TopologyCanvas() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
-          onPaneClick={() => { setSelectedContainerName(null); setSelectedServerNode(null); }}
+          onPaneClick={() => setSelectedGroupId(null)}
           nodeTypes={nodeTypes}
           fitView
-          fitViewOptions={{ maxZoom: 1, padding: 0.2 }}
+          fitViewOptions={{ maxZoom: 0.9, padding: 0.15 }}
           proOptions={{ hideAttribution: true }}
-          minZoom={0.2}
+          minZoom={0.1}
           maxZoom={1.5}
           nodesDraggable={false}
           nodesConnectable={false}
@@ -1010,7 +714,6 @@ function TopologyCanvas() {
         >
           <Background />
 
-          {/* Zoom controls */}
           <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1 rounded-xl border bg-background/90 backdrop-blur-sm shadow-lg p-1.5">
             <Button onClick={() => zoomIn()} size="icon" variant="ghost" className="h-8 w-8">
               <ZoomIn className="h-4 w-4" />
@@ -1018,49 +721,32 @@ function TopologyCanvas() {
             <Button onClick={() => zoomOut()} size="icon" variant="ghost" className="h-8 w-8">
               <ZoomOut className="h-4 w-4" />
             </Button>
-            <Button onClick={() => fitView()} size="icon" variant="ghost" className="h-8 w-8">
+            <Button onClick={() => fitView({ maxZoom: 0.9, padding: 0.15 })} size="icon" variant="ghost" className="h-8 w-8">
               <Maximize className="h-4 w-4" />
             </Button>
           </div>
 
-          {/* Server badge */}
-          {servers.length > 0 && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 max-w-[calc(100vw-2rem)]">
-              <div className="bg-background/80 backdrop-blur border border-border/60 rounded-lg px-3 py-2 shadow-sm flex items-center gap-2 whitespace-nowrap">
-                <ServerIcon className="h-4 w-4 text-primary shrink-0" />
-                <p className="text-sm font-semibold">{servers[0].name}</p>
-                {servers[0].description && (
-                  <p className="hidden sm:block text-[10px] text-muted-foreground">{servers[0].description}</p>
-                )}
-                <Badge variant="outline" className="text-[10px]">{servers[0].type}</Badge>
-              </div>
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+            <div className="bg-background/80 backdrop-blur border border-border/60 rounded-lg px-3 py-2 shadow-sm flex items-center gap-2 whitespace-nowrap">
+              <ServerIcon className="h-4 w-4 text-primary shrink-0" />
+              <p className="text-sm font-semibold">Kubernetes</p>
+              <p className="hidden sm:block text-[10px] text-muted-foreground">Cluster Provisioned With Argo</p>
+              <Badge variant="outline" className="text-[10px]">PROXMOX</Badge>
             </div>
-          )}
+          </div>
         </ReactFlow>
       </div>
 
-      {/* Detail panel */}
-      {selectedContainer && (
-        <DetailPanel
-          container={selectedContainer}
-          onClose={() => setSelectedContainerName(null)}
-          showLogs={isAdmin || (showLogsMap.get(selectedContainerName!) ?? true)}
-          t={(key: string) => t(key)}
-        />
-      )}
-
-      {/* Server panel (admin-only) */}
-      {selectedServerNode && servers.length > 0 && (
-        <ServerPanel
-          server={servers[0]}
-          onClose={() => setSelectedServerNode(null)}
+      {selectedGroup && (
+        <AppGroupPanel
+          group={selectedGroup}
+          onClose={() => setSelectedGroupId(null)}
+          t={(key) => t(key)}
         />
       )}
     </div>
   );
 }
-
-// --- Page ---
 
 export default function HomelabPage() {
   return (

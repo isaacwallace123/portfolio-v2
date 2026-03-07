@@ -3,15 +3,17 @@ package domain
 import "time"
 
 type ContainerInfo struct {
-	ID       string        `json:"id"`
-	Name     string        `json:"name"`
-	Image    string        `json:"image"`
-	State    string        `json:"state"`
-	Status   string        `json:"status"`
-	Health   string        `json:"health"`
-	Networks []string      `json:"networks"`
-	Ports    []PortBinding `json:"ports"`
-	Created  time.Time     `json:"created"`
+	ID       string            `json:"id"`
+	Name     string            `json:"name"`
+	AppName  string            `json:"appName"`
+	Labels   map[string]string `json:"labels"`
+	Image    string            `json:"image"`
+	State    string            `json:"state"`
+	Status   string            `json:"status"`
+	Health   string            `json:"health"`
+	Networks []string          `json:"networks"`
+	Ports    []PortBinding     `json:"ports"`
+	Created  time.Time         `json:"created"`
 }
 
 type PortBinding struct {

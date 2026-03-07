@@ -130,6 +130,7 @@ services:
     environment:
       INFRA_API_KEY: ${INFRA_API_KEY:-dev-infra-key}
       PROMETHEUS_URL: http://prometheus:9090
+      LOKI_URL: http://loki:3100
       DOCKER_HOST: tcp://docker-socket-proxy:2375
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
@@ -138,6 +139,8 @@ services:
       retries: 3
     depends_on:
       prometheus:
+        condition: service_healthy
+      loki:
         condition: service_healthy
       docker-socket-proxy:
         condition: service_started
@@ -152,6 +155,53 @@ services:
     networks: [portfolio-network]
 
   # --- Observability stack ---
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: portfolio_loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./backend/loki:/etc/loki:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    networks: [portfolio-network]
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: portfolio_promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./backend/promtail:/etc/promtail:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      loki:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    networks: [portfolio-network]
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
@@ -240,6 +290,7 @@ volumes:
   postgres_data:
   redis_data:
   prometheus_data:
+  loki_data:
 
 networks:
   portfolio-network:

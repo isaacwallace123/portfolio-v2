@@ -17,6 +17,7 @@ import (
 func main() {
 	apiKey := os.Getenv("INFRA_API_KEY")
 	promURL := strings.TrimRight(os.Getenv("PROMETHEUS_URL"), "/")
+	lokiURL := strings.TrimRight(os.Getenv("LOKI_URL"), "/")
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -38,7 +39,7 @@ func main() {
 		log.Fatalf("Failed to create metrics client: %v", err)
 	}
 
-	clusterRepo := k8sadapter.NewKubernetesRepository(k8sClient, metricsClient)
+	clusterRepo := k8sadapter.NewKubernetesRepository(k8sClient, metricsClient, lokiURL)
 	metricsRepo := prometheusadapter.NewPrometheusRepository(promURL)
 	infraSvc := service.NewInfraService(clusterRepo, metricsRepo)
 

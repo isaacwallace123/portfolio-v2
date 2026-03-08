@@ -1207,9 +1207,11 @@ function TopologyCanvas() {
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     if (node.type === 'appGroupNode') {
       setSelectedPod(null);
+      setSelectedK8sNode(null);
       setSelectedGroupId((prev) => (prev === node.id ? null : node.id));
     } else if (node.type === 'podNode') {
       setSelectedGroupId(null);
+      setSelectedK8sNode(null);
       setSelectedPod((node.data as PodNodeData).pod);
     }
   }, []);

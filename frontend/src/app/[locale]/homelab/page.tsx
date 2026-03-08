@@ -314,7 +314,10 @@ function AppGroupPanel({
   t: (key: string) => string;
   showLogs: boolean;
 }) {
-  const [selectedPod, setSelectedPod] = useState<ContainerInfo | null>(null);
+  const activePods = group.pods.filter((p) => p.state !== 'succeeded' && p.state !== 'completed');
+  const [selectedPod, setSelectedPod] = useState<ContainerInfo | null>(
+    activePods.length === 1 ? activePods[0] : null,
+  );
 
   if (selectedPod) {
     return (
@@ -324,7 +327,6 @@ function AppGroupPanel({
     );
   }
 
-  const activePods = group.pods.filter((p) => p.state !== 'succeeded' && p.state !== 'completed');
   const running = activePods.filter((p) => p.state === 'running').length;
 
   return (
@@ -691,6 +693,7 @@ function TopologyCanvas() {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedPod, setSelectedPod] = useState<ContainerInfo | null>(null);
   const [settingsMap, setSettingsMap] = useState<Map<string, AppSettings>>(new Map());
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, , onEdgesChange] = useEdgesState([]);
@@ -698,6 +701,10 @@ function TopologyCanvas() {
 
   useEffect(() => {
     setSettingsMap(loadSettings());
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/auth/me').then((r) => r.json()).then((d) => setIsAdmin(d.isAdmin === true)).catch(() => {});
   }, []);
 
   // Fetch containers, dependencies, and nodes on mount
@@ -817,10 +824,11 @@ function TopologyCanvas() {
 
       {selectedGroup && (
         <AppGroupPanel
+          key={selectedGroup.id}
           group={selectedGroup}
           onClose={() => setSelectedGroupId(null)}
           t={(key) => t(key)}
-          showLogs={settingsMap.get(selectedGroup.id)?.showLogs !== false}
+          showLogs={isAdmin || settingsMap.get(selectedGroup.id)?.showLogs !== false}
         />
       )}
 

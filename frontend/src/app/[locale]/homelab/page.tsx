@@ -14,13 +14,13 @@ import 'reactflow/dist/style.css';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   ZoomIn, ZoomOut, Maximize, Server as ServerIcon,
   Cpu, MemoryStick, Clock, X, PowerOff, ChevronRight, ChevronLeft,
+  Activity, HardDrive, Wifi,
 } from 'lucide-react';
 import { AppGroupNode, type AppGroupNodeData } from '@/features/topology/ui/AppGroupNode';
 import { NamespaceGroupNode } from '@/features/topology/ui/NamespaceGroupNode';
@@ -153,7 +153,7 @@ function PodDetailPanel({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/40 shrink-0">
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10 shrink-0">
         <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={onBack}>
           <ChevronLeft className="h-3.5 w-3.5" />
         </Button>
@@ -169,7 +169,7 @@ function PodDetailPanel({
       </div>
 
       <Tabs defaultValue="metrics" className="flex-1 flex flex-col min-h-0">
-        <div className="px-4 pt-2 border-b border-border/40 shrink-0">
+        <div className="px-4 pt-2 border-b border-white/10 shrink-0">
           <TabsList variant="line">
             <TabsTrigger value="metrics">{t('resources')}</TabsTrigger>
             {showLogs && <TabsTrigger value="logs">{t('recentLogs')}</TabsTrigger>}
@@ -188,27 +188,27 @@ function PodDetailPanel({
               <>
                 {stats ? (
                   <div className="grid grid-cols-3 gap-2">
-                    <Card><CardContent className="pt-3 pb-2.5">
+                    <div className="rounded-xl border border-white/10 bg-white/5 pt-3 pb-2.5 px-3">
                       <div className="flex items-center gap-1.5 mb-1"><Cpu className="h-3 w-3 text-muted-foreground" /><span className="text-[10px] text-muted-foreground">CPU</span></div>
                       <p className="text-base font-bold">{stats.cpuPercent.toFixed(1)}%</p>
                       <Progress value={Math.min(stats.cpuPercent, 100)} className="h-1 mt-1.5" />
-                    </CardContent></Card>
-                    <Card><CardContent className="pt-3 pb-2.5">
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-white/5 pt-3 pb-2.5 px-3">
                       <div className="flex items-center gap-1.5 mb-1"><MemoryStick className="h-3 w-3 text-muted-foreground" /><span className="text-[10px] text-muted-foreground">Mem</span></div>
                       <p className="text-base font-bold">{formatBytes(stats.memoryUsage)}</p>
                       <Progress value={Math.min(stats.memoryPercent, 100)} className="h-1 mt-1.5" />
-                    </CardContent></Card>
-                    <Card><CardContent className="pt-3 pb-2.5">
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-white/5 pt-3 pb-2.5 px-3">
                       <div className="flex items-center gap-1.5 mb-1"><Clock className="h-3 w-3 text-muted-foreground" /><span className="text-[10px] text-muted-foreground">Status</span></div>
                       <p className="text-base font-bold capitalize">{pod.state}</p>
-                    </CardContent></Card>
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-2">
                     {[0, 1, 2].map((i) => (
-                      <Card key={i}><CardContent className="pt-3 pb-2.5">
+                      <div key={i} className="rounded-xl border border-white/10 bg-white/5 pt-3 pb-2.5 px-3">
                         <Skeleton className="h-3 w-10 mb-1.5" /><Skeleton className="h-5 w-14 mt-1" /><Skeleton className="h-1 mt-1.5" />
-                      </CardContent></Card>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -225,13 +225,13 @@ function PodDetailPanel({
                 </div>
 
                 {prometheusRange === null ? (
-                  <Card><CardContent className="pt-3 pb-2.5"><Skeleton className="h-28 w-full rounded" /></CardContent></Card>
+                  <div className="rounded-xl border border-white/10 bg-white/5 pt-3 pb-2.5 px-3"><Skeleton className="h-28 w-full rounded" /></div>
                 ) : chartData === null ? (
-                  <Card><CardContent className="pt-3 pb-2.5 flex items-center justify-center h-28">
+                  <div className="rounded-xl border border-white/10 bg-white/5 pt-3 pb-2.5 px-3 flex items-center justify-center h-28">
                     <p className="text-xs text-muted-foreground">Collecting metrics…</p>
-                  </CardContent></Card>
+                  </div>
                 ) : (
-                  <Card><CardContent className="pt-3 pb-2.5"><div className="h-28">
+                  <div className="rounded-xl border border-white/10 bg-white/5 pt-3 pb-2.5 px-3"><div className="h-28">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={chartData}>
                         <defs><linearGradient id="cpuGrad" x1="0" y1="0" x2="0" y2="1">
@@ -244,18 +244,18 @@ function PodDetailPanel({
                         <Area type="monotone" dataKey="cpu" stroke="hsl(var(--chart-1))" fill="url(#cpuGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
                       </AreaChart>
                     </ResponsiveContainer>
-                  </div></CardContent></Card>
+                  </div></div>
                 )}
 
                 <p className="text-[11px] font-medium text-muted-foreground">Memory (MB)</p>
                 {prometheusRange === null ? (
-                  <Card><CardContent className="pt-3 pb-2.5"><Skeleton className="h-28 w-full rounded" /></CardContent></Card>
+                  <div className="rounded-xl border border-white/10 bg-white/5 pt-3 pb-2.5 px-3"><Skeleton className="h-28 w-full rounded" /></div>
                 ) : chartData === null ? (
-                  <Card><CardContent className="pt-3 pb-2.5 flex items-center justify-center h-28">
+                  <div className="rounded-xl border border-white/10 bg-white/5 pt-3 pb-2.5 px-3 flex items-center justify-center h-28">
                     <p className="text-xs text-muted-foreground">Collecting metrics…</p>
-                  </CardContent></Card>
+                  </div>
                 ) : (
-                  <Card><CardContent className="pt-3 pb-2.5"><div className="h-28">
+                  <div className="rounded-xl border border-white/10 bg-white/5 pt-3 pb-2.5 px-3"><div className="h-28">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={chartData}>
                         <defs><linearGradient id="memGrad" x1="0" y1="0" x2="0" y2="1">
@@ -268,7 +268,7 @@ function PodDetailPanel({
                         <Area type="monotone" dataKey="memory" stroke="hsl(var(--chart-2))" fill="url(#memGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
                       </AreaChart>
                     </ResponsiveContainer>
-                  </div></CardContent></Card>
+                  </div></div>
                 )}
               </>
             )}
@@ -321,7 +321,7 @@ function AppGroupPanel({
 
   if (selectedPod) {
     return (
-      <div className="w-full md:w-[48%] shrink-0 border-l border-border/40 bg-background flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
+      <div className="w-full md:w-[48%] shrink-0 border-l border-white/10 bg-background/80 backdrop-blur-md flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
         <PodDetailPanel pod={selectedPod} onBack={() => setSelectedPod(null)} showLogs={showLogs} t={t} />
       </div>
     );
@@ -330,8 +330,8 @@ function AppGroupPanel({
   const running = activePods.filter((p) => p.state === 'running').length;
 
   return (
-    <div className="w-full md:w-[48%] shrink-0 border-l border-border/40 bg-background flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border/40 shrink-0">
+    <div className="w-full md:w-[48%] shrink-0 border-l border-white/10 bg-background/80 backdrop-blur-md flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
         <div className="min-w-0 flex-1 flex items-center gap-2.5">
           <h3 className="text-sm font-semibold truncate">{group.appName}</h3>
           <Badge variant="outline" className="text-[10px] shrink-0">{group.namespace}</Badge>
@@ -346,7 +346,7 @@ function AppGroupPanel({
         <div className="p-4 space-y-1.5">
           {activePods.map((pod) => (
             <button key={pod.id} onClick={() => setSelectedPod(pod)}
-              className="w-full flex items-center gap-3 p-3 rounded-lg border border-border/40 hover:border-primary/40 hover:bg-muted/20 transition-all text-left group"
+              className="w-full flex items-center gap-3 p-3 rounded-xl border border-white/8 bg-white/3 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all text-left group"
             >
               <span className={`w-2 h-2 rounded-full shrink-0 ${
                 pod.state === 'running' ? 'bg-green-500' : pod.state === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
@@ -359,6 +359,221 @@ function AppGroupPanel({
             </button>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Node detail panel ---
+function NodeDetailPanel({
+  node, onClose, t,
+}: {
+  node: NodeInfo; onClose: () => void; t: (key: string) => string;
+}) {
+  const [nodeMetrics, setNodeMetrics] = useState<import('@/features/topology/lib/types').NodeMetrics | null>(null);
+  const [timeRange, setTimeRange] = useState<TimeRange>('5m');
+  const [metricsRange, setMetricsRange] = useState<import('@/features/topology/lib/types').MetricsRange | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      try { const data = await topologyApi.getNodeMetrics(); setNodeMetrics(data); } catch { /* ignore */ }
+    }
+    load();
+    intervalRef.current = setInterval(load, POLL_INTERVAL);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [node.name]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchRange() {
+      try {
+        const data = await topologyApi.getNodeMetricsRange(node.name, timeRange);
+        if (!cancelled) setMetricsRange(data);
+      } catch { if (!cancelled) setMetricsRange(null); }
+    }
+    fetchRange();
+    const id = setInterval(fetchRange, 15_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [timeRange, node.name]);
+
+  const chartData = metricsRange && metricsRange.cpu.length > 0
+    ? metricsRange.cpu.map((pt, i) => ({
+        time: pt.time,
+        cpu: pt.value,
+        memory: (metricsRange.memory[i]?.value ?? 0) / 1024 / 1024 / 1024,
+        networkRx: (metricsRange.networkRx[i]?.value ?? 0) / 1024,
+        networkTx: (metricsRange.networkTx[i]?.value ?? 0) / 1024,
+        diskRead: (metricsRange.diskRead[i]?.value ?? 0) / 1024 / 1024,
+        diskWrite: (metricsRange.diskWrite[i]?.value ?? 0) / 1024 / 1024,
+      }))
+    : null;
+
+  const GlassCard = ({ children }: { children: React.ReactNode }) => (
+    <div className="rounded-xl border border-white/10 bg-white/5 pt-3 pb-2.5 px-3">{children}</div>
+  );
+  const ChartCard = ({ children }: { children: React.ReactNode }) => (
+    <div className="rounded-xl border border-white/10 bg-white/5 pt-3 pb-2.5 px-3"><div className="h-28">{children}</div></div>
+  );
+  const EmptyChart = () => (
+    <div className="rounded-xl border border-white/10 bg-white/5 pt-3 pb-2.5 px-3 flex items-center justify-center h-33">
+      <p className="text-xs text-muted-foreground">Collecting metrics…</p>
+    </div>
+  );
+  const SkeletonChart = () => (
+    <div className="rounded-xl border border-white/10 bg-white/5 pt-3 pb-2.5 px-3"><Skeleton className="h-28 w-full rounded" /></div>
+  );
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold truncate">{node.name}</p>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium shrink-0 ${
+              node.status === 'Ready'
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+            }`}>{node.status}</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground capitalize mt-0.5">{node.role}{node.cpuCores > 0 ? ` · ${node.cpuCores} CPU · ${node.memoryGB.toFixed(0)} GB RAM` : ''}</p>
+        </div>
+        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="flex items-center justify-between px-4 pt-3 pb-1 shrink-0">
+        <p className="text-[11px] font-medium text-muted-foreground">Time range</p>
+        <div className="flex gap-1">
+          {TIME_RANGES.map((r) => (
+            <button key={r.value} onClick={() => setTimeRange(r.value)}
+              className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${timeRange === r.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+            >{r.label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {/* Current stats */}
+        <div className="grid grid-cols-2 gap-2">
+          <GlassCard>
+            <div className="flex items-center gap-1.5 mb-1"><Cpu className="h-3 w-3 text-violet-400" /><span className="text-[10px] text-muted-foreground">CPU</span></div>
+            <p className="text-base font-bold">{nodeMetrics?.cpu != null ? `${nodeMetrics.cpu.toFixed(1)}%` : '—'}</p>
+            {nodeMetrics?.cpu != null && <Progress value={Math.min(nodeMetrics.cpu, 100)} className="h-1 mt-1.5" />}
+          </GlassCard>
+          <GlassCard>
+            <div className="flex items-center gap-1.5 mb-1"><MemoryStick className="h-3 w-3 text-blue-400" /><span className="text-[10px] text-muted-foreground">Memory</span></div>
+            <p className="text-base font-bold">{nodeMetrics?.memory != null ? `${nodeMetrics.memory.toFixed(1)}%` : '—'}</p>
+            {nodeMetrics?.memory != null && <Progress value={Math.min(nodeMetrics.memory, 100)} className="h-1 mt-1.5" />}
+          </GlassCard>
+          <GlassCard>
+            <div className="flex items-center gap-1.5 mb-1"><Wifi className="h-3 w-3 text-cyan-400" /><span className="text-[10px] text-muted-foreground">Net RX</span></div>
+            <p className="text-sm font-bold">{nodeMetrics?.networkRxRate != null ? `${(nodeMetrics.networkRxRate / 1024).toFixed(1)} KB/s` : '—'}</p>
+          </GlassCard>
+          <GlassCard>
+            <div className="flex items-center gap-1.5 mb-1"><Wifi className="h-3 w-3 text-emerald-400" /><span className="text-[10px] text-muted-foreground">Net TX</span></div>
+            <p className="text-sm font-bold">{nodeMetrics?.networkTxRate != null ? `${(nodeMetrics.networkTxRate / 1024).toFixed(1)} KB/s` : '—'}</p>
+          </GlassCard>
+          <GlassCard>
+            <div className="flex items-center gap-1.5 mb-1"><HardDrive className="h-3 w-3 text-orange-400" /><span className="text-[10px] text-muted-foreground">Disk Read</span></div>
+            <p className="text-sm font-bold">{nodeMetrics?.diskReadRate != null ? `${(nodeMetrics.diskReadRate / 1024 / 1024).toFixed(2)} MB/s` : '—'}</p>
+          </GlassCard>
+          <GlassCard>
+            <div className="flex items-center gap-1.5 mb-1"><HardDrive className="h-3 w-3 text-rose-400" /><span className="text-[10px] text-muted-foreground">Disk Write</span></div>
+            <p className="text-sm font-bold">{nodeMetrics?.diskWriteRate != null ? `${(nodeMetrics.diskWriteRate / 1024 / 1024).toFixed(2)} MB/s` : '—'}</p>
+          </GlassCard>
+        </div>
+
+        {/* CPU chart */}
+        <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5"><Activity className="h-3 w-3 text-violet-400" />CPU %</p>
+        {metricsRange === null ? <SkeletonChart /> : chartData === null ? <EmptyChart /> : (
+          <ChartCard>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs><linearGradient id="nodeCpuGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(265 75% 65%)" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(265 75% 65%)" stopOpacity={0} />
+                </linearGradient></defs>
+                <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={26} tickFormatter={(v) => `${v}%`} />
+                <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
+                <Area type="monotone" dataKey="cpu" stroke="hsl(265 75% 65%)" fill="url(#nodeCpuGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        )}
+
+        {/* Memory chart */}
+        <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5"><MemoryStick className="h-3 w-3 text-blue-400" />Memory (GB)</p>
+        {metricsRange === null ? <SkeletonChart /> : chartData === null ? <EmptyChart /> : (
+          <ChartCard>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs><linearGradient id="nodeMemGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(220 80% 65%)" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(220 80% 65%)" stopOpacity={0} />
+                </linearGradient></defs>
+                <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={30} tickFormatter={(v) => `${v.toFixed(1)}`} />
+                <Tooltip content={<ChartTooltip unit=" GB" />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
+                <Area type="monotone" dataKey="memory" stroke="hsl(220 80% 65%)" fill="url(#nodeMemGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        )}
+
+        {/* Network chart */}
+        <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5"><Wifi className="h-3 w-3 text-cyan-400" />Network (KB/s)</p>
+        {metricsRange === null ? <SkeletonChart /> : chartData === null ? <EmptyChart /> : (
+          <ChartCard>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="nodeRxGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(195 90% 60%)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(195 90% 60%)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="nodeTxGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(160 70% 55%)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(160 70% 55%)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={30} tickFormatter={(v) => `${v.toFixed(0)}`} />
+                <Tooltip content={<ChartTooltip unit=" KB/s" />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
+                <Area type="monotone" dataKey="networkRx" stroke="hsl(195 90% 60%)" fill="url(#nodeRxGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} name="RX" />
+                <Area type="monotone" dataKey="networkTx" stroke="hsl(160 70% 55%)" fill="url(#nodeTxGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} name="TX" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        )}
+
+        {/* Disk I/O chart */}
+        <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5"><HardDrive className="h-3 w-3 text-orange-400" />Disk I/O (MB/s)</p>
+        {metricsRange === null ? <SkeletonChart /> : chartData === null ? <EmptyChart /> : (
+          <ChartCard>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="nodeDiskReadGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(38 90% 60%)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(38 90% 60%)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="nodeDiskWriteGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(342 75% 65%)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(342 75% 65%)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={30} tickFormatter={(v) => `${v.toFixed(1)}`} />
+                <Tooltip content={<ChartTooltip unit=" MB/s" />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
+                <Area type="monotone" dataKey="diskRead" stroke="hsl(38 90% 60%)" fill="url(#nodeDiskReadGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} name="Read" />
+                <Area type="monotone" dataKey="diskWrite" stroke="hsl(342 75% 65%)" fill="url(#nodeDiskWriteGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} name="Write" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        )}
       </div>
     </div>
   );
@@ -553,7 +768,7 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
     id: '__proxmox', type: 'proxmoxHostNode',
     position: { x: centerX - proxmoxW / 2, y: yOffset },
     draggable: false, selectable: false,
-    data: { k8sNodes } satisfies ProxmoxHostNodeData,
+    data: { k8sNodes, onNodeClick: undefined, selectedNodeName: undefined } satisfies ProxmoxHostNodeData,
   });
   addEdge('__router', '__proxmox');
   yOffset += PROXMOX_NODE_H + INFRA_TIER_GAP;
@@ -710,11 +925,12 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
         srcHandle = 'source-top'; tgtHandle = 'target-bottom';
       }
     } else if (srcNode.startsWith('ns__')) {
-      // Namespace box → networking tier app (above): exit from top, enter app from bottom
+      // Namespace box (below) → networking tier app (above): exit top, enter bottom
       srcHandle = 'source-top';
-      tgtHandle = 'target-bottom'; // uses the named target-bottom handle on AppGroupNode
+      tgtHandle = 'target-bottom';
     } else if (tgtNode.startsWith('ns__')) {
-      // Networking tier app → namespace box (below): exit from bottom, enter box from top
+      // Networking tier app (above) → namespace box (below): exit bottom, enter top
+      srcHandle = 'source-bottom';
       tgtHandle = 'target-top';
     }
 
@@ -735,6 +951,7 @@ function TopologyCanvas() {
   const [loading, setLoading] = useState(true);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedPod, setSelectedPod] = useState<ContainerInfo | null>(null);
+  const [selectedK8sNode, setSelectedK8sNode] = useState<import('@/features/topology/lib/types').NodeInfo | null>(null);
   const [settingsMap, setSettingsMap] = useState<Map<string, AppSettings>>(new Map());
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -810,6 +1027,19 @@ function TopologyCanvas() {
     setNodes((prev) => prev.map((n) => ({ ...n, data: { ...n.data, selected: n.id === selectedGroupId } })));
   }, [selectedGroupId, setNodes]);
 
+  const handleK8sNodeClick = useCallback((node: import('@/features/topology/lib/types').NodeInfo) => {
+    setSelectedGroupId(null);
+    setSelectedPod(null);
+    setSelectedK8sNode((prev) => (prev?.name === node.name ? null : node));
+  }, []);
+
+  useEffect(() => {
+    setNodes((prev) => prev.map((n) => {
+      if (n.type !== 'proxmoxHostNode') return n;
+      return { ...n, data: { ...n.data, onNodeClick: handleK8sNodeClick, selectedNodeName: selectedK8sNode?.name ?? null } };
+    }));
+  }, [selectedK8sNode, handleK8sNodeClick, setNodes]);
+
   const appGroups = useMemo(() => applySettings(groupContainersToApps(liveContainers), settingsMap), [liveContainers, settingsMap]);
   const selectedGroup = selectedGroupId ? appGroups.find((g) => g.id === selectedGroupId) ?? null : null;
 
@@ -837,7 +1067,7 @@ function TopologyCanvas() {
           nodes={nodes} edges={edges}
           onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
-          onPaneClick={() => { setSelectedGroupId(null); setSelectedPod(null); }}
+          onPaneClick={() => { setSelectedGroupId(null); setSelectedPod(null); setSelectedK8sNode(null); }}
           nodeTypes={nodeTypes}
           fitView fitViewOptions={{ maxZoom: 0.9, padding: 0.15 }}
           proOptions={{ hideAttribution: true }}
@@ -875,11 +1105,21 @@ function TopologyCanvas() {
       )}
 
       {selectedPod && !selectedGroup && (
-        <div className="w-full md:w-[48%] shrink-0 border-l border-border/40 bg-background flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
+        <div className="w-full md:w-[48%] shrink-0 border-l border-white/10 bg-background/80 backdrop-blur-md flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
           <PodDetailPanel
             pod={selectedPod}
             onBack={() => setSelectedPod(null)}
             showLogs={settingsMap.get(`${selectedPod.networks[0] || 'default'}/${selectedPod.appName || deriveAppName(selectedPod.name)}`)?.showLogs !== false}
+            t={(key) => t(key)}
+          />
+        </div>
+      )}
+
+      {selectedK8sNode && (
+        <div className="w-full md:w-[48%] shrink-0 border-l border-white/10 bg-background/80 backdrop-blur-md flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
+          <NodeDetailPanel
+            node={selectedK8sNode}
+            onClose={() => setSelectedK8sNode(null)}
             t={(key) => t(key)}
           />
         </div>

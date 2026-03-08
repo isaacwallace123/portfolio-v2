@@ -7,10 +7,13 @@ import type { NodeInfo } from '@/features/topology/lib/types';
 export interface ProxmoxHostNodeData {
   label?: string;
   k8sNodes?: NodeInfo[];
+  selectedNodeName?: string;
+  onNodeClick?: (node: NodeInfo) => void;
 }
 
 export const ProxmoxHostNode = memo(({ data }: NodeProps<ProxmoxHostNodeData>) => {
   const nodes = data.k8sNodes ?? [];
+  const { onNodeClick, selectedNodeName } = data;
 
   const displayNodes = nodes.length > 0
     ? nodes
@@ -27,18 +30,29 @@ export const ProxmoxHostNode = memo(({ data }: NodeProps<ProxmoxHostNodeData>) =
           Proxmox VE Host
         </p>
         <div className="flex gap-3 flex-wrap">
-          {displayNodes.map((node) => (
-            <div key={node.name} className="flex-1 min-w-30 rounded-xl border border-amber-500/20 bg-amber-500/8 px-3 py-2">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${node.status === 'Ready' ? 'bg-emerald-400 shadow-[0_0_6px_hsl(160_70%_55%/0.8)]' : 'bg-yellow-400'}`} />
-                <p className="text-xs font-semibold text-foreground/90 truncate">{node.name}</p>
-              </div>
-              <p className="text-[10px] text-amber-400/60 capitalize">{node.role}</p>
-              {node.cpuCores > 0 && (
-                <p className="text-[9px] text-muted-foreground/50 mt-0.5">{node.cpuCores} CPU · {node.memoryGB.toFixed(0)} GB</p>
-              )}
-            </div>
-          ))}
+          {displayNodes.map((node) => {
+            const isSelected = selectedNodeName === node.name;
+            return (
+              <button
+                key={node.name}
+                onClick={() => onNodeClick?.(node)}
+                className={`flex-1 min-w-30 rounded-xl border text-left px-3 py-2 transition-all duration-200 cursor-pointer ${
+                  isSelected
+                    ? 'border-amber-400/60 bg-amber-500/20 shadow-[0_0_12px_hsl(38_90%_60%/0.2)]'
+                    : 'border-amber-500/20 bg-amber-500/8 hover:border-amber-400/40 hover:bg-amber-500/15'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${node.status === 'Ready' ? 'bg-emerald-400 shadow-[0_0_6px_hsl(160_70%_55%/0.8)]' : 'bg-yellow-400'}`} />
+                  <p className="text-xs font-semibold text-foreground/90 truncate">{node.name}</p>
+                </div>
+                <p className="text-[10px] text-amber-400/60 capitalize">{node.role}</p>
+                {node.cpuCores > 0 && (
+                  <p className="text-[9px] text-muted-foreground/50 mt-0.5">{node.cpuCores} CPU · {node.memoryGB.toFixed(0)} GB</p>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
       <Handle type="source" position={Position.Bottom} className="opacity-0! w-2! h-2!" />

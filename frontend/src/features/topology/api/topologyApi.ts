@@ -87,6 +87,12 @@ export const topologyApi = {
     return response.json();
   },
 
+  async getNodeMetricsRange(node: string, duration: string): Promise<MetricsRange> {
+    const response = await fetch(`${INFRA_URL}?action=nodemetricsrange&node=${encodeURIComponent(node)}&duration=${duration}`);
+    if (!response.ok) throw new Error('Failed to fetch node metrics range');
+    return response.json();
+  },
+
   async getDependencies(): Promise<AppDependency[]> {
     const response = await fetch(`${INFRA_URL}?action=dependencies`);
     if (!response.ok) return [];

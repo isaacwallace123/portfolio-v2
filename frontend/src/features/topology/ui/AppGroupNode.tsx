@@ -36,7 +36,7 @@ export const AppGroupNode = memo(({ data, selected }: NodeProps<AppGroupNodeData
 
   return (
     <>
-      <Handle type="target" position={Position.Top} className="opacity-0! w-2! h-2!" />
+      <Handle id="target-top" type="target" position={Position.Top} className="opacity-0! w-2! h-2!" />
       <Handle id="target-bottom" type="target" position={Position.Bottom} className="opacity-0! w-2! h-2!" />
       <Handle id="source-top" type="source" position={Position.Top} className="opacity-0! w-2! h-2!" />
 
@@ -63,7 +63,7 @@ export const AppGroupNode = memo(({ data, selected }: NodeProps<AppGroupNodeData
         </div>
       </div>
 
-      <Handle type="source" position={Position.Bottom} className="opacity-0! w-2! h-2!" />
+      <Handle id="source-bottom" type="source" position={Position.Bottom} className="opacity-0! w-2! h-2!" />
     </>
   );
 });

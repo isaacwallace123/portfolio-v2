@@ -8,7 +8,7 @@ const INFRA_KEY = process.env.INFRA_API_KEY || '';
 const ADMIN_ACTIONS = new Set(['networks', 'system']);
 
 // Public actions (needed by the homelab page)
-const PUBLIC_ACTIONS = new Set(['containers', 'stats', 'logs', 'metrics', 'metricsrange', 'dependencies', 'nodes']);
+const PUBLIC_ACTIONS = new Set(['containers', 'stats', 'logs', 'metrics', 'metricsrange', 'nodemetricsrange', 'dependencies', 'nodes']);
 
 async function proxyToInfra(path: string): Promise<Response> {
   const url = `${INFRA_URL}${path}`;
@@ -67,6 +67,12 @@ export async function GET(request: NextRequest) {
         const duration = searchParams.get('duration') || '5m';
         const container = searchParams.get('container') || '';
         path = `/metrics/range?duration=${duration}&container=${encodeURIComponent(container)}`;
+        break;
+      }
+      case 'nodemetricsrange': {
+        const node = searchParams.get('node') || '';
+        const duration = searchParams.get('duration') || '5m';
+        path = `/metrics/noderange?node=${encodeURIComponent(node)}&duration=${duration}`;
         break;
       }
       case 'dependencies':

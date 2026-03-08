@@ -30,7 +30,7 @@ import { ProxmoxHostNode, type ProxmoxHostNodeData } from '@/features/topology/u
 import { topologyApi } from '@/features/topology/api/topologyApi';
 import { detectIconFromContainer } from '@/features/topology/lib/iconMap';
 import { getLogLineClassName, splitTimestamp, detectLogLevel } from '@/features/topology/lib/logColorizer';
-import type { ContainerInfo, ContainerStats, MetricsRange, AppDependency, NodeInfo, NodeMetrics } from '@/features/topology/lib/types';
+import type { ContainerInfo, ContainerStats, MetricsRange, AppDependency, NodeInfo } from '@/features/topology/lib/types';
 import { useTranslations } from 'next-intl';
 import { AnimatedBackground } from '@/shared/ui/AnimatedBackground';
 
@@ -370,19 +370,8 @@ function NodeDetailPanel({
 }: {
   node: NodeInfo; onClose: () => void; t: (key: string) => string;
 }) {
-  const [nodeMetrics, setNodeMetrics] = useState<NodeMetrics | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('5m');
   const [metricsRange, setMetricsRange] = useState<MetricsRange | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    async function load() {
-      try { const data = await topologyApi.getNodeMetrics(); setNodeMetrics(data); } catch { /* ignore */ }
-    }
-    load();
-    intervalRef.current = setInterval(load, POLL_INTERVAL);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [node.name]);
 
   useEffect(() => {
     let cancelled = false;
@@ -397,11 +386,22 @@ function NodeDetailPanel({
     return () => { cancelled = true; clearInterval(id); };
   }, [timeRange, node.name]);
 
+  const lastPoint = metricsRange && metricsRange.cpu.length > 0
+    ? {
+        cpu: metricsRange.cpu.at(-1)?.value ?? null,
+        memory: metricsRange.memory.at(-1)?.value ?? null,
+        networkRx: (metricsRange.networkRx.at(-1)?.value ?? null),
+        networkTx: (metricsRange.networkTx.at(-1)?.value ?? null),
+        diskRead: (metricsRange.diskRead.at(-1)?.value ?? null),
+        diskWrite: (metricsRange.diskWrite.at(-1)?.value ?? null),
+      }
+    : null;
+
   const chartData = metricsRange && metricsRange.cpu.length > 0
     ? metricsRange.cpu.map((pt, i) => ({
         time: pt.time,
         cpu: pt.value,
-        memory: (metricsRange.memory[i]?.value ?? 0) / 1024 / 1024 / 1024,
+        memory: metricsRange.memory[i]?.value ?? 0,
         networkRx: (metricsRange.networkRx[i]?.value ?? 0) / 1024,
         networkTx: (metricsRange.networkTx[i]?.value ?? 0) / 1024,
         diskRead: (metricsRange.diskRead[i]?.value ?? 0) / 1024 / 1024,
@@ -443,46 +443,47 @@ function NodeDetailPanel({
         </Button>
       </div>
 
-      <div className="flex items-center justify-between px-4 pt-3 pb-1 shrink-0">
-        <p className="text-[11px] font-medium text-muted-foreground">Time range</p>
-        <div className="flex gap-1">
-          {TIME_RANGES.map((r) => (
-            <button key={r.value} onClick={() => setTimeRange(r.value)}
-              className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${timeRange === r.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
-            >{r.label}</button>
-          ))}
-        </div>
-      </div>
-
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {/* Current stats */}
         <div className="grid grid-cols-2 gap-2">
           <GlassCard>
             <div className="flex items-center gap-1.5 mb-1"><Cpu className="h-3 w-3 text-violet-400" /><span className="text-[10px] text-muted-foreground">CPU</span></div>
-            <p className="text-base font-bold">{nodeMetrics?.cpu != null ? `${nodeMetrics.cpu.toFixed(1)}%` : '—'}</p>
-            {nodeMetrics?.cpu != null && <Progress value={Math.min(nodeMetrics.cpu, 100)} className="h-1 mt-1.5" />}
+            <p className="text-base font-bold">{lastPoint?.cpu != null ? `${lastPoint.cpu.toFixed(1)}%` : '—'}</p>
+            {lastPoint?.cpu != null && <Progress value={Math.min(lastPoint.cpu, 100)} className="h-1 mt-1.5" />}
           </GlassCard>
           <GlassCard>
             <div className="flex items-center gap-1.5 mb-1"><MemoryStick className="h-3 w-3 text-blue-400" /><span className="text-[10px] text-muted-foreground">Memory</span></div>
-            <p className="text-base font-bold">{nodeMetrics?.memory != null ? `${nodeMetrics.memory.toFixed(1)}%` : '—'}</p>
-            {nodeMetrics?.memory != null && <Progress value={Math.min(nodeMetrics.memory, 100)} className="h-1 mt-1.5" />}
+            <p className="text-base font-bold">{lastPoint?.memory != null ? `${lastPoint.memory.toFixed(1)}%` : '—'}</p>
+            {lastPoint?.memory != null && <Progress value={Math.min(lastPoint.memory, 100)} className="h-1 mt-1.5" />}
           </GlassCard>
           <GlassCard>
             <div className="flex items-center gap-1.5 mb-1"><Wifi className="h-3 w-3 text-cyan-400" /><span className="text-[10px] text-muted-foreground">Net RX</span></div>
-            <p className="text-sm font-bold">{nodeMetrics?.networkRxRate != null ? `${(nodeMetrics.networkRxRate / 1024).toFixed(1)} KB/s` : '—'}</p>
+            <p className="text-sm font-bold">{lastPoint?.networkRx != null ? `${(lastPoint.networkRx / 1024).toFixed(1)} KB/s` : '—'}</p>
           </GlassCard>
           <GlassCard>
             <div className="flex items-center gap-1.5 mb-1"><Wifi className="h-3 w-3 text-emerald-400" /><span className="text-[10px] text-muted-foreground">Net TX</span></div>
-            <p className="text-sm font-bold">{nodeMetrics?.networkTxRate != null ? `${(nodeMetrics.networkTxRate / 1024).toFixed(1)} KB/s` : '—'}</p>
+            <p className="text-sm font-bold">{lastPoint?.networkTx != null ? `${(lastPoint.networkTx / 1024).toFixed(1)} KB/s` : '—'}</p>
           </GlassCard>
           <GlassCard>
             <div className="flex items-center gap-1.5 mb-1"><HardDrive className="h-3 w-3 text-orange-400" /><span className="text-[10px] text-muted-foreground">Disk Read</span></div>
-            <p className="text-sm font-bold">{nodeMetrics?.diskReadRate != null ? `${(nodeMetrics.diskReadRate / 1024 / 1024).toFixed(2)} MB/s` : '—'}</p>
+            <p className="text-sm font-bold">{lastPoint?.diskRead != null ? `${(lastPoint.diskRead / 1024 / 1024).toFixed(2)} MB/s` : '—'}</p>
           </GlassCard>
           <GlassCard>
             <div className="flex items-center gap-1.5 mb-1"><HardDrive className="h-3 w-3 text-rose-400" /><span className="text-[10px] text-muted-foreground">Disk Write</span></div>
-            <p className="text-sm font-bold">{nodeMetrics?.diskWriteRate != null ? `${(nodeMetrics.diskWriteRate / 1024 / 1024).toFixed(2)} MB/s` : '—'}</p>
+            <p className="text-sm font-bold">{lastPoint?.diskWrite != null ? `${(lastPoint.diskWrite / 1024 / 1024).toFixed(2)} MB/s` : '—'}</p>
           </GlassCard>
+        </div>
+
+        {/* Time range */}
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-medium text-muted-foreground">Time range</p>
+          <div className="flex gap-1">
+            {TIME_RANGES.map((r) => (
+              <button key={r.value} onClick={() => setTimeRange(r.value)}
+                className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${timeRange === r.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+              >{r.label}</button>
+            ))}
+          </div>
         </div>
 
         {/* CPU chart */}
@@ -505,7 +506,7 @@ function NodeDetailPanel({
         )}
 
         {/* Memory chart */}
-        <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5"><MemoryStick className="h-3 w-3 text-blue-400" />Memory (GB)</p>
+        <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5"><MemoryStick className="h-3 w-3 text-blue-400" />Memory %</p>
         {metricsRange === null ? <SkeletonChart /> : chartData === null ? <EmptyChart /> : (
           <ChartCard>
             <ResponsiveContainer width="100%" height="100%">
@@ -515,8 +516,8 @@ function NodeDetailPanel({
                   <stop offset="95%" stopColor="hsl(220 80% 65%)" stopOpacity={0} />
                 </linearGradient></defs>
                 <XAxis dataKey="time" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={30} tickFormatter={(v) => `${v.toFixed(1)}`} />
-                <Tooltip content={<ChartTooltip unit=" GB" />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={30} tickFormatter={(v) => `${v}%`} />
+                <Tooltip content={<ChartTooltip unit="%" />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
                 <Area type="monotone" dataKey="memory" stroke="hsl(220 80% 65%)" fill="url(#nodeMemGrad)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
               </AreaChart>
             </ResponsiveContainer>

@@ -7,6 +7,7 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   Background,
+  BackgroundVariant,
   NodeTypes,
   ReactFlowProvider,
   useReactFlow,
@@ -844,7 +845,7 @@ function TopologyCanvas() {
           elevateEdgesOnSelect={false}
           panOnDrag zoomOnScroll
         >
-          <Background />
+          <Background variant={BackgroundVariant.Lines} gap={40} size={0.5} color="hsl(var(--border) / 0.3)" />
 
           <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1 rounded-xl border bg-background/90 backdrop-blur-sm shadow-lg p-1.5">
             <Button onClick={() => zoomIn()} size="icon" variant="ghost" className="h-8 w-8"><ZoomIn className="h-4 w-4" /></Button>

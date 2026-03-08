@@ -17,8 +17,9 @@ export interface AppGroupNodeData {
 export const AppGroupNode = memo(({ data, selected }: NodeProps<AppGroupNodeData>) => {
   const { appName, namespace, pods, icon } = data;
 
-  const running = pods.filter((p) => p.state === 'running').length;
-  const total = pods.length;
+  const activePods = pods.filter((p) => p.state !== 'succeeded' && p.state !== 'completed');
+  const running = activePods.filter((p) => p.state === 'running').length;
+  const total = activePods.length;
   const allRunning = running === total;
   const anyRunning = running > 0;
 

@@ -324,7 +324,8 @@ function AppGroupPanel({
     );
   }
 
-  const running = group.pods.filter((p) => p.state === 'running').length;
+  const activePods = group.pods.filter((p) => p.state !== 'succeeded' && p.state !== 'completed');
+  const running = activePods.filter((p) => p.state === 'running').length;
 
   return (
     <div className="w-full md:w-[48%] shrink-0 border-l border-border/40 bg-background flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
@@ -332,7 +333,7 @@ function AppGroupPanel({
         <div className="min-w-0 flex-1 flex items-center gap-2.5">
           <h3 className="text-sm font-semibold truncate">{group.appName}</h3>
           <Badge variant="outline" className="text-[10px] shrink-0">{group.namespace}</Badge>
-          <span className="text-[10px] text-muted-foreground shrink-0">{running}/{group.pods.length} running</span>
+          <span className="text-[10px] text-muted-foreground shrink-0">{running}/{activePods.length} running</span>
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
           <X className="h-4 w-4" />
@@ -341,7 +342,7 @@ function AppGroupPanel({
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 space-y-1.5">
-          {group.pods.map((pod) => (
+          {activePods.map((pod) => (
             <button key={pod.id} onClick={() => setSelectedPod(pod)}
               className="w-full flex items-center gap-3 p-3 rounded-lg border border-border/40 hover:border-primary/40 hover:bg-muted/20 transition-all text-left group"
             >
@@ -365,17 +366,17 @@ function AppGroupPanel({
 const APPS_PER_ROW = 4;
 const APP_W = 155;
 const APP_H = 64;
-const APP_GAP_X = 20;
-const NS_PAD_X = 28;
-const NS_PAD_Y = 16;
+const APP_GAP_X = 28;
+const NS_PAD_X = 36;
+const NS_PAD_Y = 22;
 const NS_HEADER = 36;
-const ROW_GAP = 32;
-const NS_COL_GAP = 40;
+const ROW_GAP = 44;
+const NS_COL_GAP = 64;
 const NS_GRID_COLS = 2;
-const TIER_GAP = 56;
+const TIER_GAP = 72;
 const PROXMOX_NODE_H = 100;
 const INFRA_NODE_H = 88;
-const INFRA_TIER_GAP = 36;
+const INFRA_TIER_GAP = 40;
 
 
 /** Compute depth-from-deepest-leaf for each app using dependency edges within a namespace. */
@@ -617,7 +618,7 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
     flowNodes.push({
       id: `ns__${ns}`, type: 'namespaceGroupNode',
       position: { x: nsX, y: nsY },
-      style: { width: nsW, height: nsH, zIndex: 0 },
+      style: { width: nsW, height: nsH, zIndex: -1 },
       data: { namespace: ns, podCount: otherGroups.filter((g) => g.namespace === ns).reduce((s, g) => s + g.pods.length, 0) },
       selectable: false, draggable: false,
     });
@@ -660,14 +661,19 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
     }
   });
 
-  // Draw cross-namespace dependency edges
+  // Draw cross-namespace dependency edges — route to/from namespace group boundary
+  // to prevent edge lines from threading through namespace boxes over app nodes.
   const allAppIds = new Set(groups.map((g) => g.id));
+  const nsBoxIds = new Set(otherNamespaces.map((ns) => `ns__${ns}`));
   for (const dep of deps) {
     const srcId = `${dep.sourceNamespace}/${dep.sourceApp}`;
     const tgtId = `${dep.targetNamespace}/${dep.targetApp}`;
-    if (allAppIds.has(srcId) && allAppIds.has(tgtId) && dep.sourceNamespace !== dep.targetNamespace) {
-      addEdge(srcId, tgtId);
-    }
+    if (!allAppIds.has(srcId) || !allAppIds.has(tgtId)) continue;
+    if (dep.sourceNamespace === dep.targetNamespace) continue;
+    // Use namespace group node as endpoint when that namespace has a box
+    const srcNode = nsBoxIds.has(`ns__${dep.sourceNamespace}`) ? `ns__${dep.sourceNamespace}` : srcId;
+    const tgtNode = nsBoxIds.has(`ns__${dep.targetNamespace}`) ? `ns__${dep.targetNamespace}` : tgtId;
+    addEdge(srcNode, tgtNode, true);
   }
 
   return { nodes: flowNodes, edges: edgeList };
@@ -787,6 +793,7 @@ function TopologyCanvas() {
           proOptions={{ hideAttribution: true }}
           minZoom={0.1} maxZoom={1.5}
           nodesDraggable={false} nodesConnectable={false} elementsSelectable={true}
+          elevateEdgesOnSelect={false}
           panOnDrag zoomOnScroll
         >
           <Background />

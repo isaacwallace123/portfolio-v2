@@ -30,7 +30,7 @@ import { ProxmoxHostNode, type ProxmoxHostNodeData } from '@/features/topology/u
 import { topologyApi } from '@/features/topology/api/topologyApi';
 import { detectIconFromContainer } from '@/features/topology/lib/iconMap';
 import { getLogLineClassName, splitTimestamp, detectLogLevel } from '@/features/topology/lib/logColorizer';
-import type { ContainerInfo, ContainerStats, MetricsRange, AppDependency, NodeInfo } from '@/features/topology/lib/types';
+import type { ContainerInfo, ContainerStats, MetricsRange, AppDependency, NodeInfo, NodeMetrics } from '@/features/topology/lib/types';
 import { useTranslations } from 'next-intl';
 import { AnimatedBackground } from '@/shared/ui/AnimatedBackground';
 
@@ -370,9 +370,9 @@ function NodeDetailPanel({
 }: {
   node: NodeInfo; onClose: () => void; t: (key: string) => string;
 }) {
-  const [nodeMetrics, setNodeMetrics] = useState<import('@/features/topology/lib/types').NodeMetrics | null>(null);
+  const [nodeMetrics, setNodeMetrics] = useState<NodeMetrics | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('5m');
-  const [metricsRange, setMetricsRange] = useState<import('@/features/topology/lib/types').MetricsRange | null>(null);
+  const [metricsRange, setMetricsRange] = useState<MetricsRange | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -951,7 +951,7 @@ function TopologyCanvas() {
   const [loading, setLoading] = useState(true);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedPod, setSelectedPod] = useState<ContainerInfo | null>(null);
-  const [selectedK8sNode, setSelectedK8sNode] = useState<import('@/features/topology/lib/types').NodeInfo | null>(null);
+  const [selectedK8sNode, setSelectedK8sNode] = useState<NodeInfo | null>(null);
   const [settingsMap, setSettingsMap] = useState<Map<string, AppSettings>>(new Map());
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -985,6 +985,12 @@ function TopologyCanvas() {
     }
     load();
     return () => { cancelled = true; };
+  }, []);
+
+  const handleK8sNodeClick = useCallback((node: NodeInfo) => {
+    setSelectedGroupId(null);
+    setSelectedPod(null);
+    setSelectedK8sNode((prev) => (prev?.name === node.name ? null : node));
   }, []);
 
   // Build flow once when data arrives
@@ -1029,12 +1035,6 @@ function TopologyCanvas() {
   useEffect(() => {
     setNodes((prev) => prev.map((n) => ({ ...n, data: { ...n.data, selected: n.id === selectedGroupId } })));
   }, [selectedGroupId, setNodes]);
-
-  const handleK8sNodeClick = useCallback((node: import('@/features/topology/lib/types').NodeInfo) => {
-    setSelectedGroupId(null);
-    setSelectedPod(null);
-    setSelectedK8sNode((prev) => (prev?.name === node.name ? null : node));
-  }, []);
 
   useEffect(() => {
     setNodes((prev) => prev.map((n) => {

@@ -368,17 +368,17 @@ function AppGroupPanel({
 const APPS_PER_ROW = 4;
 const APP_W = 155;
 const APP_H = 64;
-const APP_GAP_X = 28;
-const NS_PAD_X = 36;
-const NS_PAD_Y = 22;
-const NS_HEADER = 36;
-const ROW_GAP = 44;
-const NS_COL_GAP = 64;
+const APP_GAP_X = 40;
+const NS_PAD_X = 48;
+const NS_PAD_Y = 40;
+const NS_HEADER = 40;
+const ROW_GAP = 80;
+const NS_COL_GAP = 96;
 const NS_GRID_COLS = 2;
-const TIER_GAP = 72;
+const TIER_GAP = 100;
 const PROXMOX_NODE_H = 100;
 const INFRA_NODE_H = 88;
-const INFRA_TIER_GAP = 40;
+const INFRA_TIER_GAP = 72;
 
 
 /** Compute depth-from-deepest-leaf for each app using dependency edges within a namespace. */

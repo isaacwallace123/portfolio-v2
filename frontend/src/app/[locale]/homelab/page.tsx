@@ -768,7 +768,7 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
     id: '__proxmox', type: 'proxmoxHostNode',
     position: { x: centerX - proxmoxW / 2, y: yOffset },
     draggable: false, selectable: false,
-    data: { k8sNodes, onNodeClick: undefined, selectedNodeName: undefined } satisfies ProxmoxHostNodeData,
+    data: { k8sNodes } satisfies ProxmoxHostNodeData,
   });
   addEdge('__router', '__proxmox');
   yOffset += PROXMOX_NODE_H + INFRA_TIER_GAP;
@@ -794,7 +794,7 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
           draggable: false,
           data: { appName: g.appName, namespace: g.namespace, pods: g.pods, icon: g.icon } satisfies AppGroupNodeData,
         });
-        addEdge('__proxmox', g.id);
+        addEdge('__proxmox', g.id, false, 'smoothstep', undefined, 'target-top');
         gatewayIds.push(g.id);
       });
 
@@ -810,7 +810,7 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
       const srcId = `${dep.sourceNamespace}/${dep.sourceApp}`;
       const tgtId = `${dep.targetNamespace}/${dep.targetApp}`;
       if (netIds.has(srcId) && netIds.has(tgtId)) {
-        addEdge(srcId, tgtId);
+        addEdge(srcId, tgtId, false, 'smoothstep', 'source-bottom', 'target-top');
       }
     }
   }
@@ -880,7 +880,7 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
       const srcId = `${dep.sourceNamespace}/${dep.sourceApp}`;
       const tgtId = `${dep.targetNamespace}/${dep.targetApp}`;
       if (nsIds.has(srcId) && nsIds.has(tgtId)) {
-        addEdge(srcId, tgtId);
+        addEdge(srcId, tgtId, false, 'smoothstep', 'source-bottom', 'target-top');
       }
     }
   });
@@ -993,9 +993,12 @@ function TopologyCanvas() {
     initializedRef.current = true;
     const groups = applySettings(groupContainersToApps(liveContainers), settingsMap);
     const { nodes: flowNodes, edges: flowEdges } = buildFlow(groups, deps, k8sNodes);
-    setNodes(flowNodes);
+    // Inject callback directly so it's available from the first render
+    setNodes(flowNodes.map((n) =>
+      n.type === 'proxmoxHostNode' ? { ...n, data: { ...n.data, onNodeClick: handleK8sNodeClick } } : n
+    ));
     onEdgesChange(flowEdges.map((e) => ({ type: 'add' as const, item: e })));
-  }, [liveContainers, deps, k8sNodes, settingsMap, setNodes, onEdgesChange]);
+  }, [liveContainers, deps, k8sNodes, settingsMap, setNodes, onEdgesChange, handleK8sNodeClick]);
 
   // Poll pod states
   useEffect(() => {

@@ -366,10 +366,6 @@ const APPS_PER_ROW = 4;
 const APP_W = 155;
 const APP_H = 64;
 const APP_GAP_X = 20;
-const POD_W = 135;
-const POD_H = 36;
-const APP_POD_GAP = 24;
-const POD_GAP = 8;
 const NS_PAD_X = 28;
 const NS_PAD_Y = 16;
 const NS_HEADER = 36;
@@ -381,10 +377,6 @@ const PROXMOX_NODE_H = 100;
 const INFRA_NODE_H = 88;
 const INFRA_TIER_GAP = 36;
 
-function colHeight(nPods: number): number {
-  const n = Math.max(nPods, 1);
-  return APP_H + APP_POD_GAP + n * POD_H + (n - 1) * POD_GAP;
-}
 
 /** Compute depth-from-deepest-leaf for each app using dependency edges within a namespace. */
 function computeDepths(apps: AppGroup[], deps: AppDependency[]): Map<string, number> {
@@ -442,7 +434,7 @@ function nsBoxDims(levels: AppGroup[][]): { w: number; h: number } {
       if (!firstSubRow) h += ROW_GAP;
       firstSubRow = false;
       const subRowApps = levelApps.slice(sr * APPS_PER_ROW, (sr + 1) * APPS_PER_ROW);
-      h += Math.max(...subRowApps.map((g) => colHeight(g.pods.length)));
+      h += APP_H;
     }
   }
   h += NS_PAD_Y + 8;
@@ -569,8 +561,6 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
     netLevels.forEach((levelApps) => {
       const rowW = levelApps.length * (APP_W + APP_GAP_X) - APP_GAP_X;
       const rowStartX = gwStartX + (gwTierW - rowW) / 2;
-      const maxPods = Math.max(...levelApps.map((g) => g.pods.length), 1);
-
       levelApps.forEach((g, i) => {
         const gx = rowStartX + i * (APP_W + APP_GAP_X);
         flowNodes.push({
@@ -581,21 +571,10 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
         });
         addEdge('__proxmox', g.id);
         gatewayIds.push(g.id);
-
-        const podX = gx + (APP_W - POD_W) / 2;
-        g.pods.forEach((pod, pi) => {
-          flowNodes.push({
-            id: `pod__${pod.id}`, type: 'podNode',
-            position: { x: podX, y: gwY + APP_H + APP_POD_GAP + pi * (POD_H + POD_GAP) },
-            draggable: false,
-            data: { pod } satisfies PodNodeData,
-          });
-          addEdge(g.id, `pod__${pod.id}`, false, 'straight');
-        });
       });
 
       // Intra-networking dep edges within this level's context
-      gwY += colHeight(maxPods) + ROW_GAP;
+      gwY += APP_H + ROW_GAP;
     });
 
     yOffset = gwY - ROW_GAP + TIER_GAP;
@@ -649,9 +628,6 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
       const numSubRows = Math.ceil(levelApps.length / APPS_PER_ROW);
       for (let sr = 0; sr < numSubRows; sr++) {
         const subRowApps = levelApps.slice(sr * APPS_PER_ROW, (sr + 1) * APPS_PER_ROW);
-        const maxPodCount = Math.max(...subRowApps.map((g) => g.pods.length));
-        const subRowH = colHeight(maxPodCount);
-
         const subRowW = subRowApps.length * (APP_W + APP_GAP_X) - APP_GAP_X;
         const rowStartX = NS_PAD_X + (nsW - NS_PAD_X * 2 - subRowW) / 2;
 
@@ -667,23 +643,9 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
             draggable: false,
             data: { appName: group.appName, namespace: group.namespace, pods: group.pods, icon: group.icon } satisfies AppGroupNodeData,
           });
-
-          // Pod nodes as children of namespace box
-          const podRelX = appRelX + (APP_W - POD_W) / 2;
-          group.pods.forEach((pod, pi) => {
-            flowNodes.push({
-              id: `pod__${pod.id}`, type: 'podNode',
-              parentId: `ns__${ns}`,
-              extent: 'parent' as const,
-              position: { x: podRelX, y: appRelY + APP_H + APP_POD_GAP + pi * (POD_H + POD_GAP) },
-              draggable: false,
-              data: { pod } satisfies PodNodeData,
-            });
-            addEdge(group.id, `pod__${pod.id}`, false, 'straight');
-          });
         });
 
-        levelY += subRowH + ROW_GAP;
+        levelY += APP_H + ROW_GAP;
       }
     }
 

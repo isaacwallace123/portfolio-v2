@@ -31,7 +31,11 @@ export const AppGroupNode = memo(({ data, selected }: NodeProps<AppGroupNodeData
 
   return (
     <>
-      <Handle type="target" position={Position.Top} className="!bg-border !w-2 !h-2 !border-border" />
+      {/* Default handles used by intra-namespace edges (no handle ID specified) */}
+      <Handle type="target" position={Position.Top} className="bg-border! w-2! h-2! border-border!" />
+      {/* Named handles used by cross-namespace edges with explicit handle IDs */}
+      <Handle id="target-bottom" type="target" position={Position.Bottom} className="bg-border! w-2! h-2! border-border! opacity-0" />
+      <Handle id="source-top" type="source" position={Position.Top} className="bg-border! w-2! h-2! border-border! opacity-0" />
 
       <Card
         className={`w-[155px] shadow-sm cursor-pointer transition-all ${
@@ -64,7 +68,7 @@ export const AppGroupNode = memo(({ data, selected }: NodeProps<AppGroupNodeData
         </div>
       </Card>
 
-      <Handle type="source" position={Position.Bottom} className="!bg-border !w-2 !h-2 !border-border" />
+      <Handle type="source" position={Position.Bottom} className="bg-border! w-2! h-2! border-border!" />
     </>
   );
 });

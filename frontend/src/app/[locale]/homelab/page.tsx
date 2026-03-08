@@ -368,12 +368,12 @@ function AppGroupPanel({
 const APPS_PER_ROW = 4;
 const APP_W = 155;
 const APP_H = 64;
-const APP_GAP_X = 40;
-const NS_PAD_X = 48;
-const NS_PAD_Y = 40;
+const APP_GAP_X = 48;
+const NS_PAD_X = 56;
+const NS_PAD_Y = 48;
 const NS_HEADER = 40;
-const ROW_GAP = 80;
-const NS_COL_GAP = 96;
+const ROW_GAP = 92;
+const NS_COL_GAP = 108;
 const NS_GRID_COLS = 2;
 const TIER_GAP = 100;
 const PROXMOX_NODE_H = 100;
@@ -668,13 +668,16 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
     }
   });
 
-  // Draw cross-namespace dependency edges — route to/from namespace group boundary
-  // to prevent edge lines from threading through namespace boxes over app nodes.
+  // Draw cross-namespace dependency edges — route to/from namespace group boundary.
+  // Pick source/target handles to find the shortest, most direct path.
   const allAppIds = new Set(groups.map((g) => g.id));
   const nsBoxIds = new Set(otherNamespaces.map((ns) => `ns__${ns}`));
-  // Row index per namespace (networking tier = -1, above all grid rows)
   const nsRowIndex = new Map<string, number>();
-  otherNamespaces.forEach((ns, idx) => nsRowIndex.set(ns, Math.floor(idx / NS_GRID_COLS)));
+  const nsColIndex = new Map<string, number>();
+  otherNamespaces.forEach((ns, idx) => {
+    nsRowIndex.set(ns, Math.floor(idx / NS_GRID_COLS));
+    nsColIndex.set(ns, idx % NS_GRID_COLS);
+  });
 
   for (const dep of deps) {
     const srcId = `${dep.sourceNamespace}/${dep.sourceApp}`;
@@ -684,21 +687,32 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
     const srcNode = nsBoxIds.has(`ns__${dep.sourceNamespace}`) ? `ns__${dep.sourceNamespace}` : srcId;
     const tgtNode = nsBoxIds.has(`ns__${dep.targetNamespace}`) ? `ns__${dep.targetNamespace}` : tgtId;
 
-    // Determine which handles to use so edges exit/enter the nearest side
     const srcRow = nsRowIndex.get(dep.sourceNamespace) ?? -1; // -1 = networking tier (above grid)
     const tgtRow = nsRowIndex.get(dep.targetNamespace) ?? -1;
+    const srcCol = nsColIndex.get(dep.sourceNamespace) ?? -1;
+    const tgtCol = nsColIndex.get(dep.targetNamespace) ?? -1;
 
     let srcHandle: string | undefined;
     let tgtHandle: string | undefined;
+
     if (srcNode.startsWith('ns__') && tgtNode.startsWith('ns__')) {
-      // Both are namespace boxes — exit top if going up, bottom if going down
-      if (srcRow > tgtRow) { srcHandle = 'source-top'; tgtHandle = 'target-bottom'; }
-      else                  { srcHandle = 'source-bottom'; tgtHandle = 'target-top'; }
+      if (srcRow === tgtRow) {
+        // Same grid row — shortest path is horizontal (left ↔ right)
+        srcHandle = srcCol < tgtCol ? 'source-right' : 'source-left';
+        tgtHandle = srcCol < tgtCol ? 'target-left'  : 'target-right';
+      } else if (srcRow < tgtRow) {
+        // Source above target — go straight down
+        srcHandle = 'source-bottom'; tgtHandle = 'target-top';
+      } else {
+        // Source below target — go straight up
+        srcHandle = 'source-top'; tgtHandle = 'target-bottom';
+      }
     } else if (srcNode.startsWith('ns__')) {
-      // Source is namespace box, target is networking tier (above) → exit from top
+      // Namespace box → networking tier app (above): exit from top, enter app from bottom
       srcHandle = 'source-top';
+      tgtHandle = 'target-bottom'; // uses the named target-bottom handle on AppGroupNode
     } else if (tgtNode.startsWith('ns__')) {
-      // Source is networking tier (above), target is namespace box → enter from top
+      // Networking tier app → namespace box (below): exit from bottom, enter box from top
       tgtHandle = 'target-top';
     }
 

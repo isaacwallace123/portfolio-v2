@@ -741,10 +741,31 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
   const gwCount = networkingGroups.length;
   const gwTierW = gwCount > 0 ? gwCount * (APP_W + APP_GAP_X) - APP_GAP_X : 0;
   const proxmoxW = 340;
-  const canvasW = Math.max(totalGridW, gwTierW, proxmoxW, 500);
+  const PROXMOX_GAP = 24;
+
+  // Group k8s nodes by Proxmox host label
+  const hostMap = new Map<string, NodeInfo[]>();
+  for (const node of k8sNodes) {
+    const host = node.proxmoxHost || '';
+    if (!hostMap.has(host)) hostMap.set(host, []);
+    hostMap.get(host)!.push(node);
+  }
+  // If no label data yet, treat all as one unnamed host
+  const hostKeys = k8sNodes.length > 0 && [...hostMap.keys()].some((k) => k !== '')
+    ? [...hostMap.keys()].filter((k) => k !== '').sort()
+    : [''];
+  if (hostMap.has('') && hostKeys[0] !== '') {
+    // merge unlabeled nodes into first host for fallback
+    const unlabeled = hostMap.get('')!;
+    if (!hostMap.has(hostKeys[0])) hostMap.set(hostKeys[0], []);
+    hostMap.get(hostKeys[0])!.push(...unlabeled);
+  }
+
+  const proxmoxTierW = hostKeys.length * proxmoxW + (hostKeys.length - 1) * PROXMOX_GAP;
+  const canvasW = Math.max(totalGridW, gwTierW, proxmoxTierW, 500);
   const centerX = canvasW / 2;
 
-  // 1. Infrastructure chain: Internet → Router → ProxmoxHost
+  // 1. Infrastructure chain: Internet → Router → ProxmoxHost(s)
   let yOffset = 0;
 
   flowNodes.push({
@@ -764,13 +785,21 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
   addEdge('__internet', '__router');
   yOffset += INFRA_NODE_H + INFRA_TIER_GAP;
 
-  flowNodes.push({
-    id: '__proxmox', type: 'proxmoxHostNode',
-    position: { x: centerX - proxmoxW / 2, y: yOffset },
-    draggable: false, selectable: false,
-    data: { k8sNodes } satisfies ProxmoxHostNodeData,
+  // Render one ProxmoxHostNode per physical host, laid out side-by-side
+  const proxmoxHostIds: string[] = [];
+  const proxmoxStartX = centerX - proxmoxTierW / 2;
+  hostKeys.forEach((hostKey, i) => {
+    const proxmoxId = hostKey ? `__proxmox_${hostKey}` : '__proxmox';
+    const hostNodes = hostMap.get(hostKey) ?? (k8sNodes.length === 0 ? k8sNodes : []);
+    flowNodes.push({
+      id: proxmoxId, type: 'proxmoxHostNode',
+      position: { x: proxmoxStartX + i * (proxmoxW + PROXMOX_GAP), y: yOffset },
+      draggable: false, selectable: false,
+      data: { k8sNodes: hostNodes, label: hostKey || undefined } satisfies ProxmoxHostNodeData,
+    });
+    addEdge('__router', proxmoxId);
+    proxmoxHostIds.push(proxmoxId);
   });
-  addEdge('__router', '__proxmox');
   yOffset += PROXMOX_NODE_H + INFRA_TIER_GAP;
 
   // 2. Networking / gateway tier
@@ -794,7 +823,10 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
           draggable: false,
           data: { appName: g.appName, namespace: g.namespace, pods: g.pods, icon: g.icon } satisfies AppGroupNodeData,
         });
-        addEdge('__proxmox', g.id, false, 'smoothstep', undefined, 'target-top');
+        // Connect from the first proxmox host (or all if only one)
+        for (const proxmoxId of proxmoxHostIds) {
+          addEdge(proxmoxId, g.id, false, 'smoothstep', undefined, 'target-top');
+        }
         gatewayIds.push(g.id);
       });
 

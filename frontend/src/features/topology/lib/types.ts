@@ -168,4 +168,5 @@ export type NodeInfo = {
   cpuCores: number;
   memoryGB: number;
   osImage: string;
+  proxmoxHost?: string;
 };

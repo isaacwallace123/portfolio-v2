@@ -362,12 +362,13 @@ func (r *kubernetesRepository) ListNodes(ctx context.Context) ([]domain.NodeInfo
 		memGB := float64(memBytes) / (1024 * 1024 * 1024)
 
 		result = append(result, domain.NodeInfo{
-			Name:     node.Name,
-			Role:     role,
-			Status:   status,
-			CPUCores: cpuCores,
-			MemoryGB: memGB,
-			OSImage:  node.Status.NodeInfo.OSImage,
+			Name:        node.Name,
+			Role:        role,
+			Status:      status,
+			CPUCores:    cpuCores,
+			MemoryGB:    memGB,
+			OSImage:     node.Status.NodeInfo.OSImage,
+			ProxmoxHost: node.Labels["proxmox-host"],
 		})
 	}
 	return result, nil

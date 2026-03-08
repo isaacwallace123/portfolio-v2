@@ -42,10 +42,11 @@ type AppDependency struct {
 }
 
 type NodeInfo struct {
-	Name      string  `json:"name"`
-	Role      string  `json:"role"`
-	Status    string  `json:"status"`
-	CPUCores  int64   `json:"cpuCores"`
-	MemoryGB  float64 `json:"memoryGB"`
-	OSImage   string  `json:"osImage"`
+	Name        string  `json:"name"`
+	Role        string  `json:"role"`
+	Status      string  `json:"status"`
+	CPUCores    int64   `json:"cpuCores"`
+	MemoryGB    float64 `json:"memoryGB"`
+	OSImage     string  `json:"osImage"`
+	ProxmoxHost string  `json:"proxmoxHost,omitempty"`
 }

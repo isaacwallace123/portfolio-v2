@@ -27,7 +27,7 @@ export const ProxmoxHostNode = memo(({ data }: NodeProps<ProxmoxHostNodeData>) =
       <Handle type="target" position={Position.Top} className="opacity-0! w-2! h-2!" />
       <div className="rounded-2xl border border-amber-500/30 bg-amber-500/6 backdrop-blur-sm px-4 pt-2.5 pb-3 shadow-[0_0_24px_hsl(38_90%_60%/0.12)] min-w-80">
         <p className="text-[10px] font-bold tracking-widest text-amber-400/80 uppercase mb-2.5">
-          Proxmox VE Host
+          {data.label ? `Proxmox — ${data.label}` : 'Proxmox VE Host'}
         </p>
         <div className="flex gap-3 flex-wrap">
           {displayNodes.map((node) => {

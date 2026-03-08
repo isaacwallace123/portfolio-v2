@@ -6,8 +6,6 @@ import ReactFlow, {
   Edge,
   useNodesState,
   useEdgesState,
-  Background,
-  BackgroundVariant,
   NodeTypes,
   ReactFlowProvider,
   useReactFlow,
@@ -34,6 +32,7 @@ import { detectIconFromContainer } from '@/features/topology/lib/iconMap';
 import { getLogLineClassName, splitTimestamp, detectLogLevel } from '@/features/topology/lib/logColorizer';
 import type { ContainerInfo, ContainerStats, MetricsRange, AppDependency, NodeInfo } from '@/features/topology/lib/types';
 import { useTranslations } from 'next-intl';
+import { AnimatedBackground } from '@/shared/ui/AnimatedBackground';
 
 const nodeTypes: NodeTypes = {
   appGroupNode: AppGroupNode,
@@ -489,7 +488,9 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
       id: key, source, target, type, animated: false,
       sourceHandle: sourceHandle ?? null,
       targetHandle: targetHandle ?? null,
-      style: { stroke: 'hsl(var(--border))', strokeWidth: 1.5, ...(dashed ? { strokeDasharray: '5 4', opacity: 0.5 } : {}) },
+      style: dashed
+        ? { stroke: 'hsl(220 80% 65% / 0.35)', strokeWidth: 1.2, strokeDasharray: '5 4' }
+        : { stroke: 'hsl(265 75% 65% / 0.4)', strokeWidth: 1.5 },
     });
   };
 
@@ -844,9 +845,8 @@ function TopologyCanvas() {
           nodesDraggable={false} nodesConnectable={false} elementsSelectable={true}
           elevateEdgesOnSelect={false}
           panOnDrag zoomOnScroll
+          style={{ background: 'transparent' }}
         >
-          <Background variant={BackgroundVariant.Lines} gap={40} size={0.5} color="hsl(var(--border) / 0.3)" />
-
           <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1 rounded-xl border bg-background/90 backdrop-blur-sm shadow-lg p-1.5">
             <Button onClick={() => zoomIn()} size="icon" variant="ghost" className="h-8 w-8"><ZoomIn className="h-4 w-4" /></Button>
             <Button onClick={() => zoomOut()} size="icon" variant="ghost" className="h-8 w-8"><ZoomOut className="h-4 w-4" /></Button>
@@ -900,7 +900,8 @@ function applySettings(groups: AppGroup[], settings: Map<string, AppSettings>): 
 
 export default function HomelabPage() {
   return (
-    <div className="h-[calc(100vh-4rem)]">
+    <div className="h-[calc(100vh-4rem)] relative">
+      <AnimatedBackground />
       <ReactFlowProvider>
         <TopologyCanvas />
       </ReactFlowProvider>

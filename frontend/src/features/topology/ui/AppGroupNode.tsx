@@ -2,7 +2,6 @@
 
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
-import { Card } from '@/components/ui/card';
 import Image from 'next/image';
 import type { ContainerInfo } from '@/features/topology/lib/types';
 
@@ -29,46 +28,42 @@ export const AppGroupNode = memo(({ data, selected }: NodeProps<AppGroupNodeData
     .join('')
     .slice(0, 2);
 
+  const statusColor = allRunning
+    ? 'bg-emerald-400 shadow-[0_0_6px_hsl(160_70%_55%/0.8)]'
+    : anyRunning
+    ? 'bg-yellow-400 shadow-[0_0_6px_hsl(45_90%_55%/0.8)]'
+    : 'bg-red-500';
+
   return (
     <>
-      {/* Default handles used by intra-namespace edges (no handle ID specified) */}
-      <Handle type="target" position={Position.Top} className="bg-border! w-2! h-2! border-border!" />
-      {/* Named handles used by cross-namespace edges with explicit handle IDs */}
-      <Handle id="target-bottom" type="target" position={Position.Bottom} className="bg-border! w-2! h-2! border-border! opacity-0" />
-      <Handle id="source-top" type="source" position={Position.Top} className="bg-border! w-2! h-2! border-border! opacity-0" />
+      <Handle type="target" position={Position.Top} className="opacity-0! w-2! h-2!" />
+      <Handle id="target-bottom" type="target" position={Position.Bottom} className="opacity-0! w-2! h-2!" />
+      <Handle id="source-top" type="source" position={Position.Top} className="opacity-0! w-2! h-2!" />
 
-      <Card
-        className={`w-[155px] shadow-sm cursor-pointer transition-all ${
+      <div
+        className={`w-[155px] rounded-xl border backdrop-blur-sm cursor-pointer transition-all duration-200 ${
           selected
-            ? 'border-primary ring-2 ring-primary/20'
-            : 'border-border/50 hover:border-primary/40 hover:shadow-md'
+            ? 'border-violet-500/60 bg-violet-500/10 shadow-[0_0_20px_hsl(265_75%_65%/0.2)]'
+            : 'border-white/10 bg-background/60 hover:border-white/20 hover:bg-background/80 hover:shadow-[0_4px_24px_rgba(0,0,0,0.4)]'
         }`}
       >
-        <div className="px-3 py-2.5">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center shrink-0 overflow-hidden">
-              {icon ? (
-                <Image src={icon} alt="" width={16} height={16} unoptimized />
-              ) : (
-                <span className="text-[9px] font-bold text-muted-foreground">{initials}</span>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold truncate leading-tight">{appName}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{namespace}</p>
-            </div>
-            <span
-              className={`text-[9px] font-semibold shrink-0 ${
-                allRunning ? 'text-green-600' : anyRunning ? 'text-yellow-600' : 'text-red-600'
-              }`}
-            >
-              {running}/{total}
-            </span>
+        <div className="px-3 py-2.5 flex items-center gap-2">
+          <div className="w-6 h-6 rounded-lg bg-white/8 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+            {icon ? (
+              <Image src={icon} alt="" width={16} height={16} unoptimized />
+            ) : (
+              <span className="text-[9px] font-bold text-muted-foreground">{initials}</span>
+            )}
           </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold truncate leading-tight text-foreground/90">{appName}</p>
+            <p className="text-[10px] text-muted-foreground/60 truncate">{namespace}</p>
+          </div>
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusColor}`} />
         </div>
-      </Card>
+      </div>
 
-      <Handle type="source" position={Position.Bottom} className="bg-border! w-2! h-2! border-border!" />
+      <Handle type="source" position={Position.Bottom} className="opacity-0! w-2! h-2!" />
     </>
   );
 });

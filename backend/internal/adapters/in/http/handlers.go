@@ -146,6 +146,29 @@ func (h *Handler) MetricsRange(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, data)
 }
 
+func (h *Handler) MetricsNodeRange(w http.ResponseWriter, r *http.Request) {
+	node := r.URL.Query().Get("node")
+	if node == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "node parameter required"})
+		return
+	}
+	duration := r.URL.Query().Get("duration")
+	if duration == "" {
+		duration = "5m"
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	data, err := h.service.GetNodeMetricsRange(ctx, node, duration)
+	if err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, data)
+}
+
 func (h *Handler) Dependencies(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()

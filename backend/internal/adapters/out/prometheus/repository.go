@@ -191,6 +191,86 @@ func (r *prometheusRepository) GetMetricsRange(ctx context.Context, duration, co
 	}, nil
 }
 
+// GetNodeMetricsRange returns CPU, memory, network, and disk time-series for a specific k8s node.
+// The node parameter is the Kubernetes node name, which matches the `node` label added by
+// kube-prometheus-stack's node_exporter relabeling.
+func (r *prometheusRepository) GetNodeMetricsRange(ctx context.Context, node, duration string) (*domain.MetricsRange, error) {
+	if r.baseURL == "" {
+		return nil, fmt.Errorf("prometheus not configured")
+	}
+
+	type rangeCfg struct {
+		window  time.Duration
+		step    string
+		rateWin string
+	}
+
+	cfgs := map[string]rangeCfg{
+		"5m":  {5 * time.Minute, "10s", "1m"},
+		"15m": {15 * time.Minute, "15s", "1m"},
+		"1h":  {60 * time.Minute, "60s", "5m"},
+		"24h": {24 * time.Hour, "1440s", "15m"},
+	}
+
+	cfg, ok := cfgs[duration]
+	if !ok {
+		cfg = cfgs["5m"]
+	}
+
+	now := time.Now()
+	start := now.Add(-cfg.window)
+
+	cpuQuery := fmt.Sprintf(
+		`100 - (avg(rate(node_cpu_seconds_total{mode="idle",node=%q}[%s])) * 100)`,
+		node, cfg.rateWin,
+	)
+	memQuery := fmt.Sprintf(
+		`(1 - node_memory_MemAvailable_bytes{node=%q} / node_memory_MemTotal_bytes{node=%q}) * 100`,
+		node, node,
+	)
+	diskQuery := fmt.Sprintf(
+		`(1 - node_filesystem_avail_bytes{node=%q,mountpoint=~"/|/mnt/user|/mnt/cache",fstype!="tmpfs"} / node_filesystem_size_bytes{node=%q,mountpoint=~"/|/mnt/user|/mnt/cache",fstype!="tmpfs"}) * 100`,
+		node, node,
+	)
+	networkRxQuery := fmt.Sprintf(
+		`sum(rate(node_network_receive_bytes_total{node=%q,device!~"lo|docker.*|br-.*|veth.*"}[%s]))`,
+		node, cfg.rateWin,
+	)
+	networkTxQuery := fmt.Sprintf(
+		`sum(rate(node_network_transmit_bytes_total{node=%q,device!~"lo|docker.*|br-.*|veth.*"}[%s]))`,
+		node, cfg.rateWin,
+	)
+	diskReadQuery := fmt.Sprintf(
+		`sum(rate(node_disk_read_bytes_total{node=%q,device!~"loop.*|sr.*"}[%s]))`,
+		node, cfg.rateWin,
+	)
+	diskWriteQuery := fmt.Sprintf(
+		`sum(rate(node_disk_written_bytes_total{node=%q,device!~"loop.*|sr.*"}[%s]))`,
+		node, cfg.rateWin,
+	)
+
+	log.Printf("[prometheus] node range query node=%q duration=%s", node, duration)
+
+	runQuery := func(q string) []domain.MetricPoint {
+		pts, err := r.queryRange(ctx, q, start, now, cfg.step)
+		if err != nil {
+			log.Printf("[prometheus] node range query error: %v | query: %s", err, q)
+			return []domain.MetricPoint{}
+		}
+		return pts
+	}
+
+	return &domain.MetricsRange{
+		CPU:       runQuery(cpuQuery),
+		Memory:    runQuery(memQuery),
+		Disk:      runQuery(diskQuery),
+		NetworkRx: runQuery(networkRxQuery),
+		NetworkTx: runQuery(networkTxQuery),
+		DiskRead:  runQuery(diskReadQuery),
+		DiskWrite: runQuery(diskWriteQuery),
+	}, nil
+}
+
 // queryInstant executes an instant Prometheus query and returns the first scalar result.
 func (r *prometheusRepository) queryInstant(ctx context.Context, query string) (float64, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/query?query=%s", r.baseURL, url.QueryEscape(query))

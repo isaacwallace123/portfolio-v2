@@ -9,4 +9,5 @@ import (
 type MetricsRepository interface {
 	GetNodeMetrics(ctx context.Context) (map[string]interface{}, error)
 	GetMetricsRange(ctx context.Context, duration, containerName string) (*domain.MetricsRange, error)
+	GetNodeMetricsRange(ctx context.Context, node, duration string) (*domain.MetricsRange, error)
 }

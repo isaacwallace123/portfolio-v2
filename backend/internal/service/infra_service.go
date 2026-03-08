@@ -52,6 +52,10 @@ func (s *infraService) GetMetricsRange(ctx context.Context, duration, containerN
 	return s.metrics.GetMetricsRange(ctx, duration, containerName)
 }
 
+func (s *infraService) GetNodeMetricsRange(ctx context.Context, node, duration string) (*domain.MetricsRange, error) {
+	return s.metrics.GetNodeMetricsRange(ctx, node, duration)
+}
+
 func (s *infraService) ListDependencies(ctx context.Context) ([]domain.AppDependency, error) {
 	return s.cluster.ListDependencies(ctx)
 }

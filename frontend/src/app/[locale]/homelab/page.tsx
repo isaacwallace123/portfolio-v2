@@ -58,6 +58,15 @@ function loadSettings(): Map<string, AppSettings> {
 }
 
 type TimeRange = '5m' | '15m' | '1h' | '24h';
+type LogFilter = 'all' | 'err' | 'wrn' | 'inf' | 'dbg' | 'ok';
+const LOG_FILTER_OPTIONS: { key: LogFilter; label: string; badge: string }[] = [
+  { key: 'all', label: 'All', badge: '' },
+  { key: 'err', label: 'ERR', badge: 'ERR' },
+  { key: 'wrn', label: 'WRN', badge: 'WRN' },
+  { key: 'inf', label: 'INF', badge: 'INF' },
+  { key: 'dbg', label: 'DBG', badge: 'DBG' },
+  { key: 'ok', label: 'OK', badge: 'OK' },
+];
 const TIME_RANGES: { label: string; value: TimeRange }[] = [
   { label: '5m', value: '5m' },
   { label: '15m', value: '15m' },
@@ -96,13 +105,14 @@ function ChartTooltip({ active, payload, label, unit = '%' }: {
 
 // --- Pod detail panel ---
 function PodDetailPanel({
-  pod, onBack, showLogs, t,
+  pod, onBack, onClose, isSingle, showLogs, t,
 }: {
-  pod: ContainerInfo; onBack: () => void; showLogs: boolean; t: (key: string) => string;
+  pod: ContainerInfo; onBack: () => void; onClose?: () => void; isSingle?: boolean; showLogs: boolean; t: (key: string) => string;
 }) {
   const [stats, setStats] = useState<ContainerStats | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [logsLoading, setLogsLoading] = useState(true);
+  const [logFilter, setLogFilter] = useState<LogFilter>('all');
   const [timeRange, setTimeRange] = useState<TimeRange>('5m');
   const [prometheusRange, setPrometheusRange] = useState<MetricsRange | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
@@ -151,12 +161,21 @@ function PodDetailPanel({
       }))
     : null;
 
+  const filteredLogs = logFilter === 'all'
+    ? logs
+    : logs.filter((line) => {
+        const level = detectLogLevel(line);
+        return level?.badge === LOG_FILTER_OPTIONS.find((f) => f.key === logFilter)?.badge;
+      });
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10 shrink-0">
-        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={onBack}>
-          <ChevronLeft className="h-3.5 w-3.5" />
-        </Button>
+        {!isSingle && (
+          <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={onBack}>
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </Button>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="text-xs font-semibold truncate">{pod.appName || pod.name}</p>
@@ -166,6 +185,11 @@ function PodDetailPanel({
           </div>
           <p className="text-[10px] text-muted-foreground truncate">{pod.name}</p>
         </div>
+        {isSingle && (
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="metrics" className="flex-1 flex flex-col min-h-0">
@@ -277,24 +301,73 @@ function PodDetailPanel({
 
         {showLogs && (
           <TabsContent value="logs" className="flex-1 m-0 flex flex-col min-h-0">
-            <div className="flex-1 overflow-y-auto bg-black/40 font-mono text-[11px] leading-relaxed p-3">
+            {/* Filter bar */}
+            <div className="flex items-center gap-1 px-3 py-1.5 border-b border-white/8 bg-black/20 shrink-0">
+              {LOG_FILTER_OPTIONS.map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setLogFilter(f.key)}
+                  className={`px-2 py-0.5 text-[9px] font-semibold rounded transition-all ${
+                    logFilter === f.key
+                      ? f.key === 'all'
+                        ? 'bg-white/10 text-foreground'
+                        : f.key === 'err'
+                          ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                          : f.key === 'wrn'
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : f.key === 'inf'
+                              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                              : f.key === 'dbg'
+                                ? 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                                : 'bg-green-500/20 text-green-400 border border-green-500/30'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+              <span className="ml-auto text-[9px] text-muted-foreground tabular-nums">
+                {filteredLogs.length} line{filteredLogs.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            {/* Log content */}
+            <div className="flex-1 overflow-y-auto bg-black/30 font-mono text-[11px] leading-5">
               {logsLoading ? (
                 <p className="text-muted-foreground text-center py-8">{t('loadingLogs')}</p>
-              ) : logs.length > 0 ? (
-                logs.map((line, i) => {
-                  const { timestamp, rest } = splitTimestamp(line);
-                  const colorClass = getLogLineClassName(line);
-                  const level = detectLogLevel(line);
-                  return (
-                    <div key={i} className="flex items-start gap-2 py-px hover:bg-white/5 px-1 rounded">
-                      {timestamp && <span className="text-[10px] text-gray-600 shrink-0 tabular-nums">{timestamp}</span>}
-                      {level && <span className={`shrink-0 text-[9px] font-bold px-1 rounded ${level.badgeClass}`}>{level.badge}</span>}
-                      <span className={`${colorClass} whitespace-pre-wrap break-all`}>{rest}</span>
-                    </div>
-                  );
-                })
+              ) : filteredLogs.length > 0 ? (
+                <table className="w-full border-collapse">
+                  <tbody>
+                    {filteredLogs.map((line, i) => {
+                      const { timestamp, rest } = splitTimestamp(line);
+                      const colorClass = getLogLineClassName(line);
+                      const level = detectLogLevel(line);
+                      return (
+                        <tr key={i} className="hover:bg-white/4 group">
+                          {/* Timestamp gutter */}
+                          <td className="pl-3 pr-2 py-0.5 text-[10px] text-gray-600 tabular-nums whitespace-nowrap align-top select-none w-17">
+                            {timestamp ?? ''}
+                          </td>
+                          {/* Level badge */}
+                          <td className="pr-2 py-0.5 align-top w-8.5">
+                            {level ? (
+                              <span className={`inline-block text-[8px] font-bold px-1 py-px rounded border ${level.badgeClass} leading-tight`}>
+                                {level.badge}
+                              </span>
+                            ) : null}
+                          </td>
+                          {/* Message */}
+                          <td className={`pr-3 py-0.5 align-top break-all ${colorClass}`}>
+                            {rest}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : logFilter !== 'all' ? (
+                <p className="text-muted-foreground text-center py-8 text-xs">No {logFilter.toUpperCase()} logs</p>
               ) : (
-                <p className="text-muted-foreground text-center py-8">{t('noLogs')}</p>
+                <p className="text-muted-foreground text-center py-8 text-xs">{t('noLogs')}</p>
               )}
               <div ref={logsEndRef} />
             </div>
@@ -319,45 +392,97 @@ function AppGroupPanel({
     activePods.length === 1 ? activePods[0] : null,
   );
 
+  const isSingle = activePods.length === 1;
+
   if (selectedPod) {
     return (
       <div className="w-full md:w-[48%] shrink-0 border-l border-white/10 bg-background/80 backdrop-blur-md flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
-        <PodDetailPanel pod={selectedPod} onBack={() => setSelectedPod(null)} showLogs={showLogs} t={t} />
+        <PodDetailPanel
+          pod={selectedPod}
+          onBack={() => setSelectedPod(null)}
+          onClose={onClose}
+          isSingle={isSingle}
+          showLogs={showLogs}
+          t={t}
+        />
       </div>
     );
   }
 
   const running = activePods.filter((p) => p.state === 'running').length;
+  const pending = activePods.filter((p) => p.state === 'pending').length;
+  const failed = activePods.length - running - pending;
 
   return (
     <div className="w-full md:w-[48%] shrink-0 border-l border-white/10 bg-background/80 backdrop-blur-md flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
+      {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
-        <div className="min-w-0 flex-1 flex items-center gap-2.5">
-          <h3 className="text-sm font-semibold truncate">{group.appName}</h3>
-          <Badge variant="outline" className="text-[10px] shrink-0">{group.namespace}</Badge>
-          <span className="text-[10px] text-muted-foreground shrink-0">{running}/{activePods.length} running</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold truncate">{group.appName}</h3>
+            <Badge variant="outline" className="text-[10px] shrink-0 text-muted-foreground">{group.namespace}</Badge>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-0.5">{running}/{activePods.length} running</p>
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>
 
+      {/* Status summary row */}
+      <div className="flex items-center gap-3 px-5 py-2.5 border-b border-white/6 bg-white/2 shrink-0">
+        <div className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+          <span className="text-[10px] text-muted-foreground">{running} running</span>
+        </div>
+        {pending > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
+            <span className="text-[10px] text-muted-foreground">{pending} pending</span>
+          </div>
+        )}
+        {failed > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+            <span className="text-[10px] text-muted-foreground">{failed} failed</span>
+          </div>
+        )}
+        <span className="ml-auto text-[10px] text-muted-foreground">Select a pod to inspect</span>
+      </div>
+
       <div className="flex-1 overflow-y-auto">
-        <div className="p-4 space-y-1.5">
-          {activePods.map((pod) => (
-            <button key={pod.id} onClick={() => setSelectedPod(pod)}
-              className="w-full flex items-center gap-3 p-3 rounded-xl border border-white/8 bg-white/3 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all text-left group"
-            >
-              <span className={`w-2 h-2 rounded-full shrink-0 ${
-                pod.state === 'running' ? 'bg-green-500' : pod.state === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
-              }`} />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium truncate">{pod.name}</p>
-                <p className="text-[10px] text-muted-foreground capitalize">{pod.state} · {pod.image?.split('/').pop()?.split(':')[0] ?? ''}</p>
-              </div>
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </button>
-          ))}
+        <div className="p-3 space-y-2">
+          {activePods.map((pod) => {
+            const isRunning = pod.state === 'running';
+            const isPending = pod.state === 'pending';
+            const accentColor = isRunning ? 'bg-green-500' : isPending ? 'bg-yellow-500' : 'bg-red-500';
+            const imageName = pod.image?.split('/').pop()?.split(':')[0] ?? '';
+            const imageTag = pod.image?.split(':')[1] ?? 'latest';
+            return (
+              <button key={pod.id} onClick={() => setSelectedPod(pod)}
+                className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-white/8 bg-white/3 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all text-left group relative overflow-hidden"
+              >
+                {/* Left accent bar */}
+                <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${accentColor} opacity-70`} />
+                {/* Status dot */}
+                <span className={`w-2 h-2 rounded-full shrink-0 ${accentColor} ${isRunning ? 'shadow-[0_0_6px_2px_rgba(34,197,94,0.3)]' : ''}`} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium truncate leading-tight">{pod.name}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[10px] text-muted-foreground capitalize">{pod.state}</span>
+                    {imageName && (
+                      <>
+                        <span className="text-[10px] text-white/20">·</span>
+                        <span className="text-[10px] text-muted-foreground/70 truncate">{imageName}</span>
+                        <span className="text-[9px] text-white/20 font-mono shrink-0">:{imageTag}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

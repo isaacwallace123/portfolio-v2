@@ -477,12 +477,17 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
   const edgeList: Edge[] = [];
   const seen = new Set<string>();
 
-  const addEdge = (source: string, target: string, dashed = false, type = 'smoothstep') => {
+  const addEdge = (
+    source: string, target: string, dashed = false, type = 'smoothstep',
+    sourceHandle?: string, targetHandle?: string,
+  ) => {
     const key = `${source}--${target}`;
     if (seen.has(key) || source === target) return;
     seen.add(key);
     edgeList.push({
       id: key, source, target, type, animated: false,
+      sourceHandle: sourceHandle ?? null,
+      targetHandle: targetHandle ?? null,
       style: { stroke: 'hsl(var(--border))', strokeWidth: 1.5, ...(dashed ? { strokeDasharray: '5 4', opacity: 0.5 } : {}) },
     });
   };
@@ -667,15 +672,37 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
   // to prevent edge lines from threading through namespace boxes over app nodes.
   const allAppIds = new Set(groups.map((g) => g.id));
   const nsBoxIds = new Set(otherNamespaces.map((ns) => `ns__${ns}`));
+  // Row index per namespace (networking tier = -1, above all grid rows)
+  const nsRowIndex = new Map<string, number>();
+  otherNamespaces.forEach((ns, idx) => nsRowIndex.set(ns, Math.floor(idx / NS_GRID_COLS)));
+
   for (const dep of deps) {
     const srcId = `${dep.sourceNamespace}/${dep.sourceApp}`;
     const tgtId = `${dep.targetNamespace}/${dep.targetApp}`;
     if (!allAppIds.has(srcId) || !allAppIds.has(tgtId)) continue;
     if (dep.sourceNamespace === dep.targetNamespace) continue;
-    // Use namespace group node as endpoint when that namespace has a box
     const srcNode = nsBoxIds.has(`ns__${dep.sourceNamespace}`) ? `ns__${dep.sourceNamespace}` : srcId;
     const tgtNode = nsBoxIds.has(`ns__${dep.targetNamespace}`) ? `ns__${dep.targetNamespace}` : tgtId;
-    addEdge(srcNode, tgtNode, true);
+
+    // Determine which handles to use so edges exit/enter the nearest side
+    const srcRow = nsRowIndex.get(dep.sourceNamespace) ?? -1; // -1 = networking tier (above grid)
+    const tgtRow = nsRowIndex.get(dep.targetNamespace) ?? -1;
+
+    let srcHandle: string | undefined;
+    let tgtHandle: string | undefined;
+    if (srcNode.startsWith('ns__') && tgtNode.startsWith('ns__')) {
+      // Both are namespace boxes — exit top if going up, bottom if going down
+      if (srcRow > tgtRow) { srcHandle = 'source-top'; tgtHandle = 'target-bottom'; }
+      else                  { srcHandle = 'source-bottom'; tgtHandle = 'target-top'; }
+    } else if (srcNode.startsWith('ns__')) {
+      // Source is namespace box, target is networking tier (above) → exit from top
+      srcHandle = 'source-top';
+    } else if (tgtNode.startsWith('ns__')) {
+      // Source is networking tier (above), target is namespace box → enter from top
+      tgtHandle = 'target-top';
+    }
+
+    addEdge(srcNode, tgtNode, true, 'smoothstep', srcHandle, tgtHandle);
   }
 
   return { nodes: flowNodes, edges: edgeList };

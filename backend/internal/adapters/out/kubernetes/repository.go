@@ -411,7 +411,8 @@ func (r *kubernetesRepository) ListDependencies(ctx context.Context) ([]domain.A
 			if ns == podNs {
 				if strings.Contains(value, n+":") || strings.Contains(value, "/"+n+"/") ||
 					strings.Contains(value, "@"+n+":") || strings.Contains(value, "@"+n+"/") ||
-					strings.HasPrefix(value, n+".") || value == n {
+					strings.HasPrefix(value, n+".") || value == n ||
+					strings.Contains(value, "//"+n) {
 					return n, ns, true
 				}
 			}
@@ -436,6 +437,35 @@ func (r *kubernetesRepository) ListDependencies(ctx context.Context) ([]domain.A
 				sb.WriteByte('\n')
 			}
 			cmData[cmKey{cm.Name, cm.Namespace}] = sb.String()
+		}
+	}
+
+	// Load manual dependency hints from any ConfigMap named "infra-agent-hints"
+	if configMaps, err := r.client.CoreV1().ConfigMaps("").List(ctx, metav1.ListOptions{}); err == nil {
+		for _, cm := range configMaps.Items {
+			if cm.Name != "infra-agent-hints" {
+				continue
+			}
+			for _, raw := range cm.Data {
+				for _, line := range strings.Split(raw, "\n") {
+					line = strings.TrimSpace(line)
+					if line == "" || strings.HasPrefix(line, "#") {
+						continue
+					}
+					// Format: "appName/namespace -> appName/namespace"
+					parts := strings.SplitN(line, "->", 2)
+					if len(parts) != 2 {
+						continue
+					}
+					src := strings.TrimSpace(parts[0])
+					tgt := strings.TrimSpace(parts[1])
+					srcParts := strings.SplitN(src, "/", 2)
+					tgtParts := strings.SplitN(tgt, "/", 2)
+					if len(srcParts) == 2 && len(tgtParts) == 2 {
+						addDep(srcParts[0], srcParts[1], tgtParts[0], tgtParts[1])
+					}
+				}
+			}
 		}
 	}
 

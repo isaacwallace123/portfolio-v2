@@ -22,26 +22,46 @@ func NewOverwatchRepository(baseURL string) portout.OverwatchRepository {
 	}
 }
 
-func (r *overwatchRepository) GetInsights(ctx context.Context) (*domain.OverwatchInsight, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.baseURL+"/insights", nil)
+func (r *overwatchRepository) get(ctx context.Context, path string, out interface{}) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.baseURL+path, nil)
 	if err != nil {
-		return nil, fmt.Errorf("overwatch: build request: %w", err)
+		return fmt.Errorf("overwatch: build request: %w", err)
 	}
-
 	resp, err := r.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("overwatch: request failed: %w", err)
+		return fmt.Errorf("overwatch: request failed: %w", err)
 	}
 	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("overwatch: unexpected status %d", resp.StatusCode)
+		return fmt.Errorf("overwatch: unexpected status %d", resp.StatusCode)
 	}
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return fmt.Errorf("overwatch: decode response: %w", err)
+	}
+	return nil
+}
 
+func (r *overwatchRepository) GetInsights(ctx context.Context) (*domain.OverwatchInsight, error) {
 	var insight domain.OverwatchInsight
-	if err := json.NewDecoder(resp.Body).Decode(&insight); err != nil {
-		return nil, fmt.Errorf("overwatch: decode response: %w", err)
+	if err := r.get(ctx, "/insights", &insight); err != nil {
+		return nil, err
 	}
-
 	return &insight, nil
+}
+
+func (r *overwatchRepository) GetPodInsights(ctx context.Context, namespace, app string) (*domain.PodInsight, error) {
+	var insight domain.PodInsight
+	path := fmt.Sprintf("/pod-insights?namespace=%s&app=%s", namespace, app)
+	if err := r.get(ctx, path, &insight); err != nil {
+		return nil, err
+	}
+	return &insight, nil
+}
+
+func (r *overwatchRepository) GetHistory(ctx context.Context) ([]domain.OverwatchInsight, error) {
+	var history []domain.OverwatchInsight
+	if err := r.get(ctx, "/history?limit=48", &history); err != nil {
+		return nil, err
+	}
+	return history, nil
 }

@@ -17,3 +17,13 @@ type OverwatchInsight struct {
 	Anomalies       []OverwatchAnomaly `json:"anomalies"`
 	Recommendations []string           `json:"recommendations"`
 }
+
+type PodInsight struct {
+	Namespace   string    `json:"namespace"`
+	App         string    `json:"app"`
+	AnalyzedAt  time.Time `json:"analyzed_at"`
+	Status      string    `json:"status"`
+	Diagnosis   string    `json:"diagnosis"`
+	RootCause   string    `json:"root_cause"`
+	Suggestions []string  `json:"suggestions"`
+}

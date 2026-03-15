@@ -33,6 +33,8 @@ func NewRouter(h *Handler, apiKey string) http.Handler {
 	mux.HandleFunc("/dependencies", protected(h.Dependencies))
 	mux.HandleFunc("/nodes", protected(h.Nodes))
 	mux.HandleFunc("/overwatch/insights", protected(h.OverwatchInsights))
+	mux.HandleFunc("/pod-insights", protected(h.PodInsights))
+	mux.HandleFunc("/history", protected(h.OverwatchHistory))
 
 	return loggingMiddleware(mux)
 }

@@ -8,4 +8,6 @@ import (
 
 type OverwatchRepository interface {
 	GetInsights(ctx context.Context) (*domain.OverwatchInsight, error)
+	GetPodInsights(ctx context.Context, namespace, app string) (*domain.PodInsight, error)
+	GetHistory(ctx context.Context) ([]domain.OverwatchInsight, error)
 }

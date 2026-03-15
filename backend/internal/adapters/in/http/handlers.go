@@ -208,6 +208,39 @@ func (h *Handler) OverwatchInsights(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, insight)
 }
 
+func (h *Handler) PodInsights(w http.ResponseWriter, r *http.Request) {
+	namespace := r.URL.Query().Get("namespace")
+	app := r.URL.Query().Get("app")
+	if namespace == "" || app == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "namespace and app required"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
+	defer cancel()
+
+	insight, err := h.service.GetPodInsights(ctx, namespace, app)
+	if err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, insight)
+}
+
+func (h *Handler) OverwatchHistory(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	history, err := h.service.GetOverwatchHistory(ctx)
+	if err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, history)
+}
+
 func extractPathParam(path, prefix, suffix string) string {
 	start := strings.Index(path, prefix)
 	if start == -1 {

@@ -69,3 +69,11 @@ func (s *infraService) ListNodes(ctx context.Context) ([]domain.NodeInfo, error)
 func (s *infraService) GetOverwatchInsights(ctx context.Context) (*domain.OverwatchInsight, error) {
 	return s.overwatch.GetInsights(ctx)
 }
+
+func (s *infraService) GetPodInsights(ctx context.Context, namespace, app string) (*domain.PodInsight, error) {
+	return s.overwatch.GetPodInsights(ctx, namespace, app)
+}
+
+func (s *infraService) GetOverwatchHistory(ctx context.Context) ([]domain.OverwatchInsight, error) {
+	return s.overwatch.GetHistory(ctx)
+}

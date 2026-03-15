@@ -18,4 +18,5 @@ type InfraService interface {
 	GetNodeMetricsRange(ctx context.Context, node, duration string) (*domain.MetricsRange, error)
 	ListDependencies(ctx context.Context) ([]domain.AppDependency, error)
 	ListNodes(ctx context.Context) ([]domain.NodeInfo, error)
+	GetOverwatchInsights(ctx context.Context) (*domain.OverwatchInsight, error)
 }

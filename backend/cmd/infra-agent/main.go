@@ -7,6 +7,7 @@ import (
 
 	httpadapter "github.com/isaacwallace123/portfolio-infra/internal/adapters/in/http"
 	k8sadapter "github.com/isaacwallace123/portfolio-infra/internal/adapters/out/kubernetes"
+	overwatchadapter "github.com/isaacwallace123/portfolio-infra/internal/adapters/out/overwatch"
 	prometheusadapter "github.com/isaacwallace123/portfolio-infra/internal/adapters/out/prometheus"
 	"github.com/isaacwallace123/portfolio-infra/internal/service"
 	"k8s.io/client-go/kubernetes"
@@ -18,6 +19,7 @@ func main() {
 	apiKey := os.Getenv("INFRA_API_KEY")
 	promURL := strings.TrimRight(os.Getenv("PROMETHEUS_URL"), "/")
 	lokiURL := strings.TrimRight(os.Getenv("LOKI_URL"), "/")
+	overwatchURL := strings.TrimRight(os.Getenv("OVERWATCH_URL"), "/")
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -41,7 +43,8 @@ func main() {
 
 	clusterRepo := k8sadapter.NewKubernetesRepository(k8sClient, metricsClient, lokiURL)
 	metricsRepo := prometheusadapter.NewPrometheusRepository(promURL)
-	infraSvc := service.NewInfraService(clusterRepo, metricsRepo)
+	overwatchRepo := overwatchadapter.NewOverwatchRepository(overwatchURL)
+	infraSvc := service.NewInfraService(clusterRepo, metricsRepo, overwatchRepo)
 
 	handler := httpadapter.NewHandler(infraSvc)
 	router := httpadapter.NewRouter(handler, apiKey)

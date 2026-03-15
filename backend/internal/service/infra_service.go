@@ -9,14 +9,16 @@ import (
 )
 
 type infraService struct {
-	cluster portout.ClusterRepository
-	metrics portout.MetricsRepository
+	cluster   portout.ClusterRepository
+	metrics   portout.MetricsRepository
+	overwatch portout.OverwatchRepository
 }
 
-func NewInfraService(cluster portout.ClusterRepository, metrics portout.MetricsRepository) portin.InfraService {
+func NewInfraService(cluster portout.ClusterRepository, metrics portout.MetricsRepository, overwatch portout.OverwatchRepository) portin.InfraService {
 	return &infraService{
-		cluster: cluster,
-		metrics: metrics,
+		cluster:   cluster,
+		metrics:   metrics,
+		overwatch: overwatch,
 	}
 }
 
@@ -62,4 +64,8 @@ func (s *infraService) ListDependencies(ctx context.Context) ([]domain.AppDepend
 
 func (s *infraService) ListNodes(ctx context.Context) ([]domain.NodeInfo, error) {
 	return s.cluster.ListNodes(ctx)
+}
+
+func (s *infraService) GetOverwatchInsights(ctx context.Context) (*domain.OverwatchInsight, error) {
+	return s.overwatch.GetInsights(ctx)
 }

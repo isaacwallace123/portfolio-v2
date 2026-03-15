@@ -195,6 +195,19 @@ func (h *Handler) Nodes(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, nodes)
 }
 
+func (h *Handler) OverwatchInsights(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	insight, err := h.service.GetOverwatchInsights(ctx)
+	if err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, insight)
+}
+
 func extractPathParam(path, prefix, suffix string) string {
 	start := strings.Index(path, prefix)
 	if start == -1 {

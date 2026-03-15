@@ -58,6 +58,14 @@ func (r *overwatchRepository) GetPodInsights(ctx context.Context, namespace, app
 	return &insight, nil
 }
 
+func (r *overwatchRepository) GetAllPodInsights(ctx context.Context) ([]domain.PodInsight, error) {
+	var insights []domain.PodInsight
+	if err := r.get(ctx, "/pod-insights/all", &insights); err != nil {
+		return nil, err
+	}
+	return insights, nil
+}
+
 func (r *overwatchRepository) GetHistory(ctx context.Context) ([]domain.OverwatchInsight, error) {
 	var history []domain.OverwatchInsight
 	if err := r.get(ctx, "/history?limit=48", &history); err != nil {

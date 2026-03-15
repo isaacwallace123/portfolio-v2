@@ -20,5 +20,6 @@ type InfraService interface {
 	ListNodes(ctx context.Context) ([]domain.NodeInfo, error)
 	GetOverwatchInsights(ctx context.Context) (*domain.OverwatchInsight, error)
 	GetPodInsights(ctx context.Context, namespace, app string) (*domain.PodInsight, error)
+	GetAllPodInsights(ctx context.Context) ([]domain.PodInsight, error)
 	GetOverwatchHistory(ctx context.Context) ([]domain.OverwatchInsight, error)
 }

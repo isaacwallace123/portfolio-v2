@@ -2,6 +2,7 @@
 
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
+import { BrainCircuit } from 'lucide-react';
 import Image from 'next/image';
 import type { ContainerInfo } from '@/features/topology/lib/types';
 
@@ -12,10 +13,11 @@ export interface AppGroupNodeData {
   icon: string | null;
   selected?: boolean;
   anomalyLevel?: 'low' | 'medium' | 'high' | null;
+  podInsightStatus?: string | null;
 }
 
 export const AppGroupNode = memo(({ data, selected }: NodeProps<AppGroupNodeData>) => {
-  const { appName, namespace, pods, icon, anomalyLevel } = data;
+  const { appName, namespace, pods, icon, anomalyLevel, podInsightStatus } = data;
 
   const activePods = pods.filter((p) => p.state !== 'succeeded' && p.state !== 'completed');
   const running = activePods.filter((p) => p.state === 'running').length;
@@ -66,7 +68,16 @@ export const AppGroupNode = memo(({ data, selected }: NodeProps<AppGroupNodeData
             <p className="text-xs font-semibold truncate leading-tight text-foreground/90">{appName}</p>
             <p className="text-[10px] text-muted-foreground/60 truncate">{namespace}</p>
           </div>
-          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusColor}`} />
+          <div className="flex items-center gap-1 shrink-0">
+            {podInsightStatus && podInsightStatus !== 'unknown' && (
+              <BrainCircuit className={`w-3 h-3 ${
+                podInsightStatus === 'critical' ? 'text-red-400' :
+                podInsightStatus === 'warning'  ? 'text-amber-400' :
+                'text-emerald-400'
+              }`} />
+            )}
+            <span className={`w-1.5 h-1.5 rounded-full ${statusColor}`} />
+          </div>
         </div>
       </div>
 

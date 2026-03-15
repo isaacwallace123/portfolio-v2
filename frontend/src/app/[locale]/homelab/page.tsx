@@ -382,17 +382,18 @@ function PodDetailPanel({
 
 // --- App group panel ---
 function AppGroupPanel({
-  group, onClose, t, showLogs,
+  group, onClose, t, showLogs, cachedInsight,
 }: {
   group: AppGroup;
   onClose: () => void;
   t: (key: string) => string;
   showLogs: boolean;
+  cachedInsight: PodInsight | null;
 }) {
   const activePods = group.pods.filter((p) => p.state !== 'succeeded' && p.state !== 'completed');
   const [selectedPod, setSelectedPod] = useState<ContainerInfo | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'insights'>('overview');
-  const [podInsight, setPodInsight] = useState<PodInsight | null>(null);
+  const [podInsight, setPodInsight] = useState<PodInsight | null>(cachedInsight);
   const [insightLoading, setInsightLoading] = useState(false);
   const [insightError, setInsightError] = useState<string | null>(null);
 
@@ -1268,6 +1269,7 @@ function TopologyCanvas() {
   const [overwatchHistory, setOverwatchHistory] = useState<OverwatchInsight[]>([]);
   const [overwatchLoading, setOverwatchLoading] = useState(false);
   const [showOverwatch, setShowOverwatch] = useState(false);
+  const [podInsightCache, setPodInsightCache] = useState<Record<string, PodInsight>>({});
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, , onEdgesChange] = useEdgesState([]);
@@ -1301,6 +1303,22 @@ function TopologyCanvas() {
     return () => clearInterval(id);
   }, [fetchOverwatch]);
 
+  const fetchAllPodInsights = useCallback(async () => {
+    try {
+      const all = await topologyApi.getAllPodInsights();
+      if (all.length === 0) return;
+      const map: Record<string, PodInsight> = {};
+      for (const p of all) map[`${p.namespace}/${p.app}`] = p;
+      setPodInsightCache(map);
+    } catch { /* overwatch may not be ready yet */ }
+  }, []);
+
+  useEffect(() => {
+    fetchAllPodInsights();
+    const id = setInterval(fetchAllPodInsights, 10 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [fetchAllPodInsights]);
+
   // Inject anomaly highlights into app nodes whenever overwatch data updates
   useEffect(() => {
     const severityRank: Record<string, number> = { high: 3, medium: 2, low: 1 };
@@ -1327,6 +1345,16 @@ function TopologyCanvas() {
       return { ...n, data: { ...n.data, anomalyLevel: best } };
     }));
   }, [overwatch, setNodes]);
+
+  // Sync pod insight status badges into app nodes
+  useEffect(() => {
+    if (Object.keys(podInsightCache).length === 0) return;
+    setNodes((prev) => prev.map((n) => {
+      if (n.type !== 'appGroupNode') return n;
+      const insight = podInsightCache[n.id];
+      return { ...n, data: { ...n.data, podInsightStatus: insight?.status ?? null } };
+    }));
+  }, [podInsightCache, setNodes]);
 
   // Fetch containers, dependencies, and nodes on mount
   useEffect(() => {
@@ -1521,6 +1549,7 @@ function TopologyCanvas() {
           onClose={() => setSelectedGroupId(null)}
           t={(key) => t(key)}
           showLogs={isAdmin || settingsMap.get(selectedGroup.id)?.showLogs !== false}
+          cachedInsight={podInsightCache[selectedGroup.id] ?? null}
         />
       )}
 

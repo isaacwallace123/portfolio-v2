@@ -228,6 +228,19 @@ func (h *Handler) PodInsights(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, insight)
 }
 
+func (h *Handler) AllPodInsights(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	insights, err := h.service.GetAllPodInsights(ctx)
+	if err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, insights)
+}
+
 func (h *Handler) OverwatchHistory(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()

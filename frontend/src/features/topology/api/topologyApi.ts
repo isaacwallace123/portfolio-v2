@@ -119,6 +119,12 @@ export const topologyApi = {
     return response.json();
   },
 
+  async getAllPodInsights(): Promise<PodInsight[]> {
+    const response = await fetch(`${INFRA_URL}?action=allpodinsights`);
+    if (!response.ok) return [];
+    return response.json();
+  },
+
   async getOverwatchHistory(): Promise<OverwatchInsight[]> {
     const response = await fetch(`${INFRA_URL}?action=overwatchhistory`);
     if (!response.ok) return [];

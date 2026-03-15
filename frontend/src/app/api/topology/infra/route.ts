@@ -8,7 +8,7 @@ const INFRA_KEY = process.env.INFRA_API_KEY || '';
 const ADMIN_ACTIONS = new Set(['networks', 'system']);
 
 // Public actions (needed by the homelab page)
-const PUBLIC_ACTIONS = new Set(['containers', 'stats', 'logs', 'metrics', 'metricsrange', 'nodemetricsrange', 'dependencies', 'nodes', 'overwatch', 'podinsights', 'overwatchhistory']);
+const PUBLIC_ACTIONS = new Set(['containers', 'stats', 'logs', 'metrics', 'metricsrange', 'nodemetricsrange', 'dependencies', 'nodes', 'overwatch', 'podinsights', 'allpodinsights', 'overwatchhistory']);
 
 async function proxyToInfra(path: string): Promise<Response> {
   const url = `${INFRA_URL}${path}`;
@@ -91,6 +91,9 @@ export async function GET(request: NextRequest) {
         path = `/pod-insights?namespace=${encodeURIComponent(ns)}&app=${encodeURIComponent(app)}`;
         break;
       }
+      case 'allpodinsights':
+        path = '/pod-insights/all';
+        break;
       case 'overwatchhistory':
         path = '/history?limit=48';
         break;

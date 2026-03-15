@@ -8,7 +8,7 @@ const INFRA_KEY = process.env.INFRA_API_KEY || '';
 const ADMIN_ACTIONS = new Set(['networks', 'system']);
 
 // Public actions (needed by the homelab page)
-const PUBLIC_ACTIONS = new Set(['containers', 'stats', 'logs', 'metrics', 'metricsrange', 'nodemetricsrange', 'dependencies', 'nodes']);
+const PUBLIC_ACTIONS = new Set(['containers', 'stats', 'logs', 'metrics', 'metricsrange', 'nodemetricsrange', 'dependencies', 'nodes', 'overwatch']);
 
 async function proxyToInfra(path: string): Promise<Response> {
   const url = `${INFRA_URL}${path}`;
@@ -80,6 +80,9 @@ export async function GET(request: NextRequest) {
         break;
       case 'nodes':
         path = '/nodes';
+        break;
+      case 'overwatch':
+        path = '/overwatch/insights';
         break;
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });

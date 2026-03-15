@@ -21,7 +21,7 @@ import Image from 'next/image';
 import {
   ZoomIn, ZoomOut, Maximize, Server as ServerIcon,
   Cpu, MemoryStick, Clock, X, PowerOff, ChevronRight, ChevronLeft,
-  Activity, HardDrive, Wifi, Layers, Tag, Box,
+  Activity, HardDrive, Wifi, Layers, Tag, Box, BrainCircuit,
 } from 'lucide-react';
 import { AppGroupNode, type AppGroupNodeData } from '@/features/topology/ui/AppGroupNode';
 import { NamespaceGroupNode } from '@/features/topology/ui/NamespaceGroupNode';
@@ -31,7 +31,8 @@ import { ProxmoxHostNode, type ProxmoxHostNodeData } from '@/features/topology/u
 import { topologyApi } from '@/features/topology/api/topologyApi';
 import { detectIconFromContainer } from '@/features/topology/lib/iconMap';
 import { getLogLineClassName, splitTimestamp, detectLogLevel } from '@/features/topology/lib/logColorizer';
-import type { ContainerInfo, ContainerStats, MetricsRange, AppDependency, NodeInfo } from '@/features/topology/lib/types';
+import type { ContainerInfo, ContainerStats, MetricsRange, AppDependency, NodeInfo, OverwatchInsight } from '@/features/topology/lib/types';
+import { OverwatchPanel } from '@/features/topology/ui/OverwatchPanel';
 import { useTranslations } from 'next-intl';
 import { AnimatedBackground } from '@/shared/ui/AnimatedBackground';
 
@@ -44,7 +45,7 @@ const nodeTypes: NodeTypes = {
 };
 
 const POLL_INTERVAL = 10_000;
-const NS_ORDER = ['portfolio', 'networking', 'monitoring', 'media', 'argocd', 'secrets'];
+const NS_ORDER = ['portfolio', 'networking', 'monitoring', 'media', 'homelab-ai', 'argocd', 'secrets'];
 
 // localStorage settings
 const SETTINGS_KEY = 'homelab_app_settings';
@@ -1154,6 +1155,9 @@ function TopologyCanvas() {
   const [selectedK8sNode, setSelectedK8sNode] = useState<NodeInfo | null>(null);
   const [settingsMap, setSettingsMap] = useState<Map<string, AppSettings>>(new Map());
   const [isAdmin, setIsAdmin] = useState(false);
+  const [overwatch, setOverwatch] = useState<OverwatchInsight | null>(null);
+  const [overwatchLoading, setOverwatchLoading] = useState(false);
+  const [showOverwatch, setShowOverwatch] = useState(false);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, , onEdgesChange] = useEdgesState([]);
@@ -1166,6 +1170,22 @@ function TopologyCanvas() {
   useEffect(() => {
     fetch('/api/auth/me').then((r) => r.json()).then((d) => setIsAdmin(d.isAdmin === true)).catch(() => {});
   }, []);
+
+  const fetchOverwatch = useCallback(async () => {
+    setOverwatchLoading(true);
+    try {
+      const data = await topologyApi.getOverwatchInsights();
+      setOverwatch(data);
+    } catch { /* service may not be up yet */ } finally {
+      setOverwatchLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOverwatch();
+    const id = setInterval(fetchOverwatch, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [fetchOverwatch]);
 
   // Fetch containers, dependencies, and nodes on mount
   useEffect(() => {
@@ -1288,6 +1308,27 @@ function TopologyCanvas() {
             <Button onClick={() => fitView({ maxZoom: 0.9, padding: 0.15 })} size="icon" variant="ghost" className="h-8 w-8"><Maximize className="h-4 w-4" /></Button>
           </div>
 
+          <div className="absolute top-4 right-4 z-10">
+            <button
+              onClick={() => setShowOverwatch((v) => !v)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium shadow-sm backdrop-blur-sm transition-colors ${
+                showOverwatch
+                  ? 'bg-violet-500/20 border-violet-500/40 text-violet-300'
+                  : 'bg-background/80 border-border/60 text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <BrainCircuit className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">AI Insights</span>
+              {overwatch && overwatch.status !== 'pending' && (
+                <span className={`h-1.5 w-1.5 rounded-full ${
+                  overwatch.status === 'healthy' ? 'bg-emerald-400' :
+                  overwatch.status === 'warning' ? 'bg-amber-400' :
+                  overwatch.status === 'critical' ? 'bg-red-400' : 'bg-zinc-400'
+                }`} />
+              )}
+            </button>
+          </div>
+
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
             <div className="bg-background/80 backdrop-blur border border-border/60 rounded-lg px-3 py-2 shadow-sm flex items-center gap-2 whitespace-nowrap">
               <ServerIcon className="h-4 w-4 text-primary shrink-0" />
@@ -1298,6 +1339,15 @@ function TopologyCanvas() {
           </div>
         </ReactFlow>
       </div>
+
+      {showOverwatch && !selectedGroup && !selectedPod && !selectedK8sNode && (
+        <OverwatchPanel
+          insight={overwatch}
+          loading={overwatchLoading}
+          onClose={() => setShowOverwatch(false)}
+          onRefresh={fetchOverwatch}
+        />
+      )}
 
       {selectedGroup && (
         <AppGroupPanel

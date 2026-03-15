@@ -9,6 +9,7 @@ import type {
   MetricsRange,
   AppDependency,
   NodeInfo,
+  OverwatchInsight,
   SaveTopologyDto,
 } from '../lib/types';
 
@@ -102,6 +103,12 @@ export const topologyApi = {
   async getNodes(): Promise<NodeInfo[]> {
     const response = await fetch(`${INFRA_URL}?action=nodes`);
     if (!response.ok) return [];
+    return response.json();
+  },
+
+  async getOverwatchInsights(): Promise<OverwatchInsight> {
+    const response = await fetch(`${INFRA_URL}?action=overwatch`);
+    if (!response.ok) throw new Error('Overwatch unavailable');
     return response.json();
   },
 };

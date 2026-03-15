@@ -154,6 +154,22 @@ export type SaveTopologyDto = {
 
 export type InfrastructureNodeType = 'router' | 'internet' | 'server' | 'database' | 'switch' | 'firewall';
 
+export type OverwatchAnomaly = {
+  severity: 'low' | 'medium' | 'high';
+  type: string;
+  description: string;
+  affected: string;
+};
+
+export type OverwatchInsight = {
+  id?: number;
+  collected_at: string | null;
+  status: 'healthy' | 'warning' | 'critical' | 'unknown' | 'pending';
+  summary: string;
+  anomalies: OverwatchAnomaly[];
+  recommendations: string[];
+};
+
 export type AppDependency = {
   sourceApp: string;
   sourceNamespace: string;

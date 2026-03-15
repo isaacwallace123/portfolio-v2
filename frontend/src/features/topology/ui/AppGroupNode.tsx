@@ -11,10 +11,11 @@ export interface AppGroupNodeData {
   pods: ContainerInfo[];
   icon: string | null;
   selected?: boolean;
+  anomalyLevel?: 'low' | 'medium' | 'high' | null;
 }
 
 export const AppGroupNode = memo(({ data, selected }: NodeProps<AppGroupNodeData>) => {
-  const { appName, namespace, pods, icon } = data;
+  const { appName, namespace, pods, icon, anomalyLevel } = data;
 
   const activePods = pods.filter((p) => p.state !== 'succeeded' && p.state !== 'completed');
   const running = activePods.filter((p) => p.state === 'running').length;
@@ -44,6 +45,12 @@ export const AppGroupNode = memo(({ data, selected }: NodeProps<AppGroupNodeData
         className={`w-[155px] rounded-xl border backdrop-blur-sm cursor-pointer transition-all duration-200 ${
           selected
             ? 'border-violet-500/60 bg-violet-500/10 shadow-[0_0_20px_hsl(265_75%_65%/0.2)]'
+            : anomalyLevel === 'high'
+            ? 'border-red-400/50 bg-background/60 shadow-[0_0_14px_rgba(248,113,113,0.35)]'
+            : anomalyLevel === 'medium'
+            ? 'border-amber-400/50 bg-background/60 shadow-[0_0_14px_rgba(251,191,36,0.35)]'
+            : anomalyLevel === 'low'
+            ? 'border-sky-400/40 bg-background/60 shadow-[0_0_10px_rgba(56,189,248,0.25)]'
             : 'border-white/10 bg-background/60 hover:border-white/20 hover:bg-background/80 hover:shadow-[0_4px_24px_rgba(0,0,0,0.4)]'
         }`}
       >

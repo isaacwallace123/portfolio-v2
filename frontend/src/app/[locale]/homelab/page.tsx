@@ -31,7 +31,7 @@ import { ProxmoxHostNode, type ProxmoxHostNodeData } from '@/features/topology/u
 import { topologyApi } from '@/features/topology/api/topologyApi';
 import { detectIconFromContainer } from '@/features/topology/lib/iconMap';
 import { getLogLineClassName, splitTimestamp, detectLogLevel } from '@/features/topology/lib/logColorizer';
-import type { ContainerInfo, ContainerStats, MetricsRange, AppDependency, NodeInfo, OverwatchInsight } from '@/features/topology/lib/types';
+import type { ContainerInfo, ContainerStats, MetricsRange, AppDependency, NodeInfo, OverwatchInsight, PodInsight } from '@/features/topology/lib/types';
 import { OverwatchPanel } from '@/features/topology/ui/OverwatchPanel';
 import { useTranslations } from 'next-intl';
 import { AnimatedBackground } from '@/shared/ui/AnimatedBackground';
@@ -421,11 +421,25 @@ function AppGroupPanel({
   const imageRegistry = group.image?.includes('/') ? group.image.split('/').slice(0, -1).join('/') : 'docker.io';
   const healthPct = activePods.length > 0 ? (running / activePods.length) * 100 : 0;
 
+  const [activeTab, setActiveTab] = useState<'overview' | 'insights'>('overview');
+  const [podInsight, setPodInsight] = useState<PodInsight | null>(null);
+  const [insightLoading, setInsightLoading] = useState(false);
+
+  const fetchPodInsight = useCallback(async () => {
+    if (podInsight || insightLoading) return;
+    setInsightLoading(true);
+    try {
+      const data = await topologyApi.getPodInsights(group.namespace, group.appName);
+      setPodInsight(data);
+    } catch { /* service unavailable */ } finally {
+      setInsightLoading(false);
+    }
+  }, [group.namespace, group.appName, podInsight, insightLoading]);
+
   return (
     <div className="w-full md:w-[48%] shrink-0 border-l border-white/10 bg-background/80 backdrop-blur-md flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 shrink-0">
-        {/* App icon */}
         <div className="w-9 h-9 rounded-xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
           {group.icon ? (
             <Image src={group.icon} alt="" width={22} height={22} unoptimized />
@@ -445,88 +459,180 @@ function AppGroupPanel({
         </Button>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-0 border-b border-white/10 shrink-0 px-4">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`px-1 py-2.5 text-xs font-medium mr-4 border-b-2 transition-colors ${activeTab === 'overview' ? 'border-violet-500 text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+        >Overview</button>
+        <button
+          onClick={() => { setActiveTab('insights'); fetchPodInsight(); }}
+          className={`px-1 py-2.5 text-xs font-medium border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === 'insights' ? 'border-violet-500 text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+        >
+          <BrainCircuit className="h-3 w-3" />
+          AI Insights
+        </button>
+      </div>
+
       <div className="flex-1 overflow-y-auto">
-        {/* Pod health bar */}
-        <div className="px-4 pt-3 pb-1">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Pod Health</span>
-            <span className="text-[10px] text-muted-foreground tabular-nums">{running}/{activePods.length}</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${healthPct === 100 ? 'bg-green-500' : healthPct > 0 ? 'bg-yellow-500' : 'bg-red-500'}`}
-              style={{ width: `${healthPct}%` }}
-            />
-          </div>
-          <div className="flex items-center gap-3 mt-2">
-            {running > 0 && <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500" /><span className="text-[10px] text-muted-foreground">{running} running</span></div>}
-            {pending > 0 && <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-yellow-500" /><span className="text-[10px] text-muted-foreground">{pending} pending</span></div>}
-            {failed > 0 && <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500" /><span className="text-[10px] text-muted-foreground">{failed} failed</span></div>}
-          </div>
-        </div>
+        {activeTab === 'overview' && (
+          <>
+            {/* Pod health bar */}
+            <div className="px-4 pt-3 pb-1">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Pod Health</span>
+                <span className="text-[10px] text-muted-foreground tabular-nums">{running}/{activePods.length}</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${healthPct === 100 ? 'bg-green-500' : healthPct > 0 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                  style={{ width: `${healthPct}%` }}
+                />
+              </div>
+              <div className="flex items-center gap-3 mt-2">
+                {running > 0 && <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500" /><span className="text-[10px] text-muted-foreground">{running} running</span></div>}
+                {pending > 0 && <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-yellow-500" /><span className="text-[10px] text-muted-foreground">{pending} pending</span></div>}
+                {failed > 0 && <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500" /><span className="text-[10px] text-muted-foreground">{failed} failed</span></div>}
+              </div>
+            </div>
 
-        {/* Pods section */}
-        <div className="px-3 pt-3 pb-1">
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide px-1 mb-2">Pods</p>
-          <div className="space-y-1.5">
-            {activePods.map((pod) => {
-              const isRunning = pod.state === 'running';
-              const isPending = pod.state === 'pending';
-              const accentColor = isRunning ? 'bg-green-500' : isPending ? 'bg-yellow-500' : 'bg-red-500';
-              const podImageName = pod.image?.split('/').pop()?.split(':')[0] ?? '';
-              const podImageTag = pod.image?.split(':')[1] ?? 'latest';
-              return (
-                <button key={pod.id} onClick={() => setSelectedPod(pod)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-white/8 bg-white/3 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all text-left group relative overflow-hidden"
-                >
-                  <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${accentColor} opacity-70`} />
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${accentColor} ${isRunning ? 'shadow-[0_0_6px_2px_rgba(34,197,94,0.3)]' : ''}`} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium truncate leading-tight">{pod.name}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] text-muted-foreground capitalize">{pod.state}</span>
-                      {podImageName && (
-                        <>
-                          <span className="text-[10px] text-white/20">·</span>
-                          <span className="text-[10px] text-muted-foreground/70 truncate">{podImageName}</span>
-                          <span className="text-[9px] text-white/20 font-mono shrink-0">:{podImageTag}</span>
-                        </>
-                      )}
-                    </div>
+            {/* Pods section */}
+            <div className="px-3 pt-3 pb-1">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide px-1 mb-2">Pods</p>
+              <div className="space-y-1.5">
+                {activePods.map((pod) => {
+                  const isRunning = pod.state === 'running';
+                  const isPending = pod.state === 'pending';
+                  const accentColor = isRunning ? 'bg-green-500' : isPending ? 'bg-yellow-500' : 'bg-red-500';
+                  const podImageName = pod.image?.split('/').pop()?.split(':')[0] ?? '';
+                  const podImageTag = pod.image?.split(':')[1] ?? 'latest';
+                  return (
+                    <button key={pod.id} onClick={() => setSelectedPod(pod)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-white/8 bg-white/3 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all text-left group relative overflow-hidden"
+                    >
+                      <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${accentColor} opacity-70`} />
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${accentColor} ${isRunning ? 'shadow-[0_0_6px_2px_rgba(34,197,94,0.3)]' : ''}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium truncate leading-tight">{pod.name}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] text-muted-foreground capitalize">{pod.state}</span>
+                          {podImageName && (
+                            <>
+                              <span className="text-[10px] text-white/20">·</span>
+                              <span className="text-[10px] text-muted-foreground/70 truncate">{podImageName}</span>
+                              <span className="text-[9px] text-white/20 font-mono shrink-0">:{podImageTag}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* App info section */}
+            <div className="px-3 pt-4 pb-4">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide px-1 mb-2">App Info</p>
+              <div className="rounded-xl border border-white/8 bg-white/3 divide-y divide-white/6 overflow-hidden">
+                <div className="flex items-center gap-2.5 px-3 py-2.5">
+                  <Box className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-[11px] text-muted-foreground w-16 shrink-0">Image</span>
+                  <span className="text-[11px] font-medium truncate">{baseImage}</span>
+                </div>
+                <div className="flex items-center gap-2.5 px-3 py-2.5">
+                  <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-[11px] text-muted-foreground w-16 shrink-0">Tag</span>
+                  <span className="text-[11px] font-mono text-violet-400/80">{imageTag}</span>
+                </div>
+                <div className="flex items-center gap-2.5 px-3 py-2.5">
+                  <Layers className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-[11px] text-muted-foreground w-16 shrink-0">Namespace</span>
+                  <span className="text-[11px] font-medium">{group.namespace}</span>
+                </div>
+                <div className="flex items-center gap-2.5 px-3 py-2.5">
+                  <ServerIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-[11px] text-muted-foreground w-16 shrink-0">Registry</span>
+                  <span className="text-[11px] text-muted-foreground/70 truncate font-mono">{imageRegistry}</span>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'insights' && (
+          <div className="p-4 space-y-3">
+            {insightLoading ? (
+              <div className="flex flex-col items-center justify-center h-40 gap-3">
+                <BrainCircuit className="h-8 w-8 text-violet-400/40 animate-pulse" />
+                <p className="text-xs text-muted-foreground">Analyzing {group.appName}…</p>
+              </div>
+            ) : podInsight ? (
+              <>
+                {/* Status badge */}
+                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
+                  podInsight.status === 'healthy'
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                    : podInsight.status === 'warning'
+                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                    : podInsight.status === 'critical'
+                    ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                    : 'bg-white/5 text-muted-foreground border-white/10'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    podInsight.status === 'healthy' ? 'bg-emerald-400' :
+                    podInsight.status === 'warning' ? 'bg-amber-400' :
+                    podInsight.status === 'critical' ? 'bg-red-400' : 'bg-gray-400'
+                  }`} />
+                  {podInsight.status.charAt(0).toUpperCase() + podInsight.status.slice(1)}
+                </div>
+
+                {/* Diagnosis */}
+                <div className="rounded-xl border border-white/8 bg-white/3 p-3 space-y-1">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Diagnosis</p>
+                  <p className="text-xs text-foreground/80 leading-relaxed">{podInsight.diagnosis}</p>
+                </div>
+
+                {/* Root cause */}
+                <div className="rounded-xl border border-white/8 bg-white/3 p-3 space-y-1">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Root Cause</p>
+                  <p className="text-xs text-foreground/80 leading-relaxed">{podInsight.root_cause}</p>
+                </div>
+
+                {/* Suggestions */}
+                {podInsight.suggestions.length > 0 && (
+                  <div className="rounded-xl border border-white/8 bg-white/3 p-3 space-y-2">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Suggestions</p>
+                    <ul className="space-y-1.5">
+                      {podInsight.suggestions.map((s, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="mt-1.5 w-1 h-1 rounded-full bg-violet-400/60 shrink-0" />
+                          <span className="text-xs text-foreground/70 leading-relaxed">{s}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                )}
 
-        {/* App info section */}
-        <div className="px-3 pt-4 pb-4">
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide px-1 mb-2">App Info</p>
-          <div className="rounded-xl border border-white/8 bg-white/3 divide-y divide-white/6 overflow-hidden">
-            <div className="flex items-center gap-2.5 px-3 py-2.5">
-              <Box className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="text-[11px] text-muted-foreground w-16 shrink-0">Image</span>
-              <span className="text-[11px] font-medium truncate">{baseImage}</span>
-            </div>
-            <div className="flex items-center gap-2.5 px-3 py-2.5">
-              <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="text-[11px] text-muted-foreground w-16 shrink-0">Tag</span>
-              <span className="text-[11px] font-mono text-violet-400/80">{imageTag}</span>
-            </div>
-            <div className="flex items-center gap-2.5 px-3 py-2.5">
-              <Layers className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="text-[11px] text-muted-foreground w-16 shrink-0">Namespace</span>
-              <span className="text-[11px] font-medium">{group.namespace}</span>
-            </div>
-            <div className="flex items-center gap-2.5 px-3 py-2.5">
-              <ServerIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="text-[11px] text-muted-foreground w-16 shrink-0">Registry</span>
-              <span className="text-[11px] text-muted-foreground/70 truncate font-mono">{imageRegistry}</span>
-            </div>
+                <p className="text-[10px] text-muted-foreground/50 text-right">
+                  Analyzed {new Date(podInsight.analyzed_at).toLocaleTimeString()}
+                </p>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-40 gap-3">
+                <BrainCircuit className="h-8 w-8 text-muted-foreground/20" />
+                <p className="text-xs text-muted-foreground">No insights available</p>
+                <button
+                  onClick={fetchPodInsight}
+                  className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -1186,6 +1292,33 @@ function TopologyCanvas() {
     const id = setInterval(fetchOverwatch, 5 * 60 * 1000);
     return () => clearInterval(id);
   }, [fetchOverwatch]);
+
+  // Inject anomaly highlights into app nodes whenever overwatch data updates
+  useEffect(() => {
+    const severityRank: Record<string, number> = { high: 3, medium: 2, low: 1 };
+    const anomalyMap = new Map<string, 'low' | 'medium' | 'high'>();
+
+    for (const anomaly of (overwatch?.anomalies ?? [])) {
+      const affected = anomaly.affected.toLowerCase();
+      // We'll resolve node IDs in the setNodes callback below
+      anomalyMap.set(affected, anomaly.severity as 'low' | 'medium' | 'high');
+    }
+
+    setNodes((prev) => prev.map((n) => {
+      if (n.type !== 'appGroupNode') return n;
+      const nodeId = n.id.toLowerCase(); // "namespace/appname"
+      const app = nodeId.split('/')[1] ?? nodeId;
+      let best: 'low' | 'medium' | 'high' | null = null;
+      for (const [affected, severity] of anomalyMap) {
+        const matches = nodeId === affected || app === affected ||
+          affected.includes(app) || affected.includes(nodeId);
+        if (matches && (!best || severityRank[severity] > severityRank[best])) {
+          best = severity;
+        }
+      }
+      return { ...n, data: { ...n.data, anomalyLevel: best } };
+    }));
+  }, [overwatch, setNodes]);
 
   // Fetch containers, dependencies, and nodes on mount
   useEffect(() => {

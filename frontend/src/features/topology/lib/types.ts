@@ -154,6 +154,16 @@ export type SaveTopologyDto = {
 
 export type InfrastructureNodeType = 'router' | 'internet' | 'server' | 'database' | 'switch' | 'firewall';
 
+export type PodInsight = {
+  namespace: string;
+  app: string;
+  analyzed_at: string;
+  status: 'healthy' | 'warning' | 'critical' | 'unknown';
+  diagnosis: string;
+  root_cause: string;
+  suggestions: string[];
+};
+
 export type OverwatchAnomaly = {
   severity: 'low' | 'medium' | 'high';
   type: string;

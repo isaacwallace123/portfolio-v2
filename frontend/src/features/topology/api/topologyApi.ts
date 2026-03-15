@@ -10,6 +10,7 @@ import type {
   AppDependency,
   NodeInfo,
   OverwatchInsight,
+  PodInsight,
   SaveTopologyDto,
 } from '../lib/types';
 
@@ -109,6 +110,18 @@ export const topologyApi = {
   async getOverwatchInsights(): Promise<OverwatchInsight> {
     const response = await fetch(`${INFRA_URL}?action=overwatch`);
     if (!response.ok) throw new Error('Overwatch unavailable');
+    return response.json();
+  },
+
+  async getPodInsights(namespace: string, app: string): Promise<PodInsight> {
+    const response = await fetch(`${INFRA_URL}?action=podinsights&namespace=${encodeURIComponent(namespace)}&app=${encodeURIComponent(app)}`);
+    if (!response.ok) throw new Error('Pod insights unavailable');
+    return response.json();
+  },
+
+  async getOverwatchHistory(): Promise<OverwatchInsight[]> {
+    const response = await fetch(`${INFRA_URL}?action=overwatchhistory`);
+    if (!response.ok) return [];
     return response.json();
   },
 };

@@ -391,8 +391,36 @@ function AppGroupPanel({
 }) {
   const activePods = group.pods.filter((p) => p.state !== 'succeeded' && p.state !== 'completed');
   const [selectedPod, setSelectedPod] = useState<ContainerInfo | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'insights'>('overview');
+  const [podInsight, setPodInsight] = useState<PodInsight | null>(null);
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [insightError, setInsightError] = useState<string | null>(null);
 
   const isSingle = activePods.length === 1;
+
+  const running = activePods.filter((p) => p.state === 'running').length;
+  const pending = activePods.filter((p) => p.state === 'pending').length;
+  const failed = activePods.length - running - pending;
+
+  const initials = group.appName.split(/[-_]/).map((w) => w[0]?.toUpperCase() || '').join('').slice(0, 2);
+  const baseImage = group.image?.split('/').pop()?.split(':')[0] ?? group.appName;
+  const imageTag = group.image?.split(':')[1] ?? 'latest';
+  const imageRegistry = group.image?.includes('/') ? group.image.split('/').slice(0, -1).join('/') : 'docker.io';
+  const healthPct = activePods.length > 0 ? (running / activePods.length) * 100 : 0;
+
+  const fetchPodInsight = useCallback(async () => {
+    if (insightLoading) return;
+    setInsightLoading(true);
+    setInsightError(null);
+    try {
+      const data = await topologyApi.getPodInsights(group.namespace, group.appName);
+      setPodInsight(data);
+    } catch (e) {
+      setInsightError(e instanceof Error ? e.message : 'Service unavailable');
+    } finally {
+      setInsightLoading(false);
+    }
+  }, [group.namespace, group.appName, insightLoading]);
 
   if (selectedPod) {
     return (
@@ -408,35 +436,6 @@ function AppGroupPanel({
       </div>
     );
   }
-
-  const running = activePods.filter((p) => p.state === 'running').length;
-  const pending = activePods.filter((p) => p.state === 'pending').length;
-  const failed = activePods.length - running - pending;
-
-  const initials = group.appName.split(/[-_]/).map((w) => w[0]?.toUpperCase() || '').join('').slice(0, 2);
-  const baseImage = group.image?.split('/').pop()?.split(':')[0] ?? group.appName;
-  const imageTag = group.image?.split(':')[1] ?? 'latest';
-  const imageRegistry = group.image?.includes('/') ? group.image.split('/').slice(0, -1).join('/') : 'docker.io';
-  const healthPct = activePods.length > 0 ? (running / activePods.length) * 100 : 0;
-
-  const [activeTab, setActiveTab] = useState<'overview' | 'insights'>('overview');
-  const [podInsight, setPodInsight] = useState<PodInsight | null>(null);
-  const [insightLoading, setInsightLoading] = useState(false);
-  const [insightError, setInsightError] = useState<string | null>(null);
-
-  const fetchPodInsight = useCallback(async () => {
-    if (insightLoading) return;
-    setInsightLoading(true);
-    setInsightError(null);
-    try {
-      const data = await topologyApi.getPodInsights(group.namespace, group.appName);
-      setPodInsight(data);
-    } catch (e) {
-      setInsightError(e instanceof Error ? e.message : 'Service unavailable');
-    } finally {
-      setInsightLoading(false);
-    }
-  }, [group.namespace, group.appName, insightLoading]);
 
   return (
     <div className="w-full md:w-[48%] shrink-0 border-l border-white/10 bg-background/80 backdrop-blur-md flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">

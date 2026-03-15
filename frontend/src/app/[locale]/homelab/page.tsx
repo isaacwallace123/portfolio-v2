@@ -390,9 +390,7 @@ function AppGroupPanel({
   showLogs: boolean;
 }) {
   const activePods = group.pods.filter((p) => p.state !== 'succeeded' && p.state !== 'completed');
-  const [selectedPod, setSelectedPod] = useState<ContainerInfo | null>(
-    activePods.length === 1 ? activePods[0] : null,
-  );
+  const [selectedPod, setSelectedPod] = useState<ContainerInfo | null>(null);
 
   const isSingle = activePods.length === 1;
 
@@ -424,17 +422,21 @@ function AppGroupPanel({
   const [activeTab, setActiveTab] = useState<'overview' | 'insights'>('overview');
   const [podInsight, setPodInsight] = useState<PodInsight | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
+  const [insightError, setInsightError] = useState<string | null>(null);
 
   const fetchPodInsight = useCallback(async () => {
-    if (podInsight || insightLoading) return;
+    if (insightLoading) return;
     setInsightLoading(true);
+    setInsightError(null);
     try {
       const data = await topologyApi.getPodInsights(group.namespace, group.appName);
       setPodInsight(data);
-    } catch { /* service unavailable */ } finally {
+    } catch (e) {
+      setInsightError(e instanceof Error ? e.message : 'Service unavailable');
+    } finally {
       setInsightLoading(false);
     }
-  }, [group.namespace, group.appName, podInsight, insightLoading]);
+  }, [group.namespace, group.appName, insightLoading]);
 
   return (
     <div className="w-full md:w-[48%] shrink-0 border-l border-white/10 bg-background/80 backdrop-blur-md flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
@@ -622,7 +624,9 @@ function AppGroupPanel({
             ) : (
               <div className="flex flex-col items-center justify-center h-40 gap-3">
                 <BrainCircuit className="h-8 w-8 text-muted-foreground/20" />
-                <p className="text-xs text-muted-foreground">No insights available</p>
+                <p className="text-xs text-muted-foreground">
+                  {insightError ?? 'No insights available'}
+                </p>
                 <button
                   onClick={fetchPodInsight}
                   className="text-xs text-violet-400 hover:text-violet-300 transition-colors"

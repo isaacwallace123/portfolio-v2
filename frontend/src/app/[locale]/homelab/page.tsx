@@ -1268,7 +1268,6 @@ function TopologyCanvas() {
   const [overwatchHistory, setOverwatchHistory] = useState<OverwatchInsight[]>([]);
   const [overwatchLoading, setOverwatchLoading] = useState(false);
   const [showOverwatch, setShowOverwatch] = useState(false);
-  const [nodeUtilMap, setNodeUtilMap] = useState<Record<string, { cpu: number | null; memory: number | null }>>({});
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, , onEdgesChange] = useEdgesState([]);
@@ -1349,39 +1348,6 @@ function TopologyCanvas() {
     return () => { cancelled = true; };
   }, []);
 
-  // Fetch live CPU/memory for each k8s node to drive the heatmap
-  useEffect(() => {
-    if (k8sNodes.length === 0) return;
-    let cancelled = false;
-    async function fetchUtils() {
-      const results = await Promise.allSettled(
-        k8sNodes.map((n) =>
-          topologyApi.getNodeMetricsRange(n.name, '5m').then((d) => ({
-            name: n.name,
-            cpu: d.cpu.at(-1)?.value ?? null,
-            memory: d.memory.at(-1)?.value ?? null,
-          }))
-        )
-      );
-      if (cancelled) return;
-      const map: Record<string, { cpu: number | null; memory: number | null }> = {};
-      for (const r of results) {
-        if (r.status === 'fulfilled') map[r.value.name] = { cpu: r.value.cpu, memory: r.value.memory };
-      }
-      setNodeUtilMap(map);
-    }
-    fetchUtils();
-    const id = setInterval(fetchUtils, 30_000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, [k8sNodes]);
-
-  // Sync node utilization into proxmox host nodes
-  useEffect(() => {
-    setNodes((prev) => prev.map((n) => {
-      if (n.type !== 'proxmoxHostNode') return n;
-      return { ...n, data: { ...n.data, nodeUtilization: nodeUtilMap } };
-    }));
-  }, [nodeUtilMap, setNodes]);
 
   const handleK8sNodeClick = useCallback((node: NodeInfo) => {
     setSelectedGroupId(null);
@@ -1505,25 +1471,34 @@ function TopologyCanvas() {
             </button>
           </div>
 
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
-            <div className="bg-background/80 backdrop-blur border border-border/60 rounded-lg px-3 py-2 shadow-sm flex flex-col gap-1.5">
-              <div className="flex items-center gap-2 whitespace-nowrap">
-                <ServerIcon className="h-4 w-4 text-primary shrink-0" />
-                <p className="text-sm font-semibold">Kubernetes</p>
-                <p className="hidden sm:block text-[10px] text-muted-foreground">Cluster Provisioned With Argo</p>
-                <Badge variant="outline" className="text-[10px]">PROXMOX</Badge>
-              </div>
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground/60 divide-x divide-white/10">
-                <span className="flex items-center gap-1 pr-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_hsl(160_70%_55%/0.8)]" />
-                  {liveContainers.filter((c) => c.state === 'running').length} running
-                </span>
-                <span className="px-2">{liveContainers.filter((c) => c.state !== 'succeeded' && c.state !== 'completed').length} pods</span>
-                <span className="px-2">{k8sNodes.length} nodes</span>
-                {(overwatch?.anomalies?.length ?? 0) > 0 && (
-                  <span className="pl-2 text-amber-400/80">⚠ {overwatch!.anomalies.length} warnings</span>
-                )}
-              </div>
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+            <div className="flex items-center gap-2.5 bg-background/75 backdrop-blur-md border border-white/10 rounded-full px-4 py-2 shadow-lg whitespace-nowrap">
+              <ServerIcon className="h-3.5 w-3.5 text-primary/70 shrink-0" />
+              <span className="text-xs font-semibold tracking-tight">Kubernetes</span>
+              <span className="hidden sm:block text-[10px] text-muted-foreground/50">· Provisioned with Argo</span>
+
+              <span className="w-px h-3 bg-white/10" />
+
+              <span className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_5px_hsl(160_70%_55%/0.9)]" />
+                {liveContainers.filter((c) => c.state === 'running').length} running
+              </span>
+
+              <span className="w-px h-3 bg-white/10" />
+              <span className="text-[10px] text-muted-foreground/60">{liveContainers.filter((c) => c.state !== 'succeeded' && c.state !== 'completed').length} pods</span>
+
+              <span className="w-px h-3 bg-white/10" />
+              <span className="text-[10px] text-muted-foreground/60">{k8sNodes.length} nodes</span>
+
+              {(overwatch?.anomalies?.length ?? 0) > 0 && (
+                <>
+                  <span className="w-px h-3 bg-white/10" />
+                  <span className="flex items-center gap-1 text-[10px] text-amber-400/80">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    {overwatch!.anomalies.length} {overwatch!.anomalies.length === 1 ? 'warning' : 'warnings'}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </ReactFlow>

@@ -9,18 +9,11 @@ export interface ProxmoxHostNodeData {
   k8sNodes?: NodeInfo[];
   selectedNodeName?: string;
   onNodeClick?: (node: NodeInfo) => void;
-  nodeUtilization?: Record<string, { cpu: number | null; memory: number | null }>;
-}
-
-function cpuColor(pct: number): string {
-  if (pct >= 80) return 'bg-red-500';
-  if (pct >= 50) return 'bg-amber-400';
-  return 'bg-emerald-400';
 }
 
 export const ProxmoxHostNode = memo(({ data }: NodeProps<ProxmoxHostNodeData>) => {
   const nodes = data.k8sNodes ?? [];
-  const { onNodeClick, selectedNodeName, nodeUtilization } = data;
+  const { onNodeClick, selectedNodeName } = data;
 
   const displayNodes = nodes.length > 0
     ? nodes
@@ -39,9 +32,6 @@ export const ProxmoxHostNode = memo(({ data }: NodeProps<ProxmoxHostNodeData>) =
         <div className="flex gap-3 flex-wrap">
           {displayNodes.map((node) => {
             const isSelected = selectedNodeName === node.name;
-            const util = nodeUtilization?.[node.name];
-            const cpu = util?.cpu ?? null;
-            const mem = util?.memory ?? null;
 
             return (
               <button
@@ -60,36 +50,6 @@ export const ProxmoxHostNode = memo(({ data }: NodeProps<ProxmoxHostNodeData>) =
                 <p className="text-[10px] text-amber-400/60 capitalize">{node.role}</p>
                 {node.cpuCores > 0 && (
                   <p className="text-[9px] text-muted-foreground/50 mt-0.5">{node.cpuCores} CPU · {node.memoryGB.toFixed(0)} GB</p>
-                )}
-
-                {/* CPU / Memory bars */}
-                {(cpu !== null || mem !== null) && (
-                  <div className="mt-2 space-y-1">
-                    {cpu !== null && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] text-muted-foreground/50 w-5 shrink-0">CPU</span>
-                        <div className="flex-1 h-1 rounded-full bg-white/8 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-700 ${cpuColor(cpu)}`}
-                            style={{ width: `${Math.min(cpu, 100)}%` }}
-                          />
-                        </div>
-                        <span className="text-[9px] tabular-nums text-muted-foreground/60 w-7 text-right">{cpu.toFixed(0)}%</span>
-                      </div>
-                    )}
-                    {mem !== null && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] text-muted-foreground/50 w-5 shrink-0">Mem</span>
-                        <div className="flex-1 h-1 rounded-full bg-white/8 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-700 ${cpuColor(mem)}`}
-                            style={{ width: `${Math.min(mem, 100)}%` }}
-                          />
-                        </div>
-                        <span className="text-[9px] tabular-nums text-muted-foreground/60 w-7 text-right">{mem.toFixed(0)}%</span>
-                      </div>
-                    )}
-                  </div>
                 )}
               </button>
             );

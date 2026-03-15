@@ -869,9 +869,9 @@ const ROW_GAP = 92;
 const NS_COL_GAP = 108;
 const NS_GRID_COLS = 2;
 const TIER_GAP = 100;
-const PROXMOX_NODE_H = 100;
+const PROXMOX_NODE_H = 165;
 const INFRA_NODE_H = 88;
-const INFRA_TIER_GAP = 72;
+const INFRA_TIER_GAP = 80;
 
 
 /** Compute depth-from-deepest-leaf for each app using dependency edges within a namespace. */
@@ -972,13 +972,13 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
 
   const addEdge = (
     source: string, target: string, dashed = false, type = 'smoothstep',
-    sourceHandle?: string, targetHandle?: string,
+    sourceHandle?: string, targetHandle?: string, animated = false,
   ) => {
     const key = `${source}--${target}`;
     if (seen.has(key) || source === target) return;
     seen.add(key);
     edgeList.push({
-      id: key, source, target, type, animated: !dashed,
+      id: key, source, target, type, animated,
       sourceHandle: sourceHandle ?? null,
       targetHandle: targetHandle ?? null,
       style: dashed
@@ -1101,9 +1101,9 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
           draggable: false,
           data: { appName: g.appName, namespace: g.namespace, pods: g.pods, icon: g.icon } satisfies AppGroupNodeData,
         });
-        // Connect from the first proxmox host (or all if only one)
+        // Connect from each proxmox host with explicit bottom→top handles
         for (const proxmoxId of proxmoxHostIds) {
-          addEdge(proxmoxId, g.id, false, 'smoothstep', undefined, 'target-top');
+          addEdge(proxmoxId, g.id, false, 'smoothstep', 'source-bottom', 'target-top');
         }
         gatewayIds.push(g.id);
       });
@@ -1120,7 +1120,7 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
       const srcId = `${dep.sourceNamespace}/${dep.sourceApp}`;
       const tgtId = `${dep.targetNamespace}/${dep.targetApp}`;
       if (netIds.has(srcId) && netIds.has(tgtId)) {
-        addEdge(srcId, tgtId, false, 'smoothstep', 'source-bottom', 'target-top');
+        addEdge(srcId, tgtId, false, 'smoothstep', 'source-bottom', 'target-top', true);
       }
     }
   }
@@ -1190,7 +1190,7 @@ function buildFlow(groups: AppGroup[], deps: AppDependency[], k8sNodes: NodeInfo
       const srcId = `${dep.sourceNamespace}/${dep.sourceApp}`;
       const tgtId = `${dep.targetNamespace}/${dep.targetApp}`;
       if (nsIds.has(srcId) && nsIds.has(tgtId)) {
-        addEdge(srcId, tgtId, false, 'smoothstep', 'source-bottom', 'target-top');
+        addEdge(srcId, tgtId, false, 'smoothstep', 'source-bottom', 'target-top', true);
       }
     }
   });
@@ -1513,20 +1513,15 @@ function TopologyCanvas() {
                 <p className="hidden sm:block text-[10px] text-muted-foreground">Cluster Provisioned With Argo</p>
                 <Badge variant="outline" className="text-[10px]">PROXMOX</Badge>
               </div>
-              <div className="flex items-center gap-3 text-[10px] text-muted-foreground/70">
-                <span className="flex items-center gap-1">
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground/60 divide-x divide-white/10">
+                <span className="flex items-center gap-1 pr-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_hsl(160_70%_55%/0.8)]" />
                   {liveContainers.filter((c) => c.state === 'running').length} running
                 </span>
-                <span className="text-white/15">·</span>
-                <span>{liveContainers.filter((c) => c.state !== 'succeeded' && c.state !== 'completed').length} pods</span>
-                <span className="text-white/15">·</span>
-                <span>{k8sNodes.length} nodes</span>
+                <span className="px-2">{liveContainers.filter((c) => c.state !== 'succeeded' && c.state !== 'completed').length} pods</span>
+                <span className="px-2">{k8sNodes.length} nodes</span>
                 {(overwatch?.anomalies?.length ?? 0) > 0 && (
-                  <>
-                    <span className="text-white/15">·</span>
-                    <span className="text-amber-400">{overwatch!.anomalies.length} warnings</span>
-                  </>
+                  <span className="pl-2 text-amber-400/80">⚠ {overwatch!.anomalies.length} warnings</span>
                 )}
               </div>
             </div>

@@ -216,7 +216,7 @@ func (h *Handler) PodInsights(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
 	defer cancel()
 
 	insight, err := h.service.GetPodInsights(ctx, namespace, app)

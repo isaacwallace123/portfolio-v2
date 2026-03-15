@@ -10,6 +10,7 @@ interface OverwatchPanelProps {
   loading: boolean;
   onClose: () => void;
   onRefresh: () => void;
+  history?: OverwatchInsight[];
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -45,7 +46,53 @@ function timeAgo(dateStr: string | null): string {
   return `${Math.floor(diffMin / 60)}h ago`;
 }
 
-export function OverwatchPanel({ insight, loading, onClose, onRefresh }: OverwatchPanelProps) {
+function HistoryStrip({ history }: { history: OverwatchInsight[] }) {
+  // Sort oldest→newest
+  const sorted = [...history].sort((a, b) =>
+    new Date(a.collected_at ?? 0).getTime() - new Date(b.collected_at ?? 0).getTime()
+  );
+  const slots = 48;
+  const offset = Math.max(0, slots - sorted.length);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <p className="text-[10px] font-semibold text-foreground/50 uppercase tracking-widest">24h History</p>
+        <span className="text-[10px] text-muted-foreground/40">{sorted.length} snapshots</span>
+      </div>
+      <div className="flex gap-px">
+        {Array.from({ length: slots }, (_, i) => {
+          const item = i >= offset ? sorted[i - offset] : null;
+          const color = !item
+            ? 'bg-white/5'
+            : item.status === 'healthy'
+            ? 'bg-emerald-500/60 hover:bg-emerald-500/90'
+            : item.status === 'warning'
+            ? 'bg-amber-500/60 hover:bg-amber-500/90'
+            : item.status === 'critical'
+            ? 'bg-red-500/70 hover:bg-red-500/100'
+            : 'bg-zinc-500/25 hover:bg-zinc-500/50';
+          const title = item
+            ? `${item.status} · ${timeAgo(item.collected_at)}`
+            : '';
+          return (
+            <div
+              key={i}
+              title={title}
+              className={`flex-1 h-3.5 rounded-[2px] transition-colors cursor-default ${color}`}
+            />
+          );
+        })}
+      </div>
+      <div className="flex justify-between mt-1">
+        <span className="text-[9px] text-muted-foreground/30">24h ago</span>
+        <span className="text-[9px] text-muted-foreground/30">now</span>
+      </div>
+    </div>
+  );
+}
+
+export function OverwatchPanel({ insight, loading, onClose, onRefresh, history }: OverwatchPanelProps) {
   return (
     <div className="w-full md:w-100 shrink-0 border-l border-white/10 bg-background/80 backdrop-blur-md flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
       {/* Header */}
@@ -128,6 +175,13 @@ export function OverwatchPanel({ insight, loading, onClose, onRefresh }: Overwat
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* History strip */}
+            {history && history.length > 0 && (
+              <div className="border-t border-white/8 pt-4">
+                <HistoryStrip history={history} />
               </div>
             )}
           </>

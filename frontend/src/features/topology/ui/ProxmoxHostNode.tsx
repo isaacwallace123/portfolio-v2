@@ -15,12 +15,7 @@ export const ProxmoxHostNode = memo(({ data }: NodeProps<ProxmoxHostNodeData>) =
   const nodes = data.k8sNodes ?? [];
   const { onNodeClick, selectedNodeName } = data;
 
-  const displayNodes = nodes.length > 0
-    ? nodes
-    : [
-        { name: 'k8s-control', role: 'control-plane', status: 'Unknown', cpuCores: 0, memoryGB: 0, osImage: '' },
-        { name: 'k8s-worker', role: 'worker', status: 'Unknown', cpuCores: 0, memoryGB: 0, osImage: '' },
-      ];
+  const displayNodes = nodes;
 
   return (
     <>

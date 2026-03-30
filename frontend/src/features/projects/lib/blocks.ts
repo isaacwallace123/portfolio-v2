@@ -128,22 +128,17 @@ export function parseBlocks(content: string): Block[] | null {
   if (!content) return null;
   const trimmed = content.trimStart();
 
-  // Legacy JSON format — parse and return as-is (will be re-saved as MDX on next save)
+  // Legacy JSON format — parse and re-save as MDX on next save
   if (trimmed.startsWith('[')) {
     try {
       const parsed = JSON.parse(content);
       if (Array.isArray(parsed)) return parsed as Block[];
     } catch {
-      // fall through to MDX
+      // fall through to MDX parser
     }
   }
 
-  // Legacy raw HTML (not MDX, not JSON) — wrap in a paragraph block
-  if (trimmed.startsWith('<') && !trimmed.startsWith('<Callout') && !trimmed.startsWith('<StatsGrid') && !trimmed.startsWith('<FeatureList') && !trimmed.startsWith('<figure') && !trimmed.startsWith('<hr')) {
-    return [{ id: generateId(), type: 'paragraph', props: { html: content } as ParagraphProps }];
-  }
-
-  // MDX format
+  // MDX (or legacy HTML — parseMdxToBlocks handles both gracefully)
   return parseMdxToBlocks(content);
 }
 

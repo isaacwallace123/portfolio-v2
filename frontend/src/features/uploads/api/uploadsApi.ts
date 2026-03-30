@@ -26,8 +26,9 @@ export const uploadsApi = {
     return response.json();
   },
 
-  async delete(name: string): Promise<void> {
-    const response = await fetch(`${BASE_URL}?name=${encodeURIComponent(name)}`, {
+  // key is the full S3 key, e.g. "icons/react.svg"
+  async delete(key: string): Promise<void> {
+    const response = await fetch(`${BASE_URL}?key=${encodeURIComponent(key)}`, {
       method: 'DELETE',
     });
     if (!response.ok) {

@@ -1,19 +1,16 @@
 /**
  * Server-side only. For each label in the provided list:
  *   1. Check DB for an existing Skill with a matching label (case-insensitive).
- *   2. If found, return its stored (local) icon URL.
+ *   2. If found, return its stored icon URL.
  *   3. If NOT found and a devicon mapping exists, download the SVG from jsDelivr
- *      once, write it to public/uploads/icons/, and create a Skill record so every
- *      future request uses the local copy.
+ *      and upload it to MinIO, then create a Skill record.
  *
  * Returns a Record<lowercased-label, icon-url> for all labels that have an icon.
  */
 import { prisma } from '@/lib/prisma';
 import { getDeviconUrl } from '@/features/github/lib/languageUtils';
-import { writeFile, mkdir, access } from 'fs/promises';
-import { join } from 'path';
-
-const ICONS_DIR = join(process.cwd(), 'public', 'uploads', 'icons');
+import { PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { s3, BUCKET } from '@/shared/lib/s3';
 
 async function getOrCreateAutoCategory(): Promise<string> {
   const existing = await prisma.category.findFirst({
@@ -34,7 +31,6 @@ export async function ensureSkillIcons(
 ): Promise<Record<string, string>> {
   if (labels.length === 0) return {};
 
-  // Fetch all existing skills whose label matches any of the given labels
   const existing = await prisma.skill.findMany({
     where: { label: { in: labels, mode: 'insensitive' } },
     select: { label: true, icon: true },
@@ -52,45 +48,47 @@ export async function ensureSkillIcons(
   const missing = labels.filter((l) => !found.has(l.toLowerCase()));
   if (missing.length === 0) return result;
 
-  await mkdir(ICONS_DIR, { recursive: true });
   const categoryId = await getOrCreateAutoCategory();
 
   await Promise.allSettled(
     missing.map(async (originalLabel) => {
       const key = originalLabel.toLowerCase();
       const remoteUrl = getDeviconUrl(key);
-      if (!remoteUrl) return; // No devicon mapping for this tech — skip
+      if (!remoteUrl) return;
 
       const safeName = key.replace(/[^a-z0-9]/g, '-');
       const filename = `${safeName}.svg`;
-      const filepath = join(ICONS_DIR, filename);
-      const iconUrl = `/api/uploads/icons/${filename}`;
+      const s3Key = `icons/${filename}`;
+      const iconUrl = `/api/uploads/${s3Key}`;
 
       try {
-        // Only download if the file is not already on disk
-        let fileExists = false;
+        // Only upload if not already in MinIO
+        let exists = false;
         try {
-          await access(filepath);
-          fileExists = true;
+          await s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: s3Key }));
+          exists = true;
         } catch {
-          fileExists = false;
+          exists = false;
         }
 
-        if (!fileExists) {
+        if (!exists) {
           const res = await fetch(remoteUrl, { signal: AbortSignal.timeout(6000) });
           if (!res.ok) return;
           const svg = await res.text();
-          await writeFile(filepath, svg, 'utf8');
+          await s3.send(new PutObjectCommand({
+            Bucket: BUCKET,
+            Key: s3Key,
+            Body: svg,
+            ContentType: 'image/svg+xml',
+          }));
         }
 
-        // Create the skill record (best-effort — ignore duplicate label conflicts)
         await prisma.skill.create({
           data: { label: originalLabel, icon: iconUrl, categoryId, order: 0 },
         });
 
         result[key] = iconUrl;
       } catch (err) {
-        // Non-fatal: the tech will fall back to a colored dot on first render
         console.warn(`[ensureSkillIcons] Could not auto-create icon for "${originalLabel}":`, err);
       }
     })

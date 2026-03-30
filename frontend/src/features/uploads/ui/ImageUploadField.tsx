@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { ImagePlus, X, Loader2, Images } from 'lucide-react';
+import { ImagePlus, X, Loader2, Images, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -47,6 +48,7 @@ export function ImageUploadField({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [existingFiles, setExistingFiles] = useState<UploadedFile[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const [search, setSearch] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,6 +70,7 @@ export function ImageUploadField({
 
   const openPicker = async () => {
     setPickerOpen(true);
+    setSearch('');
     setLoadingFiles(true);
     try {
       const files = await uploadsApi.list();
@@ -78,6 +81,12 @@ export function ImageUploadField({
       setLoadingFiles(false);
     }
   };
+
+  const filtered = search.trim()
+    ? existingFiles.filter((f) =>
+        f.name.toLowerCase().includes(search.trim().toLowerCase())
+      )
+    : existingFiles;
 
   return (
     <div className={cn('space-y-2', className)}>
@@ -161,24 +170,37 @@ export function ImageUploadField({
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
         <DialogContent className="max-w-3xl w-full">
           <DialogHeader>
-            <DialogTitle>Choose an uploaded image</DialogTitle>
+            <DialogTitle>Choose an image</DialogTitle>
           </DialogHeader>
+
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search by filename..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8"
+              autoFocus
+            />
+          </div>
+
           {loadingFiles ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : existingFiles.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <p className="py-12 text-center text-muted-foreground">
-              No images uploaded yet. Upload one first.
+              {existingFiles.length === 0
+                ? 'No images uploaded yet.'
+                : 'No images match your search.'}
             </p>
           ) : (
             <div className="overflow-y-auto max-h-[60vh] pr-1">
               <div className="grid grid-cols-3 gap-3 md:grid-cols-4">
-                {existingFiles.map((file) => (
+                {filtered.map((file) => (
                   <button
-                    key={file.name}
+                    key={file.key}
                     type="button"
-                    style={{ aspectRatio: '1 / 1' }}
                     className={cn(
                       'group relative overflow-hidden rounded-lg border-2 transition-colors w-full',
                       value === file.url
@@ -190,11 +212,16 @@ export function ImageUploadField({
                       setPickerOpen(false);
                     }}
                   >
-                    <img
-                      src={file.url}
-                      alt={file.name}
-                      className="absolute inset-0 h-full w-full object-cover"
-                    />
+                    <div className="aspect-square">
+                      <img
+                        src={file.url}
+                        alt={file.name}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="bg-background/90 px-1.5 py-1">
+                      <p className="truncate text-[10px] text-muted-foreground">{file.name}</p>
+                    </div>
                   </button>
                 ))}
               </div>

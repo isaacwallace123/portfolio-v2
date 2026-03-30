@@ -43,9 +43,9 @@ export function useUploads() {
     }
   };
 
-  const deleteFile = async (name: string) => {
+  const deleteFile = async (key: string) => {
     try {
-      await uploadsApi.delete(name);
+      await uploadsApi.delete(key);
       toast.success('File deleted');
       await fetchFiles();
     } catch (err) {

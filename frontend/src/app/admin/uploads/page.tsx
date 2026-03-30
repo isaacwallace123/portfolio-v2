@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useUploads } from "@/features/uploads/hooks/useUploads";
 import { FileUpload } from "@/features/uploads/ui/FileUpload";
 import type { UploadedFile } from "@/features/uploads/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,8 +23,10 @@ import {
   Copy,
   FileIcon,
   Check,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"];
 
@@ -37,15 +40,25 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const FOLDERS = [
+  { value: "all", label: "All" },
+  { value: "icons", label: "Icons" },
+  { value: "cv_en", label: "CV (EN)" },
+  { value: "cv_fr", label: "CV (FR)" },
+  { value: "testimonials", label: "Testimonials" },
+];
+
 export default function AdminUploadsPage() {
   const { files, loading, uploading, uploadFile, deleteFile, refresh } =
     useUploads();
   const [deletingFile, setDeletingFile] = useState<UploadedFile | null>(null);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const [activeFolder, setActiveFolder] = useState("all");
+  const [search, setSearch] = useState("");
 
   const handleDelete = async () => {
     if (!deletingFile) return;
-    await deleteFile(deletingFile.name);
+    await deleteFile(deletingFile.key);
     setDeletingFile(null);
   };
 
@@ -55,6 +68,18 @@ export default function AdminUploadsPage() {
     toast.success("URL copied to clipboard");
     setTimeout(() => setCopiedUrl(null), 2000);
   };
+
+  const filtered = useMemo(() => {
+    let result = files;
+    if (activeFolder !== "all") {
+      result = result.filter((f) => f.folder === activeFolder);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      result = result.filter((f) => f.name.toLowerCase().includes(q));
+    }
+    return result;
+  }, [files, activeFolder, search]);
 
   const totalSize = files.reduce((acc, f) => acc + f.size, 0);
 
@@ -78,22 +103,53 @@ export default function AdminUploadsPage() {
         className="max-w-lg"
       />
 
+      {/* Folder Tabs + Search */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-1.5">
+          {FOLDERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setActiveFolder(f.value)}
+              className={cn(
+                "rounded-full px-3 py-1 text-sm font-medium transition-colors",
+                activeFolder === f.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="relative max-w-xs w-full">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search files..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+      </div>
+
       {/* Files Grid */}
       {loading ? (
         <div className="text-center py-12 text-muted-foreground">
           Loading files...
         </div>
-      ) : files.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <Card className="bg-background/80">
           <CardContent className="py-12 text-center text-muted-foreground">
-            <p>No files uploaded yet. Drag and drop or click above to upload.</p>
+            {files.length === 0
+              ? "No files uploaded yet. Drag and drop or click above to upload."
+              : "No files match your search."}
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {files.map((file) => (
+          {filtered.map((file) => (
             <Card
-              key={file.name}
+              key={file.key}
               className="group relative overflow-hidden bg-background/80"
             >
               <div className="aspect-square relative">
@@ -137,6 +193,11 @@ export default function AdminUploadsPage() {
               <CardContent className="p-3">
                 <p className="truncate text-xs font-medium">{file.name}</p>
                 <p className="text-xs text-muted-foreground">
+                  {file.folder && (
+                    <span className="mr-1.5 rounded bg-muted px-1 py-0.5 font-mono text-[10px]">
+                      {file.folder}
+                    </span>
+                  )}
                   {formatSize(file.size)}
                 </p>
               </CardContent>

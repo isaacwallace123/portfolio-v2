@@ -56,6 +56,7 @@ import {
   ImagePlus,
   Images,
   Loader2,
+  Search,
 } from "lucide-react";
 import { uploadsApi } from "@/features/uploads/api/uploadsApi";
 import type { UploadedFile } from "@/features/uploads/lib/types";
@@ -221,6 +222,7 @@ export default function AdminSkillsPage() {
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [iconFiles, setIconFiles] = useState<UploadedFile[]>([]);
   const [loadingIcons, setLoadingIcons] = useState(false);
+  const [iconSearch, setIconSearch] = useState("");
   const iconInputRef = useRef<HTMLInputElement>(null);
 
 
@@ -319,6 +321,7 @@ export default function AdminSkillsPage() {
 
   const openIconPicker = async () => {
     setIconPickerOpen(true);
+    setIconSearch("");
     setLoadingIcons(true);
     try {
       const files = await uploadsApi.list("icons");
@@ -634,6 +637,16 @@ export default function AdminSkillsPage() {
           <DialogHeader>
             <DialogTitle>Choose an icon</DialogTitle>
           </DialogHeader>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search icons..."
+              value={iconSearch}
+              onChange={(e) => setIconSearch(e.target.value)}
+              className="pl-8"
+              autoFocus
+            />
+          </div>
           {loadingIcons ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -644,9 +657,14 @@ export default function AdminSkillsPage() {
             </p>
           ) : (
             <div className="grid max-h-96 grid-cols-6 gap-3 overflow-y-auto sm:grid-cols-8">
-              {iconFiles.map((file) => (
+              {iconFiles
+                .filter((f) =>
+                  !iconSearch.trim() ||
+                  f.name.toLowerCase().includes(iconSearch.trim().toLowerCase())
+                )
+                .map((file) => (
                 <button
-                  key={file.name}
+                  key={file.key}
                   type="button"
                   className={cn(
                     "group relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border-2 p-2 transition-colors",

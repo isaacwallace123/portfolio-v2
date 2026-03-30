@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/features/auth/model/session';
-import { writeFile, mkdir, readdir, unlink, stat } from 'fs/promises';
-import { join, extname } from 'path';
+import { extname } from 'path';
 import { randomUUID } from 'crypto';
-
-const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads');
+import {
+  ListObjectsV2Command,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
+import { s3, BUCKET } from '@/shared/lib/s3';
 
 const ALLOWED_TYPES: Record<string, string[]> = {
   image: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'],
@@ -13,6 +16,7 @@ const ALLOWED_TYPES: Record<string, string[]> = {
 
 const ALL_ALLOWED = [...ALLOWED_TYPES.image, ...ALLOWED_TYPES.document];
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_FOLDERS = ['icons', 'cv_en', 'cv_fr'];
 
 function getExtension(mimeType: string): string {
   const map: Record<string, string> = {
@@ -44,43 +48,36 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const targetDir = folder ? join(UPLOAD_DIR, folder) : UPLOAD_DIR;
-    await mkdir(targetDir, { recursive: true });
+    const result = await s3.send(new ListObjectsV2Command({
+      Bucket: BUCKET,
+      Prefix: folder ? `${folder}/` : undefined,
+      MaxKeys: 1000,
+    }));
 
-    const entries = await readdir(targetDir);
-    const files = await Promise.all(
-      entries
-        .filter((name) => !name.startsWith('.') && !name.startsWith('_'))
-        .map(async (name) => {
-          const filePath = join(targetDir, name);
-          const stats = await stat(filePath);
-          if (!stats.isFile()) return null;
-          const urlPath = folder ? `/api/uploads/${folder}/${name}` : `/api/uploads/${name}`;
-          return {
-            name,
-            url: urlPath,
-            size: stats.size,
-            createdAt: stats.birthtime.toISOString(),
-          };
-        })
-    );
+    const files = (result.Contents ?? [])
+      .filter((obj) => obj.Key && !obj.Key.endsWith('/'))
+      .map((obj) => {
+        const key = obj.Key!;
+        const parts = key.split('/');
+        const name = parts[parts.length - 1];
+        const fileFolder = parts.length > 1 ? parts.slice(0, -1).join('/') : '';
+        return {
+          key,
+          name,
+          folder: fileFolder,
+          url: `/api/uploads/${key}`,
+          size: obj.Size ?? 0,
+          createdAt: obj.LastModified?.toISOString() ?? new Date().toISOString(),
+        };
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    return NextResponse.json(
-      files.filter(Boolean).sort((a, b) =>
-        new Date(b!.createdAt).getTime() - new Date(a!.createdAt).getTime()
-      )
-    );
+    return NextResponse.json(files);
   } catch (error) {
     console.error('Error listing uploads:', error);
-    return NextResponse.json(
-      { error: 'Failed to list uploads' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to list uploads' }, { status: 500 });
   }
 }
-
-// Allowed subfolders for uploads
-const ALLOWED_FOLDERS = ['icons', 'cv_en', 'cv_fr'];
 
 // POST — upload a file (admin only)
 export async function POST(request: NextRequest) {
@@ -90,7 +87,6 @@ export async function POST(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const folder = searchParams.get('folder');
 
-    // Validate folder if provided
     if (folder && !ALLOWED_FOLDERS.includes(folder)) {
       return NextResponse.json(
         { error: `Invalid folder "${folder}". Allowed: ${ALLOWED_FOLDERS.join(', ')}` },
@@ -102,15 +98,12 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File | null;
 
     if (!file) {
-      return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
     if (!ALL_ALLOWED.includes(file.type)) {
       return NextResponse.json(
-        { error: `File type "${file.type}" is not allowed. Allowed: images (JPEG, PNG, WebP, GIF, SVG) and documents (PDF, DOC, DOCX, TXT).` },
+        { error: `File type "${file.type}" is not allowed.` },
         { status: 400 }
       );
     }
@@ -122,27 +115,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const targetDir = folder ? join(UPLOAD_DIR, folder) : UPLOAD_DIR;
-    await mkdir(targetDir, { recursive: true });
-
     const ext = extname(file.name) || getExtension(file.type);
-    // For icons folder, use sanitized original name; UUID for everything else
     const baseName = folder === 'icons'
       ? file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase()
       : randomUUID();
     const filename = `${baseName}${ext}`;
-    const filepath = join(targetDir, filename);
+    const key = folder ? `${folder}/${filename}` : filename;
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filepath, buffer);
-
-    const urlPath = folder ? `/api/uploads/${folder}/${filename}` : `/api/uploads/${filename}`;
+    await s3.send(new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: file.type,
+    }));
 
     return NextResponse.json(
       {
+        key,
         name: filename,
         originalName: file.name,
-        url: urlPath,
+        url: `/api/uploads/${key}`,
         size: file.size,
         type: file.type,
       },
@@ -150,44 +143,30 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error('Error uploading file:', error);
-    return NextResponse.json(
-      { error: 'Failed to upload file' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
   }
 }
 
-// DELETE — remove an uploaded file (admin only)
+// DELETE — remove a file by its S3 key (admin only)
 export async function DELETE(request: NextRequest) {
   try {
     await requireAdmin();
     const { searchParams } = new URL(request.url);
-    const name = searchParams.get('name');
+    const key = searchParams.get('key');
 
-    if (!name) {
-      return NextResponse.json(
-        { error: 'File name is required' },
-        { status: 400 }
-      );
+    if (!key) {
+      return NextResponse.json({ error: 'key is required' }, { status: 400 });
     }
 
-    // Prevent path traversal
-    if (name.includes('..') || name.includes('/') || name.includes('\\')) {
-      return NextResponse.json(
-        { error: 'Invalid file name' },
-        { status: 400 }
-      );
+    if (key.includes('..') || key.startsWith('/')) {
+      return NextResponse.json({ error: 'Invalid key' }, { status: 400 });
     }
 
-    const filepath = join(UPLOAD_DIR, name);
-    await unlink(filepath);
+    await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting file:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete file' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to delete file' }, { status: 500 });
   }
 }

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join, extname } from 'path';
+import { extname } from 'path';
 import { randomUUID } from 'crypto';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { s3, BUCKET } from '@/shared/lib/s3';
 import { checkRateLimit, RATE_LIMITS } from '@/shared/lib/rate-limiter';
-
-const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads');
 
 const ALLOWED_IMAGE_TYPES = [
   'image/jpeg',
@@ -28,7 +27,6 @@ function getExtension(mimeType: string): string {
 // POST — public image upload (for testimonial avatars)
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting
     const rateLimit = await checkRateLimit(request, RATE_LIMITS.IMAGE_UPLOAD, 'upload');
     if (rateLimit.limited) return rateLimit.response;
 
@@ -36,10 +34,7 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File | null;
 
     if (!file) {
-      return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
@@ -56,20 +51,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await mkdir(UPLOAD_DIR, { recursive: true });
-
     const ext = extname(file.name) || getExtension(file.type);
     const filename = `${randomUUID()}${ext}`;
-    const filepath = join(UPLOAD_DIR, filename);
+    const key = `testimonials/${filename}`;
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filepath, buffer);
+    await s3.send(new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: file.type,
+    }));
 
     return NextResponse.json(
       {
+        key,
         name: filename,
         originalName: file.name,
-        url: `/api/uploads/${filename}`,
+        url: `/api/uploads/${key}`,
         size: file.size,
         type: file.type,
       },
@@ -77,9 +76,6 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error('Error uploading file:', error);
-    return NextResponse.json(
-      { error: 'Failed to upload file' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
   }
 }

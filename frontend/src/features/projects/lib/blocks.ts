@@ -11,7 +11,8 @@ export type BlockType =
   | 'code'
   | 'callout'
   | 'stats'
-  | 'features';
+  | 'features'
+  | 'table';
 
 // ─── Per-block prop shapes ────────────────────────────────────────────────────
 
@@ -70,6 +71,11 @@ export interface FeaturesProps {
   items: FeatureItem[];
 }
 
+export interface TableProps {
+  headers: string[];
+  rows: string[][];
+}
+
 export type BlockProps =
   | HeadingProps
   | ParagraphProps
@@ -79,7 +85,8 @@ export type BlockProps =
   | CodeProps
   | CalloutProps
   | StatsProps
-  | FeaturesProps;
+  | FeaturesProps
+  | TableProps;
 
 export interface Block {
   id: string;
@@ -104,6 +111,7 @@ const BLOCK_DEFAULTS: Record<BlockType, BlockProps> = {
       { icon: '🔒', title: 'Secure', description: 'Security-first design.' },
     ],
   } as FeaturesProps,
+  table: { headers: ['Column 1', 'Column 2', 'Column 3'], rows: [['', '', '']] } as TableProps,
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -167,4 +175,5 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   callout: 'Callout',
   stats: 'Stats Grid',
   features: 'Feature List',
+  table: 'Table',
 };

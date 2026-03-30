@@ -1,4 +1,4 @@
-import type { Block, CalloutProps, DividerProps, FeaturesProps, HeadingProps, ImageProps, ListProps, ParagraphProps, StatsProps } from './blocks';
+import type { Block, CalloutProps, DividerProps, FeaturesProps, HeadingProps, ImageProps, ListProps, ParagraphProps, StatsProps, TableProps } from './blocks';
 import type { CodeProps } from './blocks';
 
 function generateId(): string {
@@ -169,6 +169,25 @@ export function parseMdxToBlocks(mdx: string): Block[] {
       continue;
     }
 
+    // ── Markdown table ────────────────────────────────────────────────────────
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith('|')) {
+        tableLines.push(lines[i].trim());
+        i++;
+      }
+      // First line = headers, second line = separator (|---|), rest = rows
+      if (tableLines.length >= 2) {
+        const parseRow = (line: string) =>
+          line.split('|').slice(1, -1).map((cell) => cell.trim());
+        const headers = parseRow(tableLines[0]);
+        // tableLines[1] is the separator — skip it
+        const rows = tableLines.slice(2).map(parseRow);
+        blocks.push({ id: generateId(), type: 'table', props: { headers, rows } as TableProps });
+      }
+      continue;
+    }
+
     // ── Lists ─────────────────────────────────────────────────────────────────
     if (trimmed.match(/^(-|\d+\.)\s/)) {
       let style: ListProps['style'] = 'bullet';
@@ -212,6 +231,7 @@ export function parseMdxToBlocks(mdx: string): Block[] {
         t.startsWith('<figure') ||
         t.startsWith('<hr') ||
         t.startsWith('![') ||
+        (t.startsWith('|') && t.endsWith('|')) ||
         t.match(/^(-|\d+\.)\s/)
       ) {
         break;

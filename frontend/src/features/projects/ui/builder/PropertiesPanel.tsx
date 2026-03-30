@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Star } from 'lucide-react';
-import type { Block, BlockProps, HeadingProps, ListProps, ImageProps, DividerProps, CodeProps, CalloutProps, StatsProps, FeaturesProps } from '../../lib/blocks';
+import type { Block, BlockProps, HeadingProps, ListProps, ImageProps, DividerProps, CodeProps, CalloutProps, StatsProps, FeaturesProps, TableProps } from '../../lib/blocks';
 import { BLOCK_LABELS } from '../../lib/blocks';
 import { HeadingBlockProperties } from './blocks/HeadingBlock';
 import { ListBlockProperties } from './blocks/ListBlock';
@@ -14,6 +14,7 @@ import { CodeBlockProperties } from './blocks/CodeBlock';
 import { CalloutBlockProperties } from './blocks/CalloutBlock';
 import { StatsBlockProperties } from './blocks/StatsBlock';
 import { FeaturesBlockProperties } from './blocks/FeaturesBlock';
+import { TableBlockProperties } from './blocks/TableBlock';
 
 interface PageSettings {
   title: string;
@@ -78,6 +79,8 @@ function BlockProperties({ block, onChange }: { block: Block; onChange: (props: 
       return <StatsBlockProperties props={block.props as StatsProps} onChange={onChange as (p: StatsProps) => void} />;
     case 'features':
       return <FeaturesBlockProperties props={block.props as FeaturesProps} onChange={onChange as (p: FeaturesProps) => void} />;
+    case 'table':
+      return <TableBlockProperties props={block.props as TableProps} onChange={onChange as (p: TableProps) => void} />;
     default:
       return null;
   }

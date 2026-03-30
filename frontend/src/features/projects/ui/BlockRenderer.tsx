@@ -10,6 +10,7 @@ import { CodeBlockPreview } from './builder/blocks/CodeBlock';
 import { CalloutBlockPreview } from './builder/blocks/CalloutBlock';
 import { StatsBlockPreview } from './builder/blocks/StatsBlock';
 import { FeaturesBlockPreview } from './builder/blocks/FeaturesBlock';
+import { TableBlockPreview } from './builder/blocks/TableBlock';
 import type {
   HeadingProps,
   ParagraphProps,
@@ -20,6 +21,7 @@ import type {
   CalloutProps,
   StatsProps,
   FeaturesProps,
+  TableProps,
 } from '../lib/blocks';
 
 interface BlockRendererProps {
@@ -40,6 +42,7 @@ export function BlockRenderer({ blocks }: BlockRendererProps) {
           {block.type === 'callout' && <CalloutBlockPreview props={block.props as CalloutProps} />}
           {block.type === 'stats' && <StatsBlockPreview props={block.props as StatsProps} />}
           {block.type === 'features' && <FeaturesBlockPreview props={block.props as FeaturesProps} />}
+          {block.type === 'table'    && <TableBlockPreview    props={block.props as TableProps} />}
         </div>
       ))}
     </div>

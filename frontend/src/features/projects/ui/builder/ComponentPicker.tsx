@@ -1,7 +1,7 @@
 'use client';
 
 import type { ComponentType } from 'react';
-import { Heading2, AlignLeft, List, ImageIcon, Minus, Code2, AlertCircle, BarChart3, Layers } from 'lucide-react';
+import { Heading2, AlignLeft, List, ImageIcon, Minus, Code2, AlertCircle, BarChart3, Layers, Table } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { BlockType } from '../../lib/blocks';
 
@@ -38,6 +38,7 @@ const SECTIONS: Section[] = [
     blocks: [
       { type: 'stats',    label: 'Stats Grid',    icon: BarChart3, description: 'Key metrics and numbers' },
       { type: 'features', label: 'Feature List',  icon: Layers,    description: 'Icon + title + description cards' },
+      { type: 'table',    label: 'Table',          icon: Table,     description: 'Rows and columns of data' },
     ],
   },
 ];

@@ -9,6 +9,7 @@ import type {
   CalloutProps,
   StatsProps,
   FeaturesProps,
+  TableProps,
 } from './blocks';
 
 export function serializeToMdx(blocks: Block[]): string {
@@ -72,6 +73,15 @@ function blockToMdx(block: Block): string {
     case 'features': {
       const { items } = block.props as FeaturesProps;
       return `<FeatureList items={${JSON.stringify(items)}} />`;
+    }
+
+    case 'table': {
+      const { headers, rows } = block.props as TableProps;
+      if (!headers.length) return '';
+      const sep = headers.map(() => '------').join(' | ');
+      const headerRow = headers.join(' | ');
+      const dataRows = rows.map((r) => headers.map((_, i) => r[i] ?? '').join(' | '));
+      return `| ${headerRow} |\n| ${sep} |\n${dataRows.map((r) => `| ${r} |`).join('\n')}`;
     }
 
     default:

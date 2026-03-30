@@ -357,8 +357,8 @@ export default function AdminSkillsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Sparkles className="h-8 w-8 text-primary" />
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3 bg-linear-to-br from-foreground via-foreground to-foreground/60 bg-clip-text text-transparent">
+            <Sparkles className="h-8 w-8 text-primary shrink-0" />
             Skills
           </h1>
           <p className="text-muted-foreground">

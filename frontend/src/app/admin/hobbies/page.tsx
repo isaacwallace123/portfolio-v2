@@ -287,7 +287,7 @@ export default function HobbiesAdminPage() {
     <div className="mx-auto w-full max-w-3xl px-6 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Hobbies & Interests</h1>
+          <h1 className="text-3xl font-bold tracking-tight bg-linear-to-br from-foreground via-foreground to-foreground/60 bg-clip-text text-transparent">Hobbies & Interests</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Manage your personal hobbies and interests
           </p>

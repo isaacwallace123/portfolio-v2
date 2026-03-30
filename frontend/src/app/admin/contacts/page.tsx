@@ -174,8 +174,8 @@ export default function AdminContactsPage() {
     <div className="mx-auto w-full max-w-5xl px-6 py-8 space-y-8">
       {/* Header */}
       <div className="space-y-1">
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Mail className="h-8 w-8 text-primary" />
+        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3 bg-linear-to-br from-foreground via-foreground to-foreground/60 bg-clip-text text-transparent">
+          <Mail className="h-8 w-8 text-primary shrink-0" />
           Contacts
         </h1>
         <p className="text-muted-foreground">

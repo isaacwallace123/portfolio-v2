@@ -122,7 +122,7 @@ export default function AdminHomelabPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold">Homelab Settings</h1>
+          <h1 className="text-3xl font-bold tracking-tight bg-linear-to-br from-foreground via-foreground to-foreground/60 bg-clip-text text-transparent">Homelab Settings</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Configure visibility and log access per service.</p>
         </div>
         <div className="flex gap-2">

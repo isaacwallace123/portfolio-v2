@@ -43,6 +43,7 @@ function formatSize(bytes: number) {
 const FOLDERS = [
   { value: "all", label: "All" },
   { value: "icons", label: "Icons" },
+  { value: "experience", label: "Experience" },
   { value: "cv_en", label: "CV (EN)" },
   { value: "cv_fr", label: "CV (FR)" },
   { value: "testimonials", label: "Testimonials" },

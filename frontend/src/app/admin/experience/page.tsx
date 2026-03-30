@@ -454,6 +454,7 @@ export default function AdminExperiencePage() {
                 onChange={(url) => setFormData({ ...formData, logo: url })}
                 hint="Company or school logo"
                 aspect="square"
+                folder="experience"
               />
             )}
 
@@ -501,6 +502,7 @@ export default function AdminExperiencePage() {
                 onChange={(url) => { if (url) addMediaItem(url); }}
                 hint="Upload images from this experience"
                 aspect="video"
+                folder="experience"
               />
             </div>
 

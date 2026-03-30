@@ -23,6 +23,7 @@ type ImageUploadFieldProps = {
   hint?: string;
   aspect?: 'square' | 'video' | 'banner';
   className?: string;
+  folder?: string;
 };
 
 const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'];
@@ -43,6 +44,7 @@ export function ImageUploadField({
   hint,
   aspect = 'video',
   className,
+  folder,
 }: ImageUploadFieldProps) {
   const [uploading, setUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -58,7 +60,7 @@ export function ImageUploadField({
 
     try {
       setUploading(true);
-      const result = await uploadsApi.upload(file);
+      const result = await uploadsApi.upload(file, folder);
       onChange(result.url);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to upload';

@@ -16,7 +16,7 @@ const ALLOWED_TYPES: Record<string, string[]> = {
 
 const ALL_ALLOWED = [...ALLOWED_TYPES.image, ...ALLOWED_TYPES.document];
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_FOLDERS = ['icons', 'cv_en', 'cv_fr'];
+const ALLOWED_FOLDERS = ['icons', 'cv_en', 'cv_fr', 'experience'];
 
 function getExtension(mimeType: string): string {
   const map: Record<string, string> = {
@@ -116,9 +116,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ext = extname(file.name) || getExtension(file.type);
-    const baseName = folder === 'icons'
-      ? file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase()
-      : randomUUID();
+    const baseName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase() || randomUUID();
     const filename = `${baseName}${ext}`;
     const key = folder ? `${folder}/${filename}` : filename;
 

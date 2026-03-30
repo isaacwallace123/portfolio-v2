@@ -6,6 +6,25 @@ function generateId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
+// Convert inline markdown to HTML (bold, italic, code, links, strikethrough)
+function inlineToHtml(text: string): string {
+  return text
+    // Escape HTML entities first (except in code spans — handled below)
+    // Code spans — do first so inner content isn't processed by other rules
+    .replace(/`([^`]+)`/g, (_, code) => `<code>${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>`)
+    // Links
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+    // Bold+italic (***text***)
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    // Bold (**text**)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // Italic (*text* or _text_)
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/(?<![a-zA-Z0-9])_(.+?)_(?![a-zA-Z0-9])/g, '<em>$1</em>')
+    // Strikethrough (~~text~~)
+    .replace(/~~(.+?)~~/g, '<s>$1</s>');
+}
+
 export function parseMdxToBlocks(mdx: string): Block[] {
   const lines = mdx.split('\n');
   const blocks: Block[] = [];
@@ -24,10 +43,12 @@ export function parseMdxToBlocks(mdx: string): Block[] {
     // ── Headings ──────────────────────────────────────────────────────────────
     const headingMatch = trimmed.match(/^(#{1,3})\s+(.+)$/);
     if (headingMatch) {
+      // Strip inline markdown from heading text (headings store plain text)
+      const headingText = headingMatch[2].replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/`([^`]+)`/g, '$1');
       blocks.push({
         id: generateId(),
         type: 'heading',
-        props: { level: headingMatch[1].length as 1 | 2 | 3, text: headingMatch[2] } as HeadingProps,
+        props: { level: headingMatch[1].length as 1 | 2 | 3, text: headingText } as HeadingProps,
       });
       i++;
       continue;
@@ -242,8 +263,9 @@ export function parseMdxToBlocks(mdx: string): Block[] {
 
     if (htmlLines.length > 0) {
       const raw = htmlLines.join('\n').trim();
-      // Wrap in <p> if not already an HTML element
-      const html = raw.startsWith('<') ? raw : `<p>${raw}</p>`;
+      // If already HTML (from a Tiptap-generated round-trip), use as-is.
+      // Otherwise convert inline markdown and wrap in <p>.
+      const html = raw.startsWith('<') ? raw : `<p>${inlineToHtml(raw)}</p>`;
       blocks.push({ id: generateId(), type: 'paragraph', props: { html } as ParagraphProps });
     }
   }

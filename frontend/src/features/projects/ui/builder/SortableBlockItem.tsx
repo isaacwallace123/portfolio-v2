@@ -5,7 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Trash2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { Block, BlockProps, HeadingProps, ParagraphProps, ListProps, ImageProps, DividerProps, CodeProps, CalloutProps, StatsProps, FeaturesProps } from '../../lib/blocks';
+import type { Block, BlockProps, HeadingProps, ParagraphProps, ListProps, ImageProps, DividerProps, CodeProps, CalloutProps, StatsProps, FeaturesProps, TableProps } from '../../lib/blocks';
 import { HeadingBlockPreview } from './blocks/HeadingBlock';
 import { ParagraphBlockPreview, ParagraphInlineEditor } from './blocks/ParagraphBlock';
 import { ListBlockPreview, ListInlineEditor } from './blocks/ListBlock';
@@ -15,6 +15,7 @@ import { CodeBlockPreview } from './blocks/CodeBlock';
 import { CalloutBlockPreview } from './blocks/CalloutBlock';
 import { StatsBlockPreview } from './blocks/StatsBlock';
 import { FeaturesBlockPreview } from './blocks/FeaturesBlock';
+import { TableBlockPreview } from './blocks/TableBlock';
 
 interface SortableBlockItemProps {
   block: Block;
@@ -117,6 +118,7 @@ function BlockPreviewSwitch({ block }: { block: Block }) {
     case 'callout':   return <CalloutBlockPreview   props={block.props as CalloutProps} />;
     case 'stats':     return <StatsBlockPreview     props={block.props as StatsProps} />;
     case 'features':  return <FeaturesBlockPreview  props={block.props as FeaturesProps} />;
+    case 'table':     return <TableBlockPreview     props={block.props as TableProps} />;
     default:          return null;
   }
 }

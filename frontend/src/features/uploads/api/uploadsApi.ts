@@ -1,39 +1,35 @@
 import type { UploadedFile, UploadResult } from '../lib/types';
+import apiClient, { getErrorMessage } from '@/lib/apiClient';
 
 const BASE_URL = '/api/uploads';
 
 export const uploadsApi = {
   async list(folder?: string): Promise<UploadedFile[]> {
-    const url = folder ? `${BASE_URL}?folder=${encodeURIComponent(folder)}` : BASE_URL;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Failed to list uploads');
-    return response.json();
+    const { data } = await apiClient.get<UploadedFile[]>(BASE_URL, {
+      params: folder ? { folder } : undefined,
+    });
+    return data;
   },
 
   async upload(file: File, folder?: string): Promise<UploadResult> {
     const formData = new FormData();
     formData.append('file', file);
-
-    const url = folder ? `${BASE_URL}?folder=${encodeURIComponent(folder)}` : BASE_URL;
-    const response = await fetch(url, {
-      method: 'POST',
-      body: formData,
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to upload file');
+    try {
+      const { data } = await apiClient.post<UploadResult>(BASE_URL, formData, {
+        params: folder ? { folder } : undefined,
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Failed to upload file'));
     }
-    return response.json();
   },
 
-  // key is the full S3 key, e.g. "icons/react.svg"
   async delete(key: string): Promise<void> {
-    const response = await fetch(`${BASE_URL}?key=${encodeURIComponent(key)}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to delete file');
+    try {
+      await apiClient.delete(BASE_URL, { params: { key } });
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Failed to delete file'));
     }
   },
 };

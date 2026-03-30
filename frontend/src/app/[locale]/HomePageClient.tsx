@@ -43,6 +43,7 @@ import type { Project } from '@/features/projects/lib/types';
 import { TechStackBadges } from '@/features/projects/ui/TechStackBadges';
 import { localizeExperience, localizeProject } from '@/lib/localize';
 import { AnimatedBackground } from '@/shared/ui/AnimatedBackground';
+import apiClient from '@/lib/apiClient';
 
 const SkillGlobe = dynamic(
   () => import('@/components/ui/globe').then((m) => m.SkillGlobe),
@@ -179,9 +180,8 @@ export function HomePageClient({ locale }: { locale: string }) {
   const { displayed: taglineDisplayed } = useTypewriter(taglineText, 28, greetingDone ? 200 : 99999);
 
   useEffect(() => {
-    fetch('/api/skills')
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: Skill[]) => {
+    apiClient.get<Skill[]>('/api/skills')
+      .then(({ data }) => {
         if (!data.length) return;
         setLiveSkills(data.map((s) => ({ label: s.label, icon: s.icon })));
         const grouped = new Map<string, { label: string; icon: string }[]>();
@@ -199,18 +199,16 @@ export function HomePageClient({ locale }: { locale: string }) {
   }, []);
 
   useEffect(() => {
-    fetch('/api/experience')
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: Experience[]) => {
+    apiClient.get<Experience[]>('/api/experience')
+      .then(({ data }) => {
         setExperiences(data.map((e) => localizeExperience(e, locale)));
       })
       .catch(() => {});
   }, [locale]);
 
   useEffect(() => {
-    fetch('/api/projects?published=true')
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: Project[]) => {
+    apiClient.get<Project[]>('/api/projects', { params: { published: true } })
+      .then(({ data }) => {
         setProjects(
           data
             .map((p) => localizeProject(p as any, locale) as Project)

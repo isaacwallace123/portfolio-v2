@@ -1,59 +1,45 @@
 import type { Hobby, CreateHobbyDto, UpdateHobbyDto } from '../lib/types';
+import apiClient, { getErrorMessage } from '@/lib/apiClient';
 
 const BASE_URL = '/api/hobbies';
 
 export const hobbiesApi = {
   async getAll(): Promise<Hobby[]> {
-    const res = await fetch(BASE_URL);
-    if (!res.ok) throw new Error('Failed to fetch hobbies');
-    return res.json();
+    const { data } = await apiClient.get<Hobby[]>(BASE_URL);
+    return data;
   },
 
-  async create(data: CreateHobbyDto): Promise<Hobby> {
-    const res = await fetch(BASE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Failed to create hobby');
+  async create(payload: CreateHobbyDto): Promise<Hobby> {
+    try {
+      const { data } = await apiClient.post<Hobby>(BASE_URL, payload);
+      return data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Failed to create hobby'));
     }
-    return res.json();
   },
 
-  async update(id: string, data: UpdateHobbyDto): Promise<Hobby> {
-    const res = await fetch(BASE_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, ...data }),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Failed to update hobby');
+  async update(id: string, payload: UpdateHobbyDto): Promise<Hobby> {
+    try {
+      const { data } = await apiClient.put<Hobby>(BASE_URL, { id, ...payload });
+      return data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Failed to update hobby'));
     }
-    return res.json();
   },
 
   async delete(id: string): Promise<void> {
-    const res = await fetch(`${BASE_URL}?id=${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Failed to delete hobby');
+    try {
+      await apiClient.delete(BASE_URL, { params: { id: encodeURIComponent(id) } });
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Failed to delete hobby'));
     }
   },
 
   async reorder(ids: string[]): Promise<void> {
-    const res = await fetch(`${BASE_URL}/reorder`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids }),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Failed to reorder hobbies');
+    try {
+      await apiClient.post(`${BASE_URL}/reorder`, { ids });
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Failed to reorder hobbies'));
     }
   },
 };

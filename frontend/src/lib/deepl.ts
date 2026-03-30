@@ -57,7 +57,7 @@ export async function translateFields(
 
   try {
     const texts = entries.map(([, value]) => value!);
-    const translations = await t.translateText(texts, 'en', 'fr', { tagHandling: 'html' });
+    const translations = await t.translateText(texts, 'en', 'fr');
 
     const translationArray = Array.isArray(translations) ? translations : [translations];
 
@@ -92,7 +92,11 @@ export async function translateBlocks(
 
     switch (block.type) {
       case 'heading':
-        if (p.text) items.push({ value: p.text as string, isHtml: false, set: v => { p.text = v; } });
+        if (p.text) {
+          const clean = (p.text as string).replace(/^#+\s*/, '');
+          p.text = clean;
+          items.push({ value: clean, isHtml: false, set: v => { p.text = v; } });
+        }
         break;
 
       case 'paragraph':

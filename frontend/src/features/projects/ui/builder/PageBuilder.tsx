@@ -15,6 +15,7 @@ import {
   type BlockProps,
 } from '../../lib/blocks';
 import { parseMdxToBlocks } from '../../lib/mdxParser';
+import apiClient, { getErrorMessage } from '@/lib/apiClient';
 import { ComponentPicker } from './ComponentPicker';
 import { BlockCanvas } from './BlockCanvas';
 import { PropertiesPanel } from './PropertiesPanel';
@@ -63,14 +64,14 @@ export function PageBuilder({ projectId, pageId }: PageBuilderProps) {
     async function load() {
       try {
         setLoading(true);
-        const [pageRes, projectRes] = await Promise.all([
-          fetch(`/api/project-pages?pageId=${pageId}`),
-          fetch(`/api/projects?id=${projectId}`),
+        const [pageRes, projectRes] = await Promise.allSettled([
+          apiClient.get<PageData>('/api/project-pages', { params: { pageId } }),
+          apiClient.get<ProjectData>('/api/projects', { params: { id: projectId } }),
         ]);
 
-        if (!pageRes.ok) throw new Error('Page not found');
-        const page: PageData = await pageRes.json();
-        const project: ProjectData = projectRes.ok ? await projectRes.json() : { id: projectId };
+        if (pageRes.status === 'rejected') throw new Error('Page not found');
+        const page = pageRes.value.data;
+        const project: ProjectData = projectRes.status === 'fulfilled' ? projectRes.value.data : { id: projectId };
 
         const parsed = parseBlocks(page.content);
         const loadedBlocks = parsed ?? migrateHtmlToBlocks(page.content || '<p></p>');
@@ -194,20 +195,24 @@ export function PageBuilder({ projectId, pageId }: PageBuilderProps) {
     try {
       setSaving(true);
       const content = serializeBlocks(blocksToSave);
-      const response = await fetch('/api/project-pages', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: pageId, title, slug, isStartPage, content }),
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Save failed');
+      try {
+        await apiClient.put('/api/project-pages', { id: pageId, title, slug, isStartPage, content });
+      } catch (err) {
+        throw new Error(getErrorMessage(err, 'Save failed'));
       }
 
       setSavedContent(content);
       setHasChanges(false);
       toast.success('Page saved');
+
+      // Fire translation in the background — doesn't block the UI
+      apiClient.post<{ fieldsTranslated: number; pagesTranslated: number }>('/api/translate', { projectId })
+        .then(({ data }) => {
+          if (data.fieldsTranslated > 0 || data.pagesTranslated > 0) {
+            toast.success(`Auto-translated ${data.fieldsTranslated} field(s) and ${data.pagesTranslated} page(s).`);
+          }
+        })
+        .catch(() => {/* translation failure is non-critical */});
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save');
     } finally {

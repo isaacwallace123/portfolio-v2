@@ -5,6 +5,7 @@ import { useLocale } from 'next-intl';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { CVMetadata } from '../lib/types';
+import apiClient from '@/lib/apiClient';
 
 type CVDownloadButtonProps = {
   variant?: 'default' | 'outline' | 'ghost' | 'link' | 'destructive' | 'secondary';
@@ -25,15 +26,9 @@ export function CVDownloadButton({
     const fetchCV = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/settings/public/cv?locale=${locale}`);
-        if (res.ok) {
-          const data = await res.json();
-          setCv(data);
-        } else {
-          setCv(null);
-        }
-      } catch (err) {
-        console.error('Failed to fetch CV:', err);
+        const { data } = await apiClient.get<CVMetadata>('/api/settings/public/cv', { params: { locale } });
+        setCv(data);
+      } catch {
         setCv(null);
       } finally {
         setLoading(false);

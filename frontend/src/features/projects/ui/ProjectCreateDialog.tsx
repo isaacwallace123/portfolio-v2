@@ -36,6 +36,7 @@ import type { GithubRepo } from '@/features/github/lib/types';
 import { getLanguageColor, getDeviconUrl, normalizeLanguageName } from '@/features/github/lib/languageUtils';
 import { skillsApi } from '@/features/skills/api/skillsApi';
 import { toast } from 'sonner';
+import apiClient, { getErrorMessage } from '@/lib/apiClient';
 
 interface ProjectCreateDialogProps {
   open: boolean;
@@ -228,37 +229,24 @@ export function ProjectCreateDialog({ open, onOpenChange }: ProjectCreateDialogP
 
     try {
       // Step 1: Create the project
-      const projectResponse = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, content: defaultContent }),
-      });
-
-      if (!projectResponse.ok) {
-        const error = await projectResponse.json();
-        throw new Error(error.error || 'Failed to create project');
+      let project: { id: string };
+      try {
+        const { data } = await apiClient.post<{ id: string }>('/api/projects', { ...formData, content: defaultContent });
+        project = data;
+      } catch (err) {
+        throw new Error(getErrorMessage(err, 'Failed to create project'));
       }
-
-      const project = await projectResponse.json();
 
       // Step 2: Create the default start page with generated content
       try {
-        const pageResponse = await fetch(`/api/project-pages`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            projectId: project.id,
-            title: 'Overview',
-            slug: 'overview',
-            content: defaultContent,
-            isStartPage: true,
-            order: 0,
-          }),
+        await apiClient.post('/api/project-pages', {
+          projectId: project.id,
+          title: 'Overview',
+          slug: 'overview',
+          content: defaultContent,
+          isStartPage: true,
+          order: 0,
         });
-
-        if (!pageResponse.ok) {
-          toast.error('Project created but failed to create overview page. You can add it manually.');
-        }
       } catch {
         toast.error('Project created but failed to create overview page. You can add it manually.');
       }

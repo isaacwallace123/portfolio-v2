@@ -1,21 +1,22 @@
 import type { GithubStats } from '../lib/types';
+import apiClient, { getErrorMessage } from '@/lib/apiClient';
 
 export const githubApi = {
   async getStats(): Promise<GithubStats> {
-    const res = await fetch('/api/github');
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Failed to fetch GitHub stats');
+    try {
+      const { data } = await apiClient.get<GithubStats>('/api/github');
+      return data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Failed to fetch GitHub stats'));
     }
-    return res.json();
   },
 
   async refresh(): Promise<GithubStats> {
-    const res = await fetch('/api/github', { method: 'POST' });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Failed to refresh GitHub data');
+    try {
+      const { data } = await apiClient.post<GithubStats>('/api/github');
+      return data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Failed to refresh GitHub data'));
     }
-    return res.json();
   },
 };

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import type { ProjectPage, PageConnection } from '../lib/types';
 import { toast } from 'sonner';
+import apiClient, { getErrorMessage } from '@/lib/apiClient';
 
 interface UseProjectPagesOptions {
   projectId: string;
@@ -16,9 +17,7 @@ export function useProjectPages({ projectId }: UseProjectPagesOptions) {
   const fetchPages = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/project-pages?projectId=${projectId}`);
-      if (!response.ok) throw new Error('Failed to fetch pages');
-      const data = await response.json();
+      const { data } = await apiClient.get<ProjectPage[]>('/api/project-pages', { params: { projectId } });
       setPages(data);
     } catch (error) {
       console.error('Error fetching pages:', error);
@@ -30,9 +29,7 @@ export function useProjectPages({ projectId }: UseProjectPagesOptions) {
 
   const fetchConnections = async () => {
     try {
-      const response = await fetch(`/api/page-connections?projectId=${projectId}`);
-      if (!response.ok) throw new Error('Failed to fetch connections');
-      const data = await response.json();
+      const { data } = await apiClient.get<PageConnection[]>('/api/page-connections', { params: { projectId } });
       setConnections(data);
     } catch (error) {
       console.error('Error fetching connections:', error);
@@ -49,96 +46,55 @@ export function useProjectPages({ projectId }: UseProjectPagesOptions) {
 
   const createPage = async (data: Partial<ProjectPage>) => {
     try {
-      const response = await fetch('/api/project-pages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, projectId }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create page');
-      }
-
-      const newPage = await response.json();
+      const { data: newPage } = await apiClient.post<ProjectPage>('/api/project-pages', { ...data, projectId });
       toast.success('Page created');
       await fetchPages();
       return newPage;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create page';
+      const message = getErrorMessage(error, 'Failed to create page');
       toast.error(message);
-      throw error;
+      throw new Error(message);
     }
   };
 
   const updatePage = async (id: string, data: Partial<ProjectPage>) => {
     try {
-      const response = await fetch('/api/project-pages', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, ...data }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update page');
-      }
-
-      const updatedPage = await response.json();
+      const { data: updatedPage } = await apiClient.put<ProjectPage>('/api/project-pages', { id, ...data });
       toast.success('Page updated');
       await fetchPages();
       return updatedPage;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to update page';
+      const message = getErrorMessage(error, 'Failed to update page');
       toast.error(message);
-      throw error;
+      throw new Error(message);
     }
   };
 
   const deletePage = async (id: string) => {
     try {
-      const response = await fetch(`/api/project-pages?id=${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Failed to delete page');
-
+      await apiClient.delete('/api/project-pages', { params: { id } });
       toast.success('Page deleted');
       await fetchPages();
       await fetchConnections();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to delete page';
+      const message = getErrorMessage(error, 'Failed to delete page');
       toast.error(message);
-      throw error;
+      throw new Error(message);
     }
   };
 
   // FIXED: Don't refetch after saving positions - this was causing all nodes to reset
   const savePositions = async (updates: { id: string; position: { x: number; y: number } }[]) => {
     try {
-      await Promise.all(
-        updates.map((update) =>
-          fetch('/api/project-pages', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(update),
-          })
-        )
-      );
-      
+      await Promise.all(updates.map((update) => apiClient.put('/api/project-pages', update)));
+
       // Update local state instead of refetching
-      setPages(prevPages => 
-        prevPages.map(page => {
-          const update = updates.find(u => u.id === page.id);
-          if (update) {
-            return { ...page, position: update.position };
-          }
-          return page;
+      setPages((prevPages) =>
+        prevPages.map((page) => {
+          const update = updates.find((u) => u.id === page.id);
+          return update ? { ...page, position: update.position } : page;
         })
       );
-      
-      // Don't show toast for every position save - too noisy
-      // toast.success('Positions saved');
     } catch (error) {
       console.error('Error saving positions:', error);
       toast.error('Failed to save positions');
@@ -147,40 +103,25 @@ export function useProjectPages({ projectId }: UseProjectPagesOptions) {
 
   const createConnection = async (sourcePageId: string, targetPageId: string, label?: string) => {
     try {
-      const response = await fetch('/api/page-connections', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sourcePageId, targetPageId, label }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create connection');
-      }
-
+      await apiClient.post('/api/page-connections', { sourcePageId, targetPageId, label });
       toast.success('Connection created');
       await fetchConnections();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create connection';
+      const message = getErrorMessage(error, 'Failed to create connection');
       toast.error(message);
-      throw error;
+      throw new Error(message);
     }
   };
 
   const deleteConnection = async (id: string) => {
     try {
-      const response = await fetch(`/api/page-connections?id=${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Failed to delete connection');
-
+      await apiClient.delete('/api/page-connections', { params: { id } });
       toast.success('Connection deleted');
       await fetchConnections();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to delete connection';
+      const message = getErrorMessage(error, 'Failed to delete connection');
       toast.error(message);
-      throw error;
+      throw new Error(message);
     }
   };
 

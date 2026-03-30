@@ -1,48 +1,43 @@
 import type { ContactMessage, CreateContactDto, UpdateContactDto } from '../lib/types';
+import apiClient, { getErrorMessage } from '@/lib/apiClient';
+import axios from 'axios';
 
 const BASE_URL = '/api/contacts';
 
 export const contactsApi = {
   async getAll(): Promise<ContactMessage[]> {
-    const response = await fetch(BASE_URL);
-    if (!response.ok) throw new Error('Failed to fetch contacts');
-    return response.json();
+    const { data } = await apiClient.get<ContactMessage[]>(BASE_URL);
+    return data;
   },
 
-  async submit(data: CreateContactDto): Promise<ContactMessage> {
-    const response = await fetch(BASE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const body = await response.json();
-      const detail = body.details?.[0]?.message;
-      throw new Error(detail || body.error || 'Failed to send message');
+  async submit(payload: CreateContactDto): Promise<ContactMessage> {
+    try {
+      const { data } = await apiClient.post<ContactMessage>(BASE_URL, payload);
+      return data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const body = error.response?.data as { error?: string; details?: { message: string }[] } | undefined;
+        const detail = body?.details?.[0]?.message;
+        throw new Error(detail ?? body?.error ?? 'Failed to send message');
+      }
+      throw error;
     }
-    return response.json();
   },
 
-  async update(id: string, data: UpdateContactDto): Promise<ContactMessage> {
-    const response = await fetch(BASE_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, ...data }),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to update contact');
+  async update(id: string, payload: UpdateContactDto): Promise<ContactMessage> {
+    try {
+      const { data } = await apiClient.put<ContactMessage>(BASE_URL, { id, ...payload });
+      return data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Failed to update contact'));
     }
-    return response.json();
   },
 
   async delete(id: string): Promise<void> {
-    const response = await fetch(`${BASE_URL}?id=${id}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to delete contact');
+    try {
+      await apiClient.delete(BASE_URL, { params: { id } });
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Failed to delete contact'));
     }
   },
 };

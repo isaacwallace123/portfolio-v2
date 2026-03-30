@@ -11,6 +11,7 @@ import { StarRating } from './StarRating';
 import { testimonialsApi } from '../api/testimonialsApi';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
+import apiClient, { getErrorMessage } from '@/lib/apiClient';
 
 type TestimonialFormProps = {
   onSubmitted?: () => void;
@@ -77,16 +78,14 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
       if (avatarFile) {
         const formData = new FormData();
         formData.append('file', avatarFile);
-        const res = await fetch('/api/uploads/public', {
-          method: 'POST',
-          body: formData,
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || 'Failed to upload image');
+        try {
+          const { data } = await apiClient.post<{ url: string }>('/api/uploads/public', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          avatarUrl = data.url;
+        } catch (err) {
+          throw new Error(getErrorMessage(err, 'Failed to upload image'));
         }
-        const data = await res.json();
-        avatarUrl = data.url;
       }
 
       await testimonialsApi.create({

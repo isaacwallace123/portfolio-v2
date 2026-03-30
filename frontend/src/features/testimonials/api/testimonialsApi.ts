@@ -1,53 +1,42 @@
 import type { Testimonial, CreateTestimonialDto, UpdateTestimonialDto } from '../lib/types';
+import apiClient, { getErrorMessage } from '@/lib/apiClient';
 
 const BASE_URL = '/api/testimonials';
 
 export const testimonialsApi = {
   async getApproved(): Promise<Testimonial[]> {
-    const response = await fetch(BASE_URL);
-    if (!response.ok) throw new Error('Failed to fetch testimonials');
-    return response.json();
+    const { data } = await apiClient.get<Testimonial[]>(BASE_URL);
+    return data;
   },
 
   async getAll(): Promise<Testimonial[]> {
-    const response = await fetch(`${BASE_URL}?all=true`);
-    if (!response.ok) throw new Error('Failed to fetch testimonials');
-    return response.json();
+    const { data } = await apiClient.get<Testimonial[]>(BASE_URL, { params: { all: true } });
+    return data;
   },
 
-  async create(data: CreateTestimonialDto): Promise<Testimonial> {
-    const response = await fetch(BASE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to submit testimonial');
+  async create(payload: CreateTestimonialDto): Promise<Testimonial> {
+    try {
+      const { data } = await apiClient.post<Testimonial>(BASE_URL, payload);
+      return data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Failed to submit testimonial'));
     }
-    return response.json();
   },
 
-  async update(id: string, data: UpdateTestimonialDto): Promise<Testimonial> {
-    const response = await fetch(BASE_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, ...data }),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to update testimonial');
+  async update(id: string, payload: UpdateTestimonialDto): Promise<Testimonial> {
+    try {
+      const { data } = await apiClient.put<Testimonial>(BASE_URL, { id, ...payload });
+      return data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Failed to update testimonial'));
     }
-    return response.json();
   },
 
   async delete(id: string): Promise<void> {
-    const response = await fetch(`${BASE_URL}?id=${id}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to delete testimonial');
+    try {
+      await apiClient.delete(BASE_URL, { params: { id } });
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Failed to delete testimonial'));
     }
   },
 };

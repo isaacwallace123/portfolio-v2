@@ -13,6 +13,7 @@ import type {
   PodInsight,
   SaveTopologyDto,
 } from '../lib/types';
+import apiClient, { getErrorMessage } from '@/lib/apiClient';
 
 const BASE_URL = '/api/topology';
 const INFRA_URL = '/api/topology/infra';
@@ -20,114 +21,111 @@ const INFRA_URL = '/api/topology/infra';
 export const topologyApi = {
   // Topology CRUD
   async getTopology(): Promise<Server[]> {
-    const response = await fetch(BASE_URL);
-    if (!response.ok) throw new Error('Failed to fetch topology');
-    return response.json();
+    const { data } = await apiClient.get<Server[]>(BASE_URL);
+    return data;
   },
 
-  async saveTopology(data: SaveTopologyDto): Promise<Server> {
-    const response = await fetch(BASE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to save topology');
+  async saveTopology(payload: SaveTopologyDto): Promise<Server> {
+    try {
+      const { data } = await apiClient.post<Server>(BASE_URL, payload);
+      return data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Failed to save topology'));
     }
-    return response.json();
   },
 
   async deleteServer(id: string): Promise<void> {
-    const response = await fetch(`${BASE_URL}?id=${id}`, { method: 'DELETE' });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to delete server');
+    try {
+      await apiClient.delete(BASE_URL, { params: { id } });
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Failed to delete server'));
     }
   },
 
   // Infra agent proxy calls
   async discoverContainers(): Promise<ContainerInfo[]> {
-    const response = await fetch(`${INFRA_URL}?action=containers`);
-    if (!response.ok) throw new Error('Failed to discover containers');
-    return response.json();
+    const { data } = await apiClient.get<ContainerInfo[]>(INFRA_URL, { params: { action: 'containers' } });
+    return data;
   },
 
   async discoverNetworks(): Promise<NetworkInfo[]> {
-    const response = await fetch(`${INFRA_URL}?action=networks`);
-    if (!response.ok) throw new Error('Failed to discover networks');
-    return response.json();
+    const { data } = await apiClient.get<NetworkInfo[]>(INFRA_URL, { params: { action: 'networks' } });
+    return data;
   },
 
   async getSystemInfo(): Promise<SystemInfo> {
-    const response = await fetch(`${INFRA_URL}?action=system`);
-    if (!response.ok) throw new Error('Failed to fetch system info');
-    return response.json();
+    const { data } = await apiClient.get<SystemInfo>(INFRA_URL, { params: { action: 'system' } });
+    return data;
   },
 
   async getContainerStats(id: string): Promise<ContainerStats> {
-    const response = await fetch(`${INFRA_URL}?action=stats&id=${id}`);
-    if (!response.ok) throw new Error('Failed to fetch container stats');
-    return response.json();
+    const { data } = await apiClient.get<ContainerStats>(INFRA_URL, { params: { action: 'stats', id } });
+    return data;
   },
 
   async getContainerLogs(id: string, tail = 50): Promise<ContainerLogs> {
-    const response = await fetch(`${INFRA_URL}?action=logs&id=${id}&tail=${tail}`);
-    if (!response.ok) throw new Error('Failed to fetch container logs');
-    return response.json();
+    const { data } = await apiClient.get<ContainerLogs>(INFRA_URL, { params: { action: 'logs', id, tail } });
+    return data;
   },
 
   async getNodeMetrics(): Promise<NodeMetrics> {
-    const response = await fetch(`${INFRA_URL}?action=metrics`);
-    if (!response.ok) throw new Error('Failed to fetch node metrics');
-    return response.json();
+    const { data } = await apiClient.get<NodeMetrics>(INFRA_URL, { params: { action: 'metrics' } });
+    return data;
   },
 
   async getMetricsRange(duration: string, containerName: string): Promise<MetricsRange> {
-    const response = await fetch(`${INFRA_URL}?action=metricsrange&duration=${duration}&container=${encodeURIComponent(containerName)}`);
-    if (!response.ok) throw new Error('Failed to fetch metrics range');
-    return response.json();
+    const { data } = await apiClient.get<MetricsRange>(INFRA_URL, { params: { action: 'metricsrange', duration, container: containerName } });
+    return data;
   },
 
   async getNodeMetricsRange(node: string, duration: string): Promise<MetricsRange> {
-    const response = await fetch(`${INFRA_URL}?action=nodemetricsrange&node=${encodeURIComponent(node)}&duration=${duration}`);
-    if (!response.ok) throw new Error('Failed to fetch node metrics range');
-    return response.json();
+    const { data } = await apiClient.get<MetricsRange>(INFRA_URL, { params: { action: 'nodemetricsrange', node, duration } });
+    return data;
   },
 
   async getDependencies(): Promise<AppDependency[]> {
-    const response = await fetch(`${INFRA_URL}?action=dependencies`);
-    if (!response.ok) return [];
-    return response.json();
+    try {
+      const { data } = await apiClient.get<AppDependency[]>(INFRA_URL, { params: { action: 'dependencies' } });
+      return data;
+    } catch {
+      return [];
+    }
   },
 
   async getNodes(): Promise<NodeInfo[]> {
-    const response = await fetch(`${INFRA_URL}?action=nodes`);
-    if (!response.ok) return [];
-    return response.json();
+    try {
+      const { data } = await apiClient.get<NodeInfo[]>(INFRA_URL, { params: { action: 'nodes' } });
+      return data;
+    } catch {
+      return [];
+    }
   },
 
   async getOverwatchInsights(): Promise<OverwatchInsight> {
-    const response = await fetch(`${INFRA_URL}?action=overwatch`);
-    if (!response.ok) throw new Error('Overwatch unavailable');
-    return response.json();
+    const { data } = await apiClient.get<OverwatchInsight>(INFRA_URL, { params: { action: 'overwatch' } });
+    return data;
   },
 
   async getPodInsights(namespace: string, app: string): Promise<PodInsight> {
-    const response = await fetch(`${INFRA_URL}?action=podinsights&namespace=${encodeURIComponent(namespace)}&app=${encodeURIComponent(app)}`);
-    if (!response.ok) throw new Error('Pod insights unavailable');
-    return response.json();
+    const { data } = await apiClient.get<PodInsight>(INFRA_URL, { params: { action: 'podinsights', namespace, app } });
+    return data;
   },
 
   async getAllPodInsights(): Promise<PodInsight[]> {
-    const response = await fetch(`${INFRA_URL}?action=allpodinsights`);
-    if (!response.ok) return [];
-    return response.json();
+    try {
+      const { data } = await apiClient.get<PodInsight[]>(INFRA_URL, { params: { action: 'allpodinsights' } });
+      return data;
+    } catch {
+      return [];
+    }
   },
 
   async getOverwatchHistory(): Promise<OverwatchInsight[]> {
-    const response = await fetch(`${INFRA_URL}?action=overwatchhistory`);
-    if (!response.ok) return [];
-    return response.json();
+    try {
+      const { data } = await apiClient.get<OverwatchInsight[]>(INFRA_URL, { params: { action: 'overwatchhistory' } });
+      return data;
+    } catch {
+      return [];
+    }
   },
 };

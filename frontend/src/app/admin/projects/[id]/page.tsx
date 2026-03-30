@@ -20,6 +20,7 @@ import { useProjectForm } from '@/features/projects/hooks';
 import { ImageUploadField } from '@/features/uploads/ui/ImageUploadField';
 import type { ProjectPage } from '@/features/projects/lib/types';
 import { toast } from 'sonner';
+import apiClient, { getErrorMessage } from '@/lib/apiClient';
 
 interface AdminProjectEditPageProps {
   params: Promise<{
@@ -194,13 +195,7 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
   const handleTranslate = async () => {
     setTranslating(true);
     try {
-      const res = await fetch('/api/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: id }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Translation failed');
+      const { data } = await apiClient.post<{ fieldsTranslated: number; pagesTranslated: number }>('/api/translate', { projectId: id });
       const { fieldsTranslated, pagesTranslated } = data;
       if (fieldsTranslated === 0 && pagesTranslated === 0) {
         toast.info('Everything is already translated.');
@@ -208,7 +203,7 @@ export default function AdminProjectEditPage({ params }: AdminProjectEditPagePro
         toast.success(`Translated ${fieldsTranslated} field(s) and ${pagesTranslated} page(s).`);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Translation failed');
+      toast.error(getErrorMessage(err, 'Translation failed'));
     } finally {
       setTranslating(false);
     }

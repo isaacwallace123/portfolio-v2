@@ -44,7 +44,7 @@ export function parseMdxToBlocks(mdx: string): Block[] {
     const headingMatch = trimmed.match(/^(#{1,3})\s+(.+)$/);
     if (headingMatch) {
       // Strip inline markdown from heading text (headings store plain text)
-      const headingText = headingMatch[2].replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/`([^`]+)`/g, '$1');
+      const headingText = headingMatch[2].replace(/^#+\s*/, '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/`([^`]+)`/g, '$1');
       blocks.push({
         id: generateId(),
         type: 'heading',

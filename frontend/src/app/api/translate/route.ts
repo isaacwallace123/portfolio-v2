@@ -27,66 +27,55 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
 
-  let fieldsTranslated = 0;
-  let pagesTranslated = 0;
-
   // ── Project-level plain text fields ────────────────────────────────────────
   const projectPlain: Record<string, string | null | undefined> = {};
   if (!project.titleFr       && project.title)       projectPlain.title       = project.title;
   if (!project.descriptionFr && project.description) projectPlain.description = project.description;
   if (!project.excerptFr     && project.excerpt)     projectPlain.excerpt     = project.excerpt;
 
-  // ── Project-level content (blocks) ─────────────────────────────────────────
-  const projectUpdate: Record<string, string> = {};
+  const contentBlocks = project.content ? parseBlocks(project.content) : null;
+  const needsContentTranslation = contentBlocks && !project.contentFr;
 
-  if (Object.keys(projectPlain).length > 0) {
-    const translated = await translateFields(projectPlain);
-    Object.assign(projectUpdate, translated);
-    fieldsTranslated += Object.keys(translated).length;
-  }
+  // ── Run project-level translations in parallel ──────────────────────────────
+  const [translatedFields, translatedContentBlocks] = await Promise.all([
+    Object.keys(projectPlain).length > 0 ? translateFields(projectPlain) : Promise.resolve({}),
+    needsContentTranslation ? translateBlocks(contentBlocks!) : Promise.resolve(null),
+  ]);
 
-  // Translate project content only if missing or corrupted
-  if (project.content) {
-    const blocks = parseBlocks(project.content);
-    const frBlocks = project.contentFr ? parseBlocks(project.contentFr) : null;
-    const needsContentTranslation = blocks && !frBlocks; // missing or corrupted
+  const projectUpdate: Record<string, string> = { ...translatedFields };
+  if (translatedContentBlocks) projectUpdate.contentFr = serializeBlocks(translatedContentBlocks);
 
-    if (needsContentTranslation) {
-      const translated = await translateBlocks(blocks!);
-      projectUpdate.contentFr = serializeBlocks(translated);
-      fieldsTranslated++;
-    }
-  }
+  const fieldsTranslated = Object.keys(projectUpdate).length;
 
-  if (Object.keys(projectUpdate).length > 0) {
+  if (fieldsTranslated > 0) {
     await prisma.project.update({ where: { id: projectId }, data: projectUpdate });
   }
 
-  // ── Pages ───────────────────────────────────────────────────────────────────
-  for (const page of project.pages) {
-    const pageUpdate: Record<string, string> = {};
+  // ── Pages — all in parallel ─────────────────────────────────────────────────
+  const pageResults = await Promise.all(
+    project.pages.map(async (page) => {
+      const pageUpdate: Record<string, string> = {};
 
-    if (!page.titleFr && page.title) {
-      const translated = await translateFields({ title: page.title });
-      if (translated.titleFr) pageUpdate.titleFr = translated.titleFr;
-    }
+      const pageBlocks = page.content ? parseBlocks(page.content) : null;
+      const needsPageContent = pageBlocks && !page.contentFr;
 
-    if (page.content) {
-      const blocks = parseBlocks(page.content);
-      const frBlocks = page.contentFr ? parseBlocks(page.contentFr) : null;
-      const needsContentTranslation = blocks && !frBlocks;
+      const [translatedTitle, translatedPageBlocks] = await Promise.all([
+        !page.titleFr && page.title ? translateFields({ title: page.title }) : Promise.resolve({}),
+        needsPageContent ? translateBlocks(pageBlocks!) : Promise.resolve(null),
+      ]);
 
-      if (needsContentTranslation) {
-        const translated = await translateBlocks(blocks!);
-        pageUpdate.contentFr = serializeBlocks(translated);
+      if (translatedTitle.titleFr) pageUpdate.titleFr = translatedTitle.titleFr;
+      if (translatedPageBlocks)    pageUpdate.contentFr = serializeBlocks(translatedPageBlocks);
+
+      if (Object.keys(pageUpdate).length > 0) {
+        await prisma.projectPage.update({ where: { id: page.id }, data: pageUpdate });
+        return true;
       }
-    }
+      return false;
+    })
+  );
 
-    if (Object.keys(pageUpdate).length > 0) {
-      await prisma.projectPage.update({ where: { id: page.id }, data: pageUpdate });
-      pagesTranslated++;
-    }
-  }
+  const pagesTranslated = pageResults.filter(Boolean).length;
 
   return NextResponse.json({ success: true, fieldsTranslated, pagesTranslated });
 }

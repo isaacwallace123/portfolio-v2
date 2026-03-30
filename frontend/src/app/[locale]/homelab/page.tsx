@@ -35,6 +35,7 @@ import type { ContainerInfo, ContainerStats, MetricsRange, AppDependency, NodeIn
 import { OverwatchPanel } from '@/features/topology/ui/OverwatchPanel';
 import { useTranslations } from 'next-intl';
 import { AnimatedBackground } from '@/shared/ui/AnimatedBackground';
+import apiClient from '@/lib/apiClient';
 
 const nodeTypes: NodeTypes = {
   appGroupNode: AppGroupNode,
@@ -1261,7 +1262,7 @@ function TopologyCanvas() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/auth/me').then((r) => r.json()).then((d) => setIsAdmin(d.isAdmin === true)).catch(() => {});
+    apiClient.get<{ isAdmin: boolean }>('/api/auth/me').then(({ data }) => setIsAdmin(data.isAdmin === true)).catch(() => {});
   }, []);
 
   const fetchOverwatch = useCallback(async () => {

@@ -8,8 +8,16 @@ export async function register() {
 
   const { readdir, readFile } = await import('fs/promises');
   const { join, extname } = await import('path');
-  const { HeadObjectCommand, PutObjectCommand } = await import('@aws-sdk/client-s3');
+  const { HeadBucketCommand, CreateBucketCommand, HeadObjectCommand, PutObjectCommand } = await import('@aws-sdk/client-s3');
   const { s3, BUCKET } = await import('@/shared/lib/s3');
+
+  // Ensure bucket exists
+  try {
+    await s3.send(new HeadBucketCommand({ Bucket: BUCKET }));
+  } catch {
+    await s3.send(new CreateBucketCommand({ Bucket: BUCKET }));
+    console.log(`[seed] created bucket: ${BUCKET}`);
+  }
 
   const MIME: Record<string, string> = {
     '.png': 'image/png',

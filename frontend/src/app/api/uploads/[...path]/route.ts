@@ -35,12 +35,12 @@ export async function GET(
     // Try S3 first
     try {
       const obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
-      const body = await obj.Body?.transformToByteArray();
-      if (body) {
+      const stream = obj.Body?.transformToWebStream();
+      if (stream) {
         const filename = segments[segments.length - 1];
         const ext = extname(filename).toLowerCase();
         const contentType = obj.ContentType ?? MIME_TYPES[ext] ?? 'application/octet-stream';
-        return new NextResponse(body, {
+        return new NextResponse(stream, {
           headers: {
             'Content-Type': contentType,
             'Cache-Control': 'public, max-age=31536000, immutable',

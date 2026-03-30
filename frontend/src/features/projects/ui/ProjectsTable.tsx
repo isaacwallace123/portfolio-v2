@@ -24,8 +24,10 @@ import {
   Star,
   StarOff,
   Search,
-  Filter
+  Filter,
+  FolderOpen,
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ProjectCreateDialog } from './ProjectCreateDialog';
 import type { Project } from '../lib/types';
@@ -118,8 +120,11 @@ export function ProjectsTable({
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3 bg-linear-to-br from-foreground via-foreground to-foreground/60 bg-clip-text text-transparent">
+              <FolderOpen className="h-8 w-8 text-primary shrink-0" />
+              Projects
+            </h1>
             <p className="text-muted-foreground">Manage your portfolio projects</p>
           </div>
           <Button onClick={() => setCreateDialogOpen(true)} className="rounded-2xl">
@@ -244,7 +249,27 @@ export function ProjectsTable({
 
         {/* Projects Grid */}
         {loading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading projects...</div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i} className="bg-background/80">
+                <CardHeader className="pb-3">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-3 w-1/3 mt-1" />
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex gap-2">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-5 w-20" />
+                  </div>
+                  <div className="flex gap-1">
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         ) : projects.length === 0 ? (
           <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
             <CardContent className="text-center py-12">
@@ -257,8 +282,16 @@ export function ProjectsTable({
           </Card>
         ) : filteredProjects.length === 0 ? (
           <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
-            <CardContent className="text-center py-12">
+            <CardContent className="text-center py-12 space-y-3">
+              <Search className="h-8 w-8 text-muted-foreground/30 mx-auto" />
               <p className="text-muted-foreground">No projects match your filters</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setSearchQuery(''); setStatusFilter('all'); setSelectedTech('all'); }}
+              >
+                Clear filters
+              </Button>
             </CardContent>
           </Card>
         ) : (
@@ -372,26 +405,6 @@ export function ProjectsTable({
                     </div>
                   )}
 
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onEdit(project.id)}
-                      className="flex-1 rounded-2xl"
-                    >
-                      <Edit className="mr-2 h-3 w-3" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(`/projects/${project.slug}`, '_blank')}
-                      className="flex-1 rounded-2xl"
-                    >
-                      <ExternalLink className="mr-2 h-3 w-3" />
-                      View
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             ))}

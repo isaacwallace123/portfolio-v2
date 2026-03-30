@@ -414,7 +414,7 @@ export default function AdminSkillsPage() {
           Loading skills...
         </div>
       ) : skills.length === 0 ? (
-        <Card className="bg-background/80">
+        <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
           <CardContent className="py-12 text-center text-muted-foreground">
             <p>No skills yet. Add a category, then add skills to it.</p>
           </CardContent>

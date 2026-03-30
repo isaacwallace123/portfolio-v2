@@ -4,6 +4,7 @@ import { AdminSidebar } from '@/features/auth/ui/AdminSidebar';
 import { Header } from '@/widgets/Header';
 import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '../../../messages/en.json';
+import { AnimatedBackground } from '@/shared/ui/AnimatedBackground';
 
 async function getAdminUser() {
   try {
@@ -22,10 +23,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <NextIntlClientProvider locale="en" messages={enMessages}>
+      <AnimatedBackground />
       <Header />
-      <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-background">
+      <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
         <AdminSidebar />
-        <main className="flex-1 min-w-0 overflow-auto bg-muted/10">
+        <main className="flex-1 min-w-0 overflow-auto">
           {children}
         </main>
       </div>

@@ -8,6 +8,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +28,14 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
+      {children}
+    </p>
+  );
+}
 
 const statusConfig = {
   pending: {
@@ -80,10 +89,10 @@ export default function AdminTestimonialsPage() {
     const StatusIcon = config.icon;
 
     return (
-      <Card key={t.id} className="bg-background/80">
+      <Card key={t.id} className="bg-background/80 backdrop-blur dark:bg-background/60">
         <CardContent className="p-5">
           <div className="flex items-start gap-4">
-            <Avatar size="lg" className="mt-0.5 shrink-0">
+            <Avatar className="h-12 w-12 mt-0.5 shrink-0">
               {t.avatar && <AvatarImage src={t.avatar} alt={t.name} />}
               <AvatarFallback>{getInitials(t.name)}</AvatarFallback>
             </Avatar>
@@ -108,7 +117,7 @@ export default function AdminTestimonialsPage() {
 
               <StarRating value={t.rating} readonly size={14} />
 
-              <p className="text-sm leading-relaxed text-muted-foreground">
+              <p className="text-sm leading-relaxed text-foreground/80">
                 {t.message}
               </p>
 
@@ -177,22 +186,45 @@ export default function AdminTestimonialsPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground">
-          Loading testimonials...
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i} className="bg-background/80 backdrop-blur dark:bg-background/60">
+              <CardContent className="p-5">
+                <div className="flex items-start gap-4">
+                  <Skeleton className="h-12 w-12 rounded-full shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="flex justify-between">
+                      <div className="space-y-1.5">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                    </div>
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-12 w-full" />
+                    <div className="flex gap-2 pt-1">
+                      <Skeleton className="h-7 w-20 rounded-md" />
+                      <Skeleton className="h-7 w-16 rounded-md" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       ) : testimonials.length === 0 ? (
-        <Card className="bg-background/80">
-          <CardContent className="py-12 text-center text-muted-foreground">
-            <p>No testimonials yet. They&apos;ll show up here once someone submits one.</p>
+        <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
+          <CardContent className="py-16 text-center space-y-3">
+            <MessageSquare className="h-10 w-10 text-muted-foreground/25 mx-auto" />
+            <p className="text-muted-foreground">No testimonials yet.</p>
+            <p className="text-sm text-muted-foreground/60">They&apos;ll show up here once someone submits one.</p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-8">
           {pending.length > 0 && (
             <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                Pending Review ({pending.length})
-              </p>
+              <SectionLabel>Pending Review ({pending.length})</SectionLabel>
               <div className="space-y-3">
                 {pending.map(renderTestimonial)}
               </div>
@@ -201,9 +233,7 @@ export default function AdminTestimonialsPage() {
 
           {approved.length > 0 && (
             <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                Approved ({approved.length})
-              </p>
+              <SectionLabel>Approved ({approved.length})</SectionLabel>
               <div className="space-y-3">
                 {approved.map(renderTestimonial)}
               </div>
@@ -212,9 +242,7 @@ export default function AdminTestimonialsPage() {
 
           {rejected.length > 0 && (
             <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                Rejected ({rejected.length})
-              </p>
+              <SectionLabel>Rejected ({rejected.length})</SectionLabel>
               <div className="space-y-3">
                 {rejected.map(renderTestimonial)}
               </div>

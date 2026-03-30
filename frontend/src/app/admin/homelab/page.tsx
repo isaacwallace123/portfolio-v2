@@ -171,8 +171,8 @@ export default function AdminHomelabPage() {
                   return (
                     <div
                       key={group.key}
-                      className={`flex items-center gap-4 px-3 py-2.5 rounded-lg border transition-colors ${
-                        s.visible ? 'border-border/50 bg-card' : 'border-border/30 bg-muted/20 opacity-60'
+                      className={`flex items-center gap-4 px-3 py-2.5 rounded-lg border transition-colors backdrop-blur ${
+                        s.visible ? 'border-border/50 bg-background/80 dark:bg-background/60' : 'border-border/30 bg-muted/20 opacity-60'
                       }`}
                     >
                       {/* Icon picker */}

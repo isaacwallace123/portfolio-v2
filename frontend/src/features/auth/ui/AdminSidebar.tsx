@@ -60,7 +60,7 @@ function NavItem({
       className={cn(
         'relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
         active
-          ? 'text-foreground bg-muted/60'
+          ? 'text-foreground bg-primary/10 dark:bg-primary/[0.08]'
           : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
       )}
     >
@@ -126,7 +126,7 @@ export function AdminSidebar() {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-56 shrink-0 flex-col border-r border-border/30 bg-background/60 backdrop-blur-sm">
+      <aside className="hidden md:flex w-56 shrink-0 flex-col border-r border-border/30 bg-background/50 backdrop-blur-md">
         {nav}
       </aside>
 

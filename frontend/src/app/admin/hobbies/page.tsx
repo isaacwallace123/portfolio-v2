@@ -70,6 +70,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import Image from 'next/image';
 
@@ -277,8 +278,28 @@ export default function HobbiesAdminPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">Loading hobbies...</p>
+      <div className="mx-auto w-full max-w-3xl px-6 py-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-9 w-28 rounded-md" />
+        </div>
+        <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
+          <CardHeader>
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-40 mt-1" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="flex items-center gap-2 py-1">
+                <Skeleton className="h-4 w-4" />
+                <Skeleton className="h-7 w-28 rounded-full" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -298,7 +319,7 @@ export default function HobbiesAdminPage() {
         </Button>
       </div>
 
-      <Card>
+      <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
         <CardHeader>
           <CardTitle>Hobbies ({hobbies.length})</CardTitle>
           <CardDescription>Drag to reorder, click to edit</CardDescription>

@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   HardDrive,
   Trash2,
@@ -135,11 +136,19 @@ export default function AdminUploadsPage() {
 
       {/* Files Grid */}
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground">
-          Loading files...
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {[...Array(8)].map((_, i) => (
+            <Card key={i} className="overflow-hidden bg-background/80">
+              <Skeleton className="aspect-square w-full" />
+              <CardContent className="p-3 space-y-1.5">
+                <Skeleton className="h-3 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
       ) : filtered.length === 0 ? (
-        <Card className="bg-background/80">
+        <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
           <CardContent className="py-12 text-center text-muted-foreground">
             {files.length === 0
               ? "No files uploaded yet. Drag and drop or click above to upload."
@@ -151,7 +160,7 @@ export default function AdminUploadsPage() {
           {filtered.map((file) => (
             <Card
               key={file.key}
-              className="group relative overflow-hidden bg-background/80"
+              className="group relative overflow-hidden bg-background/80 backdrop-blur dark:bg-background/60 hover:border-primary/30 transition-colors"
             >
               <div className="aspect-square relative">
                 {isImage(file.name) ? (
@@ -167,7 +176,7 @@ export default function AdminUploadsPage() {
                 )}
 
                 {/* Hover overlay */}
-                <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+                <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                   <Button
                     variant="secondary"
                     size="icon"

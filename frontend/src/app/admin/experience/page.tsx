@@ -253,7 +253,7 @@ export default function AdminExperiencePage() {
             </div>
 
             {grouped[t].length === 0 ? (
-              <Card>
+              <Card className="bg-background/80 backdrop-blur dark:bg-background/60">
                 <CardContent className="py-12 text-center text-muted-foreground">
                   No {TYPE_CONFIG[t].label.toLowerCase()} entries yet.
                 </CardContent>
@@ -261,7 +261,7 @@ export default function AdminExperiencePage() {
             ) : (
               <div className="space-y-3">
                 {grouped[t].map((exp) => (
-                  <Card key={exp.id} className="p-4">
+                  <Card key={exp.id} className="p-4 bg-background/80 backdrop-blur dark:bg-background/60">
                     <div className="flex items-start gap-4">
                       {exp.logo ? (
                         <img src={exp.logo} alt="" className="h-10 w-10 rounded-lg object-cover border" />

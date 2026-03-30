@@ -100,7 +100,7 @@ export default function SkillGlobe({
   const icons = useMemo(
     () =>
       skillPoints
-        .filter(({ skill }) => skill.icon)
+        .filter(({ skill }) => skill.icon && !skill.icon.includes('placeholder'))
         .map(({ pos, skill }) => (
           <IconBillboard
             key={skill.label}

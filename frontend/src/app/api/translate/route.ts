@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/features/auth/model/session';
 import { prisma } from '@/lib/prisma';
-import { translateBlocks, translateFields } from '@/lib/deepl';
+import { translateBlocks, translateFields, hasBrokenEntities } from '@/lib/deepl';
 import { parseBlocks, serializeBlocks } from '@/features/projects/lib/blocks';
 
 // POST /api/translate  { projectId }
@@ -28,10 +28,11 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Project-level plain text fields ────────────────────────────────────────
+  // Re-translate if missing OR if the stored value has HTML-encoded entities (e.g. &#x27;)
   const projectPlain: Record<string, string | null | undefined> = {};
-  if (!project.titleFr       && project.title)       projectPlain.title       = project.title;
-  if (!project.descriptionFr && project.description) projectPlain.description = project.description;
-  if (!project.excerptFr     && project.excerpt)     projectPlain.excerpt     = project.excerpt;
+  if ((!project.titleFr       || hasBrokenEntities(project.titleFr))       && project.title)       projectPlain.title       = project.title;
+  if ((!project.descriptionFr || hasBrokenEntities(project.descriptionFr)) && project.description) projectPlain.description = project.description;
+  if ((!project.excerptFr     || hasBrokenEntities(project.excerptFr))     && project.excerpt)     projectPlain.excerpt     = project.excerpt;
 
   const contentBlocks = project.content ? parseBlocks(project.content) : null;
   const needsContentTranslation = contentBlocks && !project.contentFr;
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
       const needsPageContent = pageBlocks && !page.contentFr;
 
       const [translatedTitle, translatedPageBlocks] = await Promise.all([
-        !page.titleFr && page.title ? translateFields({ title: page.title }) : Promise.resolve({}),
+        ((!page.titleFr || hasBrokenEntities(page.titleFr)) && page.title) ? translateFields({ title: page.title }) : Promise.resolve({}),
         needsPageContent ? translateBlocks(pageBlocks!) : Promise.resolve(null),
       ]);
 

@@ -17,12 +17,17 @@ export async function translateToFrench(text: string): Promise<string> {
   if (!t || !text.trim()) return '';
 
   try {
-    const result = await t.translateText(text, 'en', 'fr', { tagHandling: 'html' });
+    const result = await t.translateText(text, 'en', 'fr');
     return result.text;
   } catch (error) {
     console.error('DeepL translation failed:', error);
     return '';
   }
+}
+
+/** Returns true if a stored translation contains HTML-encoded entities (e.g. &#x27; for apostrophe). */
+export function hasBrokenEntities(text: string | null | undefined): boolean {
+  return !!text && /&#[x0-9]/i.test(text);
 }
 
 export async function translateFields(

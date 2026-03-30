@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, EyeOff, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Save, Loader2, Code2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   parseBlocks,
@@ -14,6 +14,7 @@ import {
   type BlockType,
   type BlockProps,
 } from '../../lib/blocks';
+import { parseMdxToBlocks } from '../../lib/mdxParser';
 import { ComponentPicker } from './ComponentPicker';
 import { BlockCanvas } from './BlockCanvas';
 import { PropertiesPanel } from './PropertiesPanel';
@@ -37,21 +38,25 @@ interface ProjectData {
   pages?: { id: string; isStartPage: boolean }[];
 }
 
+type EditorMode = 'visual' | 'mdx' | 'preview';
+
 export function PageBuilder({ projectId, pageId }: PageBuilderProps) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [previewMode, setPreviewMode] = useState(false);
+  const [mode, setMode] = useState<EditorMode>('visual');
 
   const [blocks, setBlocks] = useState<Block[]>([]);
+  const [rawMdx, setRawMdx] = useState('');
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [isStartPage, setIsStartPage] = useState(false);
   const [hasOtherStartPage, setHasOtherStartPage] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [savedBlocks, setSavedBlocks] = useState('');
+  const [savedContent, setSavedContent] = useState('');
 
   // Load page data
   useEffect(() => {
@@ -69,19 +74,18 @@ export function PageBuilder({ projectId, pageId }: PageBuilderProps) {
 
         const parsed = parseBlocks(page.content);
         const loadedBlocks = parsed ?? migrateHtmlToBlocks(page.content || '<p></p>');
+        const mdx = serializeBlocks(loadedBlocks);
 
         setTitle(page.title);
         setSlug(page.slug);
         setIsStartPage(page.isStartPage);
         setBlocks(loadedBlocks);
-        setSavedBlocks(serializeBlocks(loadedBlocks));
+        setRawMdx(mdx);
+        setSavedContent(page.content); // compare against original DB content
 
-        // Check if another page is the start page
-        const otherStart = project.pages?.some(
-          (p) => p.isStartPage && p.id !== pageId
-        ) ?? false;
+        const otherStart = project.pages?.some((p) => p.isStartPage && p.id !== pageId) ?? false;
         setHasOtherStartPage(otherStart);
-      } catch (err) {
+      } catch {
         toast.error('Failed to load page');
         router.push(`/admin/projects/${projectId}`);
       } finally {
@@ -91,12 +95,58 @@ export function PageBuilder({ projectId, pageId }: PageBuilderProps) {
     load();
   }, [pageId, projectId, router]);
 
-  // Track unsaved changes
+  // Track unsaved changes (compare serialized MDX against what's in DB)
   useEffect(() => {
     if (!loading) {
-      setHasChanges(serializeBlocks(blocks) !== savedBlocks);
+      setHasChanges(serializeBlocks(blocks) !== savedContent);
     }
-  }, [blocks, savedBlocks, loading]);
+  }, [blocks, savedContent, loading]);
+
+  // Sync blocks → rawMdx whenever blocks change (only in visual mode)
+  useEffect(() => {
+    if (mode === 'visual') {
+      setRawMdx(serializeBlocks(blocks));
+    }
+  }, [blocks, mode]);
+
+  // Switch into MDX mode: ensure rawMdx is up to date
+  const handleSwitchToMdx = useCallback(() => {
+    setRawMdx(serializeBlocks(blocks));
+    setMode('mdx');
+  }, [blocks]);
+
+  // Switch out of MDX mode: parse rawMdx back to blocks
+  const handleSwitchToVisual = useCallback(() => {
+    const parsed = parseMdxToBlocks(rawMdx);
+    setBlocks(parsed);
+    setSelectedBlockId(null);
+    setMode('visual');
+  }, [rawMdx]);
+
+  const handleModeToggle = useCallback(() => {
+    if (mode === 'visual') handleSwitchToMdx();
+    else if (mode === 'mdx') handleSwitchToVisual();
+  }, [mode, handleSwitchToMdx, handleSwitchToVisual]);
+
+  // File upload: read .mdx file and load into builder
+  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const parsed = parseMdxToBlocks(text);
+      setBlocks(parsed);
+      setRawMdx(text);
+      setSelectedBlockId(null);
+      setMode('visual');
+      setHasChanges(true);
+      toast.success(`Loaded ${file.name}`);
+    };
+    reader.readAsText(file);
+    // Reset input so the same file can be re-uploaded
+    e.target.value = '';
+  }, []);
 
   const handleAddBlock = useCallback((type: BlockType) => {
     const block = createBlock(type);
@@ -134,18 +184,20 @@ export function PageBuilder({ projectId, pageId }: PageBuilderProps) {
   }, []);
 
   const handleSave = async () => {
+    // If saving from MDX mode, parse first to ensure blocks are in sync
+    let blocksToSave = blocks;
+    if (mode === 'mdx') {
+      blocksToSave = parseMdxToBlocks(rawMdx);
+      setBlocks(blocksToSave);
+    }
+
     try {
       setSaving(true);
+      const content = serializeBlocks(blocksToSave);
       const response = await fetch('/api/project-pages', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: pageId,
-          title,
-          slug,
-          isStartPage,
-          content: serializeBlocks(blocks),
-        }),
+        body: JSON.stringify({ id: pageId, title, slug, isStartPage, content }),
       });
 
       if (!response.ok) {
@@ -153,8 +205,7 @@ export function PageBuilder({ projectId, pageId }: PageBuilderProps) {
         throw new Error(err.error || 'Save failed');
       }
 
-      const serial = serializeBlocks(blocks);
-      setSavedBlocks(serial);
+      setSavedContent(content);
       setHasChanges(false);
       toast.success('Page saved');
     } catch (err) {
@@ -165,6 +216,7 @@ export function PageBuilder({ projectId, pageId }: PageBuilderProps) {
   };
 
   const selectedBlock = blocks.find((b) => b.id === selectedBlockId) ?? null;
+  const previewMode = mode === 'preview';
 
   if (loading) {
     return (
@@ -205,11 +257,50 @@ export function PageBuilder({ projectId, pageId }: PageBuilderProps) {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {/* Upload .mdx file */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".mdx,.md"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-2xl gap-2"
+            onClick={() => fileInputRef.current?.click()}
+            title="Upload .mdx file"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Upload</span>
+          </Button>
+
+          {/* MDX / Visual toggle */}
+          <Button
+            variant={mode === 'mdx' ? 'secondary' : 'outline'}
+            size="sm"
+            className="rounded-2xl gap-2"
+            onClick={handleModeToggle}
+            disabled={mode === 'preview'}
+            title={mode === 'mdx' ? 'Switch to visual editor' : 'Edit raw MDX'}
+          >
+            <Code2 className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{mode === 'mdx' ? 'Visual' : 'MDX'}</span>
+          </Button>
+
+          {/* Preview toggle */}
           <Button
             variant="outline"
             size="sm"
             className="rounded-2xl gap-2"
-            onClick={() => setPreviewMode((v) => !v)}
+            onClick={() => {
+              if (mode === 'preview') setMode('visual');
+              else {
+                if (mode === 'mdx') handleSwitchToVisual();
+                setMode('preview');
+              }
+            }}
           >
             {previewMode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             <span className="hidden sm:inline">{previewMode ? 'Edit' : 'Preview'}</span>
@@ -229,24 +320,40 @@ export function PageBuilder({ projectId, pageId }: PageBuilderProps) {
 
       {/* 3-column layout */}
       <div className="flex flex-1 min-h-0">
-        {!previewMode && (
+        {mode === 'visual' && (
           <div className="w-60 shrink-0">
             <ComponentPicker onAdd={handleAddBlock} />
           </div>
         )}
 
-        <BlockCanvas
-          blocks={blocks}
-          selectedBlockId={selectedBlockId}
-          previewMode={previewMode}
-          onSelect={setSelectedBlockId}
-          onReorder={handleReorder}
-          onDelete={handleDelete}
-          onDuplicate={handleDuplicate}
-          onBlockChange={handleBlockChange}
-        />
+        {mode === 'mdx' ? (
+          /* Raw MDX editor */
+          <div className="flex-1 flex flex-col min-h-0 p-4">
+            <textarea
+              value={rawMdx}
+              onChange={(e) => {
+                setRawMdx(e.target.value);
+                setHasChanges(true);
+              }}
+              className="flex-1 w-full resize-none font-mono text-sm bg-muted/30 border border-border rounded-lg p-4 outline-none focus:ring-1 focus:ring-ring"
+              spellCheck={false}
+              placeholder="Write MDX here..."
+            />
+          </div>
+        ) : (
+          <BlockCanvas
+            blocks={blocks}
+            selectedBlockId={selectedBlockId}
+            previewMode={previewMode}
+            onSelect={setSelectedBlockId}
+            onReorder={handleReorder}
+            onDelete={handleDelete}
+            onDuplicate={handleDuplicate}
+            onBlockChange={handleBlockChange}
+          />
+        )}
 
-        {!previewMode && (
+        {mode === 'visual' && (
           <div className="w-96 shrink-0">
             <PropertiesPanel
               selectedBlock={selectedBlock}

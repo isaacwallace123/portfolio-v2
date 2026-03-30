@@ -1,4 +1,6 @@
 import { randomUUID } from 'crypto';
+import { serializeToMdx } from './mdxSerializer';
+import { parseMdxToBlocks } from './mdxParser';
 
 export type BlockType =
   | 'heading'
@@ -115,18 +117,30 @@ export function createBlock(type: BlockType): Block {
 }
 
 export function parseBlocks(content: string): Block[] | null {
-  if (!content || !content.trimStart().startsWith('[')) return null;
-  try {
-    const parsed = JSON.parse(content);
-    if (Array.isArray(parsed)) return parsed as Block[];
-    return null;
-  } catch {
-    return null;
+  if (!content) return null;
+  const trimmed = content.trimStart();
+
+  // Legacy JSON format — parse and return as-is (will be re-saved as MDX on next save)
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) return parsed as Block[];
+    } catch {
+      // fall through to MDX
+    }
   }
+
+  // Legacy raw HTML (not MDX, not JSON) — wrap in a paragraph block
+  if (trimmed.startsWith('<') && !trimmed.startsWith('<Callout') && !trimmed.startsWith('<StatsGrid') && !trimmed.startsWith('<FeatureList') && !trimmed.startsWith('<figure') && !trimmed.startsWith('<hr')) {
+    return [{ id: generateId(), type: 'paragraph', props: { html: content } as ParagraphProps }];
+  }
+
+  // MDX format
+  return parseMdxToBlocks(content);
 }
 
 export function serializeBlocks(blocks: Block[]): string {
-  return JSON.stringify(blocks);
+  return serializeToMdx(blocks);
 }
 
 export function migrateHtmlToBlocks(html: string): Block[] {

@@ -2,11 +2,11 @@
 set -e
 
 # Fix ownership on the uploads volume (host mount may be root-owned)
-chown -R nextjs:nodejs /app/public/uploads
+chown -R nextjs:nodejs /app/public/uploads || true
 
 # Ensure .next/cache is writable for prerender cache
 mkdir -p /app/.next/cache
-chown -R nextjs:nodejs /app/.next/cache
+chown -R nextjs:nodejs /app/.next/cache || true
 
 # Seed default icons into the uploads volume
 if [ -d /app/default-icons ]; then
@@ -16,7 +16,7 @@ if [ -d /app/default-icons ]; then
     name=$(basename "$f")
     [ ! -f "/app/public/uploads/icons/$name" ] && cp "$f" "/app/public/uploads/icons/$name"
   done
-  chown -R nextjs:nodejs /app/public/uploads/icons
+  chown -R nextjs:nodejs /app/public/uploads/icons || true
 fi
 
 echo "Pushing database schema..."

@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
   // ── Run project-level translations in parallel ──────────────────────────────
   const [translatedFields, translatedContentBlocks] = await Promise.all([
-    Object.keys(projectPlain).length > 0 ? translateFields(projectPlain) : Promise.resolve({}),
+    Object.keys(projectPlain).length > 0 ? translateFields(projectPlain) : Promise.resolve({} as Record<string, string>),
     needsContentTranslation ? translateBlocks(contentBlocks!) : Promise.resolve(null),
   ]);
 
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
       const needsPageContent = pageBlocks && !page.contentFr;
 
       const [translatedTitle, translatedPageBlocks] = await Promise.all([
-        ((!page.titleFr || hasBrokenEntities(page.titleFr)) && page.title) ? translateFields({ title: page.title }) : Promise.resolve({}),
+        ((!page.titleFr || hasBrokenEntities(page.titleFr)) && page.title) ? translateFields({ title: page.title }) : Promise.resolve({} as Record<string, string>),
         needsPageContent ? translateBlocks(pageBlocks!) : Promise.resolve(null),
       ]);
 
